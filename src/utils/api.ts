@@ -1,10 +1,78 @@
 import { SearchParams, SearchResponse, ApiError, Hotel } from '../types/search';
 
-// API Configuration
-const API_BASE_URL = process.env.NODE_ENV === 'development' 
-  ? '/v2' 
-  : 'https://api-staging.littleemperors.com/v2';
+// API Configuration with CORS proxy for production
+const getApiBaseUrl = () => {
+  if (process.env.NODE_ENV === 'development') {
+    return '/v2'; // Use proxy in development
+  } else {
+    // Use CORS proxy in production to avoid CORS issues
+    const corsProxy = 'https://corsproxy.io/?';
+    const apiUrl = 'https://api-staging.littleemperors.com/v2';
+    return `${corsProxy}${encodeURIComponent(apiUrl)}`;
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const API_TOKEN = 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
+
+// Fallback CORS proxies in case the primary one fails
+const FALLBACK_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://cors-anywhere.herokuapp.com/',
+  'https://thingproxy.freeboard.io/fetch/'
+];
+
+/**
+ * Makes an API request with fallback proxies
+ */
+const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
+  // Try the primary URL first
+  try {
+    console.log('Attempting API request with primary URL:', url);
+    const response = await fetch(url, options);
+    
+    // If the response is ok, return it
+    if (response.ok) {
+      return response;
+    }
+    
+    // If it's a CORS error or network error, try fallback proxies
+    if (response.status === 0 || response.status === 403 || response.status === 404) {
+      throw new Error('Primary proxy failed, trying fallbacks');
+    }
+    
+    return response;
+  } catch (error) {
+    console.warn('Primary API request failed, trying fallback proxies:', error);
+    
+    // Try fallback proxies
+    for (const proxy of FALLBACK_PROXIES) {
+      try {
+        const fallbackUrl = `${proxy}${encodeURIComponent(url.replace(getApiBaseUrl(), 'https://api-staging.littleemperors.com/v2'))}`;
+        console.log('Trying fallback proxy:', fallbackUrl);
+        
+        const response = await fetch(fallbackUrl, {
+          ...options,
+          headers: {
+            ...options.headers,
+            'Origin': window.location.origin
+          }
+        });
+        
+        if (response.ok) {
+          console.log('Fallback proxy succeeded');
+          return response;
+        }
+      } catch (fallbackError) {
+        console.warn('Fallback proxy failed:', fallbackError);
+        continue;
+      }
+    }
+    
+    // If all proxies fail, throw the original error
+    throw error;
+  }
+};
 
 /**
  * Builds query parameters for the search API
@@ -97,7 +165,7 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
   console.log('API Base URL:', API_BASE_URL);
   
   try {
-    const response = await fetch(url, {
+    const response = await makeApiRequest(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -189,7 +257,7 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
   console.log('Hotel details URL:', url);
   
   try {
-    const response = await fetch(url, {
+    const response = await makeApiRequest(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -267,7 +335,7 @@ export const testApiConnectivity = async (): Promise<{ success: boolean; message
     const testUrl = `${API_BASE_URL}/search?query=test&limit=1`;
     console.log('Testing API connectivity with URL:', testUrl);
     
-    const response = await fetch(testUrl, {
+    const response = await makeApiRequest(testUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -311,7 +379,7 @@ export const testSampleUrl = async (): Promise<{ success: boolean; message: stri
     console.log('Environment:', process.env.NODE_ENV);
     console.log('API Base URL:', API_BASE_URL);
     
-    const response = await fetch(sampleUrl, {
+    const response = await makeApiRequest(sampleUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -357,7 +425,7 @@ export const testApiEndpoint = async (): Promise<{ success: boolean; message: st
     const testUrl = `${API_BASE_URL}/search`;
     console.log('Testing API endpoint:', testUrl);
     
-    const response = await fetch(testUrl, {
+    const response = await makeApiRequest(testUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -436,7 +504,7 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
   console.log('Making enhanced API request to:', url);
   
   try {
-    const response = await fetch(url, {
+    const response = await makeApiRequest(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

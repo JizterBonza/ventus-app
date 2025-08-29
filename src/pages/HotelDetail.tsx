@@ -159,13 +159,33 @@ const HotelDetail: React.FC = () => {
         setError(null);
         
         console.log('Fetching hotel details for ID:', id);
+        console.log('Environment:', process.env.NODE_ENV);
+        
         const hotelData = await getHotelDetails(parseInt(id));
         setHotel(hotelData);
         
         console.log('Successfully fetched hotel details:', hotelData);
       } catch (err) {
         console.error('Error fetching hotel details:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch hotel details');
+        
+        // Provide more specific error messages for production
+        let errorMessage = 'Failed to fetch hotel details';
+        
+        if (err instanceof Error) {
+          if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+            errorMessage = 'Network error: Unable to connect to the server. Please check your internet connection and try again.';
+          } else if (err.message.includes('CORS')) {
+            errorMessage = 'Access denied: Unable to load hotel information due to security restrictions.';
+          } else if (err.message.includes('404')) {
+            errorMessage = 'Hotel not found: The requested hotel could not be located.';
+          } else if (err.message.includes('403')) {
+            errorMessage = 'Access forbidden: You do not have permission to view this hotel.';
+          } else {
+            errorMessage = err.message;
+          }
+        }
+        
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -225,9 +245,26 @@ const HotelDetail: React.FC = () => {
     return (
       <div className="text-center" style={{ padding: '50px' }}>
         <div className="alert alert-danger" role="alert">
-          <h4>Error Loading Hotel</h4>
+          <h4><i className="fa fa-exclamation-triangle"></i> Error Loading Hotel</h4>
           <p>{error}</p>
-          <Link to="/search" className="btn btn-primary">Back to Search</Link>
+          <div className="mt-3">
+            <button 
+              className="btn btn-primary me-2" 
+              onClick={() => window.location.reload()}
+            >
+              <i className="fa fa-refresh"></i> Try Again
+            </button>
+            <Link to="/search" className="btn btn-outline-primary">
+              <i className="fa fa-arrow-left"></i> Back to Search
+            </Link>
+          </div>
+          {process.env.NODE_ENV === 'production' && (
+            <div className="mt-3">
+              <small className="text-muted">
+                If this problem persists, please contact support or try again later.
+              </small>
+            </div>
+          )}
         </div>
       </div>
     );
