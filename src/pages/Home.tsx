@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchData, setSearchData] = useState({
     location: ''
@@ -102,7 +103,7 @@ const Home: React.FC = () => {
     const searchParams = new URLSearchParams({
       location: searchData.location
     });
-    window.location.href = `/search?${searchParams.toString()}`;
+    navigate(`/search?${searchParams.toString()}`);
   };
 
   const handleInputChange = (field: string, value: string) => {
