@@ -124,11 +124,11 @@ const Rooms: React.FC = () => {
                 <div className="room-item">
                   <div className="room-image">
                     <img src={room.image} alt={room.name} className="img-fluid" />
+                  </div>
+                  <div className="room-content">
                     <div className="room-category">
                       <span className="badge bg-primary">{room.category.toUpperCase()}</span>
                     </div>
-                  </div>
-                  <div className="room-content">
                     <h5 className="room-name">{room.name}</h5>
                     <p className="room-description">{room.description}</p>
                     <div className="room-price">
