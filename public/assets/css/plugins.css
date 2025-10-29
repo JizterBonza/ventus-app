@@ -3,29 +3,29 @@
 -----------------------------------------------------------------*/
 
 /* == bootstrap == */
-@import url("plugins/bootstrap.min.css");
+@import url("bootstrap.min.css");
 
 /* == owl.carousel == */
-@import url("plugins/owl.carousel.min.css");
-@import url("plugins/owl.theme.default.min.css");
+@import url("owl.carousel.min.css");
+@import url("owl.theme.default.min.css");
 
 /* == animate css == */
-@import url("plugins/animate.min.css");
+@import url("animate.min.css");
 
 /* == themify, flaticon and fontawesome icons ==*/
-@import url("plugins/themify-icons.css");
-@import url("plugins/flaticon.css");
-@import url("plugins/font-awesome-pro.css");
+@import url("themify-icons.css");
+@import url("flaticon.css");
+@import url("font-awesome-pro.css");
 
 /* == magnific-popup gallery  == */
-@import url("plugins/magnific-popup.css");
+@import url("magnific-popup.css");
 
 /* == YouTubePopUp == */
-@import url("plugins/YouTubePopUp.css");
+@import url("YouTubePopUp.css");
 
 /* == for booking css == */
-@import url("plugins/select2.css");
-@import url("plugins/datepicker.css");
+@import url("select2.css");
+@import url("datepicker.css");
 
 /* == Vegas Slider == */
-@import url("plugins/vegas.slider.min.css");
+@import url("vegas.slider.min.css");
