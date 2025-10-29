@@ -872,11 +872,11 @@ blockquote cite:before {
 
 /* ======= Section style ======= */
 .section-padding {
-    padding: 120px 0;
+    padding: 40px 0;
 }
 
 .section-padding2 {
-    padding: 0 0 120px 0;
+    padding: 0 0 40px 0;
 }
 
 .section-padding h6 {
