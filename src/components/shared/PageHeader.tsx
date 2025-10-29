@@ -48,7 +48,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 </div>
             )}
             <div className="container">
-                <div className="page-header-content">
+                <div className="page-header-content text-center">
                     {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
                     <h1>{title}</h1>
                     {text && <p>{text}</p>}

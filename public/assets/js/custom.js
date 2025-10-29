@@ -588,6 +588,18 @@ $(document).ready(function () {
             1000
         );
     });
+
+    // Card slider initialization moved to React component (Home.tsx)
+    // to properly handle React Router navigation
+    // $(".card-slider").slick({
+    //     dots: false,
+    //     infinite: false,
+    //     speed: 300,
+    //     slidesToShow: 2,
+    //     slidesToScroll: 1,
+    //     autoplay: false,
+    //     arrows: true,
+    // });
 });
 
 // Preloader

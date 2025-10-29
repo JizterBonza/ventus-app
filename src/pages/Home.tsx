@@ -1,90 +1,113 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import PageHeader from "../components/shared/PageHeader";
 
-const Home: React.FC = () => {
-    const navigate = useNavigate();
-    const [searchData, setSearchData] = useState({
-        location: "",
-    });
+declare const $: any;
 
+const Home: React.FC = () => {
+    const [sliderReady, setSliderReady] = useState(false);
     // Popular cities data
-    const popularCities = [
+    const popularRooms = [
         {
-            name: "New York",
-            state: "NY",
+            name: "Deluxe Room",
             image: "/assets/img/rooms/1.jpg",
-            hotelCount: 156,
-            avgPrice: 299,
+            guestCount: [2, 3],
+            avgPrice: 250,
+            size: "35 sq.",
+            amenities: ["Free Breakfast", "amenities"],
         },
         {
-            name: "Los Angeles",
-            state: "CA",
+            name: "Superior Room",
             image: "/assets/img/rooms/2.jpg",
-            hotelCount: 142,
-            avgPrice: 245,
+            guestCount: [3, 4],
+            avgPrice: 350,
+            size: "45 sq.",
+            amenities: ["Free Breakfast", "amenities"],
         },
         {
-            name: "Miami",
-            state: "FL",
+            name: "Suite Room",
             image: "/assets/img/rooms/3.jpg",
-            hotelCount: 98,
-            avgPrice: 189,
+            guestCount: [4, 5],
+            avgPrice: 500,
+            size: "70 sq.",
+            amenities: ["Free Breakfast", "amenities"],
         },
         {
-            name: "Chicago",
-            state: "IL",
+            name: "Presidential Suite",
             image: "/assets/img/rooms/4.jpg",
-            hotelCount: 134,
-            avgPrice: 267,
+            guestCount: [5, 6],
+            avgPrice: 1000,
+            size: "130 sq.",
+            amenities: ["Free Breakfast", "amenities"],
         },
         {
-            name: "Las Vegas",
-            state: "NV",
+            name: "Penthouse Suite",
             image: "/assets/img/rooms/5.jpg",
-            hotelCount: 89,
-            avgPrice: 156,
+            guestCount: [2, 3],
+            avgPrice: 1000,
+            size: "100 sq.",
+            amenities: ["Free Breakfast", "amenities"],
         },
         {
-            name: "Orlando",
-            state: "FL",
+            name: "Beachfront Villa",
             image: "/assets/img/rooms/6.jpg",
-            hotelCount: 76,
-            avgPrice: 134,
-        },
-        {
-            name: "San Francisco",
-            state: "CA",
-            image: "/assets/img/rooms/7.jpg",
-            hotelCount: 112,
-            avgPrice: 312,
-        },
-        {
-            name: "Boston",
-            state: "MA",
-            image: "/assets/img/rooms/8.jpg",
-            hotelCount: 94,
-            avgPrice: 278,
+            guestCount: [6, 8],
+            avgPrice: 1500,
+            size: "350 sq.",
+            amenities: ["Free Breakfast", "amenities"],
         },
     ];
 
-    const handleSearchSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Redirect to search page with search parameters
-        const searchParams = new URLSearchParams({
-            location: searchData.location,
-        });
-        navigate(`/search?${searchParams.toString()}`);
-    };
+    useEffect(() => {
+        // Initialize the card slider when component mounts
+        const initSlider = () => {
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $slider = $(".card-slider");
 
-    const handleInputChange = (field: string, value: string) => {
-        setSearchData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
-    };
+                // Check if slider is not already initialized
+                if (!$slider.hasClass("slick-initialized")) {
+                    $slider.slick({
+                        dots: false,
+                        infinite: false,
+                        speed: 300,
+                        slidesToShow: 2,
+                        slidesToScroll: 1,
+                        autoplay: false,
+                        arrows: true,
+                        responsive: [
+                            {
+                                breakpoint: 768,
+                                settings: {
+                                    slidesToShow: 1,
+                                    slidesToScroll: 1,
+                                },
+                            },
+                        ],
+                    });
+
+                    // Show the slider after initialization
+                    setSliderReady(true);
+                }
+            }
+        };
+
+        // Small delay to ensure DOM is ready
+        const timer = setTimeout(initSlider, 100);
+
+        // Cleanup function to destroy slider when component unmounts
+        return () => {
+            clearTimeout(timer);
+            setSliderReady(false);
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $slider = $(".card-slider");
+                if ($slider.hasClass("slick-initialized")) {
+                    $slider.slick("unslick");
+                }
+            }
+        };
+    }, []); // Empty dependency array means this runs once on mount
 
     return (
         <div>
@@ -122,33 +145,51 @@ const Home: React.FC = () => {
             {/* Popular Cities Section */}
             <section className="popular-cities section-padding">
                 <div className="container">
-                    <div className="row">
-                        <div className="col-md-12 text-center mb-5">
-                            <div className="section-subtitle">Popular Destinations</div>
-                            <div className="section-title">Explore Amazing Cities</div>
+                    <div className="row mb-5">
+                        <div className="col-lg-6">
+                            <div className="subtitle">Rooms & Suites</div>
+                            <h2>Comfortable Rooms Just For You</h2>
+                        </div>
+                        <div className="col-lg-6">
                             <p>Discover the best hotels in the most popular destinations around the world</p>
+                            <a className="btn btn-outline-secondary" href="/hotel/9817" data-discover="true">
+                                View All Rooms
+                            </a>
                         </div>
                     </div>
-                    <div className="row">
-                        {popularCities.map((city, index) => (
-                            <div key={index} className="col-md-3 col-sm-6 mb-4">
-                                <div className="city-card">
-                                    <div className="city-image">
-                                        <img src={city.image} alt={city.name} />
-                                        <div className="city-overlay">
-                                            <Link to={`/search?location=${city.name}`} className="btn btn-light">
-                                                Explore {city.name}
-                                            </Link>
-                                        </div>
+                    <div
+                        className="card-slider"
+                        style={{
+                            opacity: sliderReady ? 1 : 0,
+                            transition: "opacity 0.3s ease-in-out",
+                        }}
+                    >
+                        {popularRooms.map((room, index) => (
+                            <div key={index} className="card-wrap">
+                                <div className="card room-card compact">
+                                    <div className="card-image">
+                                        <Link to={`/search?location=${room.name}`} title="Explore {room.name}">
+                                            <img src={room.image} alt={room.name} />
+                                        </Link>
                                     </div>
-                                    <div className="city-content">
-                                        <h4>
-                                            {city.name}, {city.state}
-                                        </h4>
-                                        <p>{city.hotelCount} hotels available</p>
-                                        <div className="city-price">
-                                            <span>From ${city.avgPrice}</span>
-                                            <span className="price-unit">/night</span>
+                                    <div className="card-content">
+                                        <h4>{room.name}</h4>
+                                        <div className="room-price">
+                                            <span className="price-label">from</span>
+                                            <span className="price-amount">${room.avgPrice}/night</span>
+                                        </div>
+                                        <div className="room-info">
+                                            <span>{room.size}</span>
+                                            <span className="divider"></span>
+                                            <span>
+                                                {room.guestCount[0]} - {room.guestCount[1]} Guests
+                                            </span>
+                                            <span className="divider"></span>
+                                            <ul className="room-amenities">
+                                                {room.amenities.map((amenity, index) => (
+                                                    <li key={index}>{amenity}</li>
+                                                ))}
+                                            </ul>
                                         </div>
                                     </div>
                                 </div>
