@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { getHotelDetails } from '../utils/api';
 import { Hotel, HotelImage } from '../types/search';
 import BookingForm from '../components/shared/BookingForm';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 interface Room {
   id: number;
@@ -295,6 +297,21 @@ const HotelDetail: React.FC = () => {
 
   return (
     <div className="hotel-detail-page">
+      <Header />
+      {/* Hero Section */}
+      <section className="hero-section bg-img" style={{ backgroundImage: 'url(/assets/img/slider/1.jpg)' }}>
+        <div className="overlay-dark" data-overlay-dark="3"></div>
+        <div className="container">
+          <div className="row">
+            <div className="col-md-12 text-center">
+              <div className="caption">
+                <h1>Find Your Perfect Stay</h1>
+                <p>Discover amazing hotels and resorts around the world</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       {/* Breadcrumb */}
       <section className="breadcrumb-section">
         <div className="container">
@@ -570,6 +587,7 @@ const HotelDetail: React.FC = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };
