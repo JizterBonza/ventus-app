@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useSearch } from '../hooks/useSearch';
 import { Hotel, SearchParams } from '../types/search';
 import { getHotelDetailsBatch } from '../utils/api';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const Search: React.FC = () => {
   const [urlSearchParams] = useSearchParams();
@@ -158,6 +160,7 @@ const Search: React.FC = () => {
 
   return (
     <div className="search-page">
+      <Header />
       {/* Hero Section */}
       <section className="hero-section bg-img" style={{ backgroundImage: 'url(/assets/img/slider/1.jpg)' }}>
         <div className="overlay-dark" data-overlay-dark="3"></div>
@@ -414,6 +417,7 @@ const Search: React.FC = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };
