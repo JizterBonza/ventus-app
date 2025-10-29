@@ -1,4 +1,5 @@
-import { SearchParams, SearchResponse, ApiError, Hotel } from '../types/search';
+import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse } from '../types/search';
+import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
 
 // API Configuration with CORS proxy for production
 const getApiBaseUrl = () => {
@@ -558,5 +559,96 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
   } catch (error) {
     console.error('API request failed:', error);
     throw error;
+  }
+};
+
+/**
+ * Send booking details via email using multiple fallback methods
+ */
+export const sendBookingEmail = async (bookingDetails: BookingDetails): Promise<BookingResponse> => {
+  try {
+    console.log('Sending booking email with details:', bookingDetails);
+    
+    // Try EmailJS first (if configured)
+    try {
+      const emailjsResult = await sendBookingEmailViaEmailJS(bookingDetails);
+      if (emailjsResult.success) {
+        return emailjsResult;
+      }
+    } catch (error) {
+      console.warn('EmailJS failed, trying form service:', error);
+    }
+    
+    // Try form service as fallback
+    try {
+      const formServiceResult = await sendBookingEmailViaFormService(bookingDetails);
+      if (formServiceResult.success) {
+        return formServiceResult;
+      }
+    } catch (error) {
+      console.warn('Form service failed, using mailto fallback:', error);
+    }
+    
+    // Use mailto as final fallback
+    const mailtoResult = sendBookingEmailViaMailto(bookingDetails);
+    return mailtoResult;
+    
+  } catch (error) {
+    console.error('Error sending booking email:', error);
+    return {
+      success: false,
+      message: 'Failed to send booking request. Please try again or contact us directly.',
+    };
+  }
+};
+
+/**
+ * Alternative booking method using a simple form submission service
+ * This uses a free service like Formspree or Netlify Forms
+ */
+export const submitBookingForm = async (bookingDetails: BookingDetails): Promise<BookingResponse> => {
+  try {
+    console.log('Submitting booking form with details:', bookingDetails);
+    
+    // Generate a unique booking ID
+    const bookingId = `BK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('booking_id', bookingId);
+    formData.append('hotel_name', bookingDetails.hotelName);
+    formData.append('guest_name', bookingDetails.guestName);
+    formData.append('guest_email', bookingDetails.guestEmail);
+    formData.append('guest_phone', bookingDetails.guestPhone);
+    formData.append('check_in_date', bookingDetails.checkInDate);
+    formData.append('check_out_date', bookingDetails.checkOutDate);
+    formData.append('number_of_guests', bookingDetails.numberOfGuests.toString());
+    formData.append('number_of_rooms', bookingDetails.numberOfRooms.toString());
+    formData.append('room_type', bookingDetails.roomType || '');
+    formData.append('special_requests', bookingDetails.specialRequests || '');
+    formData.append('total_price', bookingDetails.totalPrice?.toString() || '');
+    formData.append('submitted_at', new Date().toISOString());
+    
+    // For demonstration, we'll simulate the form submission
+    // In a real implementation, you would submit to a service like Formspree
+    console.log('Form data prepared:', Object.fromEntries(formData.entries()));
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    console.log('Booking form submitted successfully');
+    
+    return {
+      success: true,
+      message: 'Booking request submitted successfully! We will contact you soon to confirm your reservation.',
+      bookingId: bookingId
+    };
+    
+  } catch (error) {
+    console.error('Error submitting booking form:', error);
+    return {
+      success: false,
+      message: 'Failed to submit booking request. Please try again or contact us directly.',
+    };
   }
 };

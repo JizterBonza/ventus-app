@@ -395,9 +395,9 @@ const Search: React.FC = () => {
                               <Link to={`/hotel/${hotel.id}`} className="btn btn-outline-secondary">
                                 View Details
                               </Link>
-                              <button className="btn btn-success">
+                              {/* <Link to={`/booking/${hotel.id}`} className="btn btn-success">
                                 Book Now
-                              </button>
+                              </Link> */}
                             </div>
                           </div>
                         </div>

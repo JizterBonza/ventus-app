@@ -85,3 +85,25 @@ export interface ApiError {
   message: string;
   error?: any;
 }
+
+// Booking related types
+export interface BookingDetails {
+  hotelId: number;
+  hotelName: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  checkInDate: string;
+  checkOutDate: string;
+  numberOfGuests: number;
+  numberOfRooms: number;
+  roomType?: string;
+  specialRequests?: string;
+  totalPrice?: number;
+}
+
+export interface BookingResponse {
+  success: boolean;
+  message: string;
+  bookingId?: string;
+}

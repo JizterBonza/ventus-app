@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getHotelDetails } from '../utils/api';
 import { Hotel, HotelImage } from '../types/search';
+import BookingForm from '../components/shared/BookingForm';
 
 interface Room {
   id: number;
@@ -193,6 +194,17 @@ const HotelDetail: React.FC = () => {
 
     fetchHotelDetails();
   }, [id]);
+
+  const handleBookingSuccess = (response: any) => {
+    console.log('Booking successful:', response);
+    // You can add additional success handling here
+    // For example, redirect to a confirmation page
+  };
+
+  const handleBookingError = (error: string) => {
+    console.error('Booking error:', error);
+    // You can add additional error handling here
+  };
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -546,143 +558,14 @@ const HotelDetail: React.FC = () => {
             </div>
 
             {/* Booking Sidebar */}
+        
             <div className="col-md-4">
-              <div className="booking-sidebar">
-                <div className="booking-card">
-                  <h4>Book Your Stay</h4>
-                  <form onSubmit={handleBookingSubmit}>
-                    <div className="form-group">
-                      <label>Check In</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={bookingData.checkIn}
-                        onChange={(e) => handleInputChange('checkIn', e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Check Out</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={bookingData.checkOut}
-                        onChange={(e) => handleInputChange('checkOut', e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Adults</label>
-                      <select
-                        className="form-control"
-                        value={bookingData.adults}
-                        onChange={(e) => handleInputChange('adults', e.target.value)}
-                      >
-                        <option value="1">1 Adult</option>
-                        <option value="2">2 Adults</option>
-                        <option value="3">3 Adults</option>
-                        <option value="4">4 Adults</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Children</label>
-                      <select
-                        className="form-control"
-                        value={bookingData.children}
-                        onChange={(e) => handleInputChange('children', e.target.value)}
-                      >
-                        <option value="0">0 Children</option>
-                        <option value="1">1 Child</option>
-                        <option value="2">2 Children</option>
-                        <option value="3">3 Children</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Rooms</label>
-                      <select
-                        className="form-control"
-                        value={bookingData.rooms}
-                        onChange={(e) => handleInputChange('rooms', e.target.value)}
-                      >
-                        <option value="1">1 Room</option>
-                        <option value="2">2 Rooms</option>
-                        <option value="3">3 Rooms</option>
-                      </select>
-                    </div>
-                    <button type="submit" className="btn btn-primary btn-block">
-                      Check Availability
-                    </button>
-                  </form>
-                </div>
-
-                {/* Contact Info */}
-                <div className="contact-card">
-                  <h4>Contact Information</h4>
-                  {hotel.phone && (
-                    <div className="contact-item">
-                      <i className="fa fa-phone"></i>
-                      <span>{hotel.phone}</span>
-                    </div>
-                  )}
-                  {hotel.email && (
-                    <div className="contact-item">
-                      <i className="fa fa-envelope"></i>
-                      <span>{hotel.email}</span>
-                    </div>
-                  )}
-                  {hotel.address && (
-                    <div className="contact-item">
-                      <i className="fa fa-map-marker"></i>
-                      <span>{hotel.address}</span>
-                    </div>
-                  )}
-                  {hotel.website && (
-                    <div className="contact-item">
-                      <i className="fa fa-globe"></i>
-                      <a href={hotel.website} target="_blank" rel="noopener noreferrer">
-                        Visit Website
-                      </a>
-                    </div>
-                  )}
-                  {hotel.instagram && (
-                    <div className="contact-item">
-                      <i className="fa fa-instagram"></i>
-                      <a href={hotel.instagram} target="_blank" rel="noopener noreferrer">
-                        Follow on Instagram
-                      </a>
-                    </div>
-                  )}
-                  {hotel.whatsapp && (
-                    <div className="contact-item">
-                      <i className="fa fa-whatsapp"></i>
-                      <a href={`https://wa.me/${hotel.whatsapp}`} target="_blank" rel="noopener noreferrer">
-                        WhatsApp
-                      </a>
-                    </div>
-                  )}
-                  {!hotel.phone && !hotel.email && !hotel.address && !hotel.website && !hotel.instagram && !hotel.whatsapp && (
-                    <div className="contact-item">
-                      <i className="fa fa-info-circle"></i>
-                      <span>Contact information not available</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sustainability Info */}
-                {hotel.sustainability_initiative && (
-                  <div className="sustainability-card">
-                    <h4>Sustainability</h4>
-                    <div className="sustainability-info">
-                      <p>{hotel.sustainability_initiative}</p>
-                      {hotel.sustainability_rating && (
-                        <div className="sustainability-rating">
-                          <span className="badge bg-success">Rating: {hotel.sustainability_rating}/10</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <BookingForm
+                hotelId={hotel.id}
+                hotelName={hotel.name}
+                onBookingSuccess={handleBookingSuccess}
+                onBookingError={handleBookingError}
+              />
             </div>
           </div>
         </div>

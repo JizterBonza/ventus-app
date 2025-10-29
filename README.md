@@ -39,6 +39,25 @@ Instead, it will copy all the configuration files and the transitive dependencie
 
 You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
 
+## Deployment to Render.com
+
+This app includes a Node.js/Express server to properly handle client-side routing in production.
+
+### Render.com Configuration
+
+When deploying to Render.com, configure your service with:
+
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm run serve`
+
+This ensures that:
+1. The React app is built into the `build` folder
+2. The Express server serves the static files and handles all routes by returning `index.html` for non-file routes
+
+### Why This Is Needed
+
+Without the server, direct access to routes like `/search` will return a 404 because the hosting server looks for a file at that path. The Express server ensures all routes are handled by React Router by serving `index.html` for any route that doesn't match a static file.
+
 ## Learn More
 
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
