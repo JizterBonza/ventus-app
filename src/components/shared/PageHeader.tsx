@@ -1,5 +1,6 @@
 import React from "react";
 import Breadcrumb, { BreadcrumbItem } from "./Breadcrumb";
+import HeroSearchForm from "./HeroSearchForm";
 
 interface PageHeaderProps {
     title: string;
@@ -8,6 +9,7 @@ interface PageHeaderProps {
     backgroundImage?: string;
     className?: string;
     video?: boolean;
+    booking?: boolean;
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({
@@ -17,6 +19,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
     backgroundImage,
     className = "",
     video = false,
+    booking = false,
 }) => {
     const style = backgroundImage
         ? {
@@ -45,14 +48,11 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 </div>
             )}
             <div className="container">
-                <div className="row">
-                    <div className="col-md-12">
-                        <div className="page-header-content">
-                            {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
-                            <h1>{title}</h1>
-                            {text && <p>{text}</p>}
-                        </div>
-                    </div>
+                <div className="page-header-content">
+                    {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
+                    <h1>{title}</h1>
+                    {text && <p>{text}</p>}
+                    {booking && <HeroSearchForm />}
                 </div>
             </div>
         </section>
