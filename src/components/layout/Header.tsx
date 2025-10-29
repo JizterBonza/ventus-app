@@ -1,19 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import Navigation from './Navigation';
 
 const Header: React.FC = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
     <>
       {/* Preloader */}
@@ -32,12 +21,16 @@ const Header: React.FC = () => {
       </div>
 
       {/* Navbar */}
-      <nav className={`navbar navbar-expand-lg ${isScrolled ? 'scrolled' : ''}`}>
+      <nav className="navbar navbar-expand-lg">
         <div className="container">
           {/* Logo */}
           <div className="logo-wrapper">
             <Link className="logo" to="/">
-              <img src="/assets/img/logo.png" className="logo-img" alt="The Cappa Luxury Hotel" />
+              <img 
+                src="/assets/img/logo.png" 
+                className="logo-img" 
+                alt="The Cappa Luxury Hotel" 
+              />
             </Link>
           </div>
 
