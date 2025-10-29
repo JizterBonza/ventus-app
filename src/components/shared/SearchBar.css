@@ -16,15 +16,15 @@
 }
 
 .search-form .form-control:focus {
-  border-color: #007bff;
+  border-color: #aa8453;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
 .search-form .btn {
   border-radius: 0 25px 25px 0;
-  border: 2px solid #007bff;
+  border: 2px solid #aa8453;
   padding: 12px 20px;
-  background-color: #007bff;
+  background-color: #aa8453;
   color: white;
   transition: all 0.3s ease;
 }
@@ -85,7 +85,7 @@
 .result-info .price {
   font-size: 12px;
   font-weight: 600;
-  color: #007bff;
+  color: #aa8453;
 }
 
 /* Loading spinner styles */
@@ -100,11 +100,11 @@
     font-size: 14px;
     padding: 10px 16px;
   }
-  
+
   .search-form .btn {
     padding: 10px 16px;
   }
-  
+
   .search-results-dropdown {
     max-height: 250px;
   }
