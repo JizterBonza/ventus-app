@@ -6304,3 +6304,7 @@ select {
     justify-content: center;
     gap: 20px;
 }
+
+.contact-item {
+    justify-content: center;
+}
