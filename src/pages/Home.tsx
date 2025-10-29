@@ -93,7 +93,9 @@ const Home: React.FC = () => {
       <PageHeader 
         title="Start Your Journey With Ventus Hotels"
         text="Experience luxury at its finest with our beautiful hotel facilities."
+        video={true}
       />
+
       {/* Hero Slider */}
       {/* <Slider slides={slides} autoplay={true} autoplayTimeout={5000} showDots={true} /> */}
 

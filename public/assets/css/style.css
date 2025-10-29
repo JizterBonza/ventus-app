@@ -2331,6 +2331,11 @@ hr {
 .video-fullscreen-wrap {
     height: 100vh;
     overflow: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .video-fullscreen-wrap .caption {
@@ -6267,6 +6272,14 @@ select {
 
 .page-header {
     background-color: #222;
+}
+
+.page-header.has-video {
+    height: 100vh;
+}
+
+.page-header.has-video .container {
+    position: relative;
 }
 
 .page-header .page-header-content {
