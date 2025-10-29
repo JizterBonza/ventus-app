@@ -147,7 +147,7 @@ const Home: React.FC = () => {
         </div>
         
         {/* Reservation Call */}
-        <div className="reservation">
+        {/* <div className="reservation">
           <a href="tel:8551004444">
             <div className="icon d-flex justify-content-center align-items-center">
               <i className="flaticon-call"></i>
@@ -156,7 +156,7 @@ const Home: React.FC = () => {
               <span>855 100 4444</span> <br/>Reservation
             </div>
           </a>
-        </div>
+        </div> */}
       </header>
 
       {/* Search Form */}
@@ -240,12 +240,12 @@ const Home: React.FC = () => {
               <p>Welcome to the best five-star deluxe hotel in New York. Hotel elementum sesue the aucan vestibulum aliquam justo in sapien rutrum volutpat. Donec in quis the pellentesque velit. Donec id velit ac arcu posuere blane.</p>
               <p>Hotel ut nisl quam nestibulum ac quam nec odio elementum sceisue the aucan ligula. Orci varius natoque penatibus et magnis dis parturient monte nascete ridiculus mus nellentesque habitant morbine.</p>
               {/* call */}
-              <div className="reservations">
+              {/* <div className="reservations">
                 <div className="icon"><span className="flaticon-call"></span></div>
                 <div className="text">
                   <p>Reservation</p> <a href="tel:855-100-4444">855 100 4444</a>
                 </div>
-              </div>
+              </div> */}
             </div>
             <div className="col col-md-3 animate-box" data-animate-effect="fadeInUp">
               <img src="/assets/img/rooms/8.jpg" alt="" className="mt-90 mb-30" />
