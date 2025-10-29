@@ -6250,3 +6250,13 @@ select {
         text-align: center;
     }
 }
+
+.results-section .hotel-amenities,
+.results-section .hotel-description {
+    padding: 0;
+    box-shadow: unset
+}
+
+.results-section .hotel-content {
+    padding-inline: 20px;
+}
