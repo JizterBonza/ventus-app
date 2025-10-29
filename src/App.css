@@ -183,6 +183,11 @@
 .hero-section .caption h1 {
   font-size: 3rem;
   margin-bottom: 1rem;
+  color: #fff;
+}
+
+.hero-section .caption p {
+  color: #fff;
 }
 
 .search-form-section {
@@ -867,4 +872,33 @@
   .filter-group .btn {
     margin: 2px 0;
   }
+}
+
+/* Breadcrumb Component Styles */
+
+.breadcrumb {
+  margin-bottom: 0;
+}
+
+.breadcrumb-item {
+  font-size: 14px;
+}
+
+.breadcrumb-item a {
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.breadcrumb-item a:hover {
+  color: var(--primary-color, #aa8453);
+}
+
+.breadcrumb-item.active {
+  color: #999;
+}
+
+.breadcrumb-item+.breadcrumb-item::before {
+  content: "/";
+  padding: 0 8px;
+  color: #999;
 }

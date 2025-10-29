@@ -6265,3 +6265,42 @@ select {
     padding-inline: 20px;
     padding-bottom: 20px;
 }
+
+.page-header {
+    background-color: #222;
+}
+
+.page-header .page-header-content {
+    background-color: #222;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    height: 400px;
+    flex-direction: column;
+}
+
+.page-header-content p,
+.page-header-content h1 {
+    color: #fff;
+}
+
+.stat-number {
+    font-size: 50px;
+    line-height: 50px;
+}
+
+.footer h4,
+.footer h6 {
+    color: #fff;
+}
+
+.footer-links ul {
+    padding: 0;
+}
+
+.footer-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
