@@ -6315,14 +6315,16 @@ select {
     background-color: #fff;
 }
 
-.form input[type="email"] {
+.form input[type="email"],
+.form input[type="text"] {
     border-color: transparent;
     font-size: 20px;
     height: 48px;
     margin: 0;
 }
 
-.form input[type="email"]::placeholder {
+.form input[type="email"]::placeholder,
+.form input[type="text"]::placeholder {
     color: rgba(0, 0, 0, 0.3);
 }
 

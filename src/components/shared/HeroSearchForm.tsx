@@ -31,26 +31,17 @@ const HeroSearchForm: React.FC<HeroSearchFormProps> = ({ className = "" }) => {
         <div className={`booking-wrapper ${className}`}>
             <div className="container">
                 <div className="booking-inner clearfix">
-                    <form onSubmit={handleSearchSubmit} className="form1 clearfix">
-                        <div className="col1 c1" style={{ width: "65%" }}>
-                            <div className="input1_wrapper">
-                                <label>Location</label>
-                                <div className="input1_inner">
-                                    <input
-                                        type="text"
-                                        className="form-control input"
-                                        placeholder="Enter destination"
-                                        value={searchData.location}
-                                        onChange={(e) => handleInputChange("location", e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="col4 c5" style={{ width: "35%" }}>
-                            <button type="submit" className="btn-form1-submit">
-                                Search Hotels
-                            </button>
-                        </div>
+                    <form onSubmit={handleSearchSubmit} className="form clearfix">
+                        <input
+                            type="text"
+                            placeholder="Enter destination"
+                            required
+                            value={searchData.location}
+                            onChange={(e) => handleInputChange("location", e.target.value)}
+                        />
+                        <button type="submit" className="btn btn-primary">
+                            Search Hotels
+                        </button>
                     </form>
                 </div>
             </div>
