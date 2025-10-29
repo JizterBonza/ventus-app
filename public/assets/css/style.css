@@ -6257,6 +6257,11 @@ select {
     box-shadow: unset
 }
 
+.results-section .hotel-amenities {
+    margin-bottom: 0;
+}
+
 .results-section .hotel-content {
     padding-inline: 20px;
+    padding-bottom: 20px;
 }
