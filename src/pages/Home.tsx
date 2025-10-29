@@ -1,34 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
+import PageHeader from '../components/shared/PageHeader';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchData, setSearchData] = useState({
     location: ''
   });
-
-  const slides = [
-    {
-      background: '/assets/img/slider/2.jpg',
-      overlay: '2',
-      subtitle: 'Luxury Hotel & Best Resort',
-      title: 'Enjoy a Luxury Experience'
-    },
-    {
-      background: '/assets/img/slider/3.jpg',
-      overlay: '2',
-      subtitle: 'Unique Place to Relax & Enjoy',
-      title: 'The Perfect Base For You'
-    },
-    {
-      background: '/assets/img/slider/1.jpg',
-      overlay: '3',
-      subtitle: 'The Ultimate Luxury Experience',
-      title: 'Enjoy The Best Moments of Life'
-    }
-  ];
 
   // Popular cities data
   const popularCities = [
@@ -90,51 +70,6 @@ const Home: React.FC = () => {
     }
   ];
 
-  useEffect(() => {
-    // Initialize Owl Carousel for the slider
-    const $ = (window as any).$;
-    if ($ && $.fn.owlCarousel) {
-      const $owl = $('.slider-fade .owl-carousel');
-      
-      // Destroy existing instance if any
-      if ($owl.data('owl.carousel')) {
-        $owl.trigger('destroy.owl.carousel');
-        $owl.find('.owl-stage-outer').children().unwrap();
-      }
-      
-      // Initialize Owl Carousel
-      $owl.owlCarousel({
-        items: 1,
-        loop: true,
-        dots: true,
-        margin: 0,
-        autoplay: true,
-        autoplayTimeout: 5000,
-        animateOut: 'fadeOut',
-        nav: false,
-        navText: ['<i class="ti-angle-left" aria-hidden="true"></i>', '<i class="ti-angle-right" aria-hidden="true"></i>'],
-        responsiveClass: true,
-        responsive: {
-          0: {
-            dots: false
-          },
-          600: {
-            dots: false
-          },
-          1000: {
-            dots: true
-          }
-        }
-      });
-
-      // Cleanup on unmount
-      return () => {
-        if ($owl.data('owl.carousel')) {
-          $owl.trigger('destroy.owl.carousel');
-        }
-      };
-    }
-  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,49 +90,12 @@ const Home: React.FC = () => {
   return (
     <div>
       <Header />
+      <PageHeader 
+        title="Start Your Journey With Ventus Hotels"
+        text="Experience luxury at its finest with our beautiful hotel facilities."
+      />
       {/* Hero Slider */}
-      <header className="header slider-fade">
-        <div className="owl-carousel owl-theme">
-          {slides.map((slide, index) => (
-            <div 
-              key={index}
-              className="text-center item bg-img"
-              data-overlay-dark={slide.overlay}
-              style={{ backgroundImage: `url(${slide.background})` }}
-            >
-              <div className="v-middle caption">
-                <div className="container">
-                  <div className="row">
-                    <div className="col-md-10 offset-md-1">
-                      <span>
-                        <i className="star-rating"></i>
-                        <i className="star-rating"></i>
-                        <i className="star-rating"></i>
-                        <i className="star-rating"></i>
-                        <i className="star-rating"></i>
-                      </span>
-                      <h4>{slide.subtitle}</h4>
-                      <h1>{slide.title}</h1>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Reservation Call */}
-        {/* <div className="reservation">
-          <a href="tel:8551004444">
-            <div className="icon d-flex justify-content-center align-items-center">
-              <i className="flaticon-call"></i>
-            </div>
-            <div className="call">
-              <span>855 100 4444</span> <br/>Reservation
-            </div>
-          </a>
-        </div> */}
-      </header>
+      {/* <Slider slides={slides} autoplay={true} autoplayTimeout={5000} showDots={true} /> */}
 
       {/* Search Form */}
       <div className="booking-wrapper">

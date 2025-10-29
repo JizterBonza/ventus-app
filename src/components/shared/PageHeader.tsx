@@ -3,13 +3,15 @@ import Breadcrumb, { BreadcrumbItem } from './Breadcrumb';
 
 interface PageHeaderProps {
   title: string;
-  breadcrumbs: BreadcrumbItem[];
+  text?: string;
+  breadcrumbs?: BreadcrumbItem[];
   backgroundImage?: string;
   className?: string;
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({ 
   title, 
+  text,
   breadcrumbs,
   backgroundImage,
   className = ''
@@ -26,8 +28,9 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         <div className="row">
           <div className="col-md-12">
             <div className="page-header-content">
+              {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
               <h1>{title}</h1>
-              <Breadcrumb items={breadcrumbs} />
+              {text && <p>{text}</p>}
             </div>
           </div>
         </div>

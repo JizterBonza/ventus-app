@@ -64,7 +64,7 @@ body {
 
 body {
     font-family: 'Barlow', sans-serif;
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 400;
     line-height: 1.75em;
     color: #666;
@@ -73,7 +73,7 @@ body {
 
 p {
     font-family: 'Barlow', sans-serif;
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 400;
     line-height: 1.75em;
     color: #666;
@@ -89,9 +89,14 @@ h6 {
     font-family: 'Lato', sans-serif;
     ;
     font-weight: 400;
-    line-height: 1.25em;
+    line-height: 130%;
     margin: 0 0 20px 0;
-    color: #222;
+    color: #000;
+    text-transform: uppercase;
+}
+
+h1 {
+    font-size: 72px;
 }
 
 img {
@@ -6169,7 +6174,7 @@ select {
 /* ======= Responsive style ======= */
 @media (min-width: 1200px) {
     .container {
-        max-width: 1140px !important;
+        max-width: 1600px !important;
     }
 }
 
@@ -6265,12 +6270,13 @@ select {
 }
 
 .page-header .page-header-content {
-    background-color: #222;
     align-items: center;
     justify-content: center;
     display: flex;
-    height: 400px;
+    height: 700px;
     flex-direction: column;
+    max-width: 1020px;
+    margin-inline: auto;
 }
 
 .page-header-content p,
