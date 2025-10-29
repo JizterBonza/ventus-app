@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [currentSlide, setCurrentSlide] = useState(0);
   const [searchData, setSearchData] = useState({
     location: ''
   });
@@ -90,12 +91,50 @@ const Home: React.FC = () => {
   ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
+    // Initialize Owl Carousel for the slider
+    const $ = (window as any).$;
+    if ($ && $.fn.owlCarousel) {
+      const $owl = $('.slider-fade .owl-carousel');
+      
+      // Destroy existing instance if any
+      if ($owl.data('owl.carousel')) {
+        $owl.trigger('destroy.owl.carousel');
+        $owl.find('.owl-stage-outer').children().unwrap();
+      }
+      
+      // Initialize Owl Carousel
+      $owl.owlCarousel({
+        items: 1,
+        loop: true,
+        dots: true,
+        margin: 0,
+        autoplay: true,
+        autoplayTimeout: 5000,
+        animateOut: 'fadeOut',
+        nav: false,
+        navText: ['<i class="ti-angle-left" aria-hidden="true"></i>', '<i class="ti-angle-right" aria-hidden="true"></i>'],
+        responsiveClass: true,
+        responsive: {
+          0: {
+            dots: false
+          },
+          600: {
+            dots: false
+          },
+          1000: {
+            dots: true
+          }
+        }
+      });
 
-    return () => clearInterval(interval);
-  }, [slides.length]);
+      // Cleanup on unmount
+      return () => {
+        if ($owl.data('owl.carousel')) {
+          $owl.trigger('destroy.owl.carousel');
+        }
+      };
+    }
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,13 +154,14 @@ const Home: React.FC = () => {
 
   return (
     <div>
+      <Header />
       {/* Hero Slider */}
       <header className="header slider-fade">
         <div className="owl-carousel owl-theme">
           {slides.map((slide, index) => (
             <div 
               key={index}
-              className={`text-center item bg-img ${index === currentSlide ? 'active' : ''}`}
+              className="text-center item bg-img"
               data-overlay-dark={slide.overlay}
               style={{ backgroundImage: `url(${slide.background})` }}
             >
@@ -256,6 +296,7 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };
