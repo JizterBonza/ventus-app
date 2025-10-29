@@ -531,6 +531,13 @@
 
 .room-content {
   padding: 1.5rem;
+  height: calc(100% - 350px);
+  display: flex;
+  flex-direction: column;
+}
+
+.room-actions {
+  margin-top: auto;
 }
 
 .room-category {
