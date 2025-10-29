@@ -27,7 +27,7 @@ const Header: React.FC = () => {
           <div className="logo-wrapper">
             <Link className="logo" to="/">
               <img 
-                src="/assets/img/logo.png" 
+                src="/assets/img/logo.svg" 
                 className="logo-img" 
                 alt="The Cappa Luxury Hotel" 
               />

@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
             <div className="col-lg-4">
               <div className="footer-info">
                 <div className="footer-logo">
-                  <img src="/assets/img/logo.png" alt="The Cappa Luxury Hotel" />
+                  <img src="/assets/img/logo.svg" alt="The Cappa Luxury Hotel" />
                 </div>
                 <p>THE CAPPA is a modern, elegant HTML template for luxury hotels, resorts, and vacation rentals. Fully responsive, customizable, and perfect for hospitality websites.</p>
                 <div className="footer-social">
