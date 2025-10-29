@@ -16,15 +16,15 @@
 }
 
 .search-form .form-control:focus {
-  border-color: #D1A678;
+  border-color: var(--gold);
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
 .search-form .btn {
   border-radius: 0 25px 25px 0;
-  border: 2px solid #D1A678;
+  border: 2px solid var(--gold);
   padding: 12px 20px;
-  background-color: #D1A678;
+  background-color: var(--gold);
   color: white;
   transition: all 0.3s ease;
 }
@@ -85,7 +85,7 @@
 .result-info .price {
   font-size: 12px;
   font-weight: 600;
-  color: #D1A678;
+  color: var(--gold);
 }
 
 /* Loading spinner styles */

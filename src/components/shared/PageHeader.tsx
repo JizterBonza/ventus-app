@@ -53,8 +53,14 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                     <h1>{title}</h1>
                     {text && <p>{text}</p>}
                     {booking && <HeroSearchForm />}
+
+                    <a href="#scroll-down" className="scroll-down">
+                        <span>Scroll to discover more</span>
+                        <i className="ti-angle-down"></i>
+                    </a>
                 </div>
             </div>
+            <div id="scroll-down"></div>
         </section>
     );
 };

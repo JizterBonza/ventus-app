@@ -432,7 +432,7 @@
 .price-amount {
   font-size: 2rem;
   font-weight: bold;
-  color: #D1A678;
+  color: var(--gold);
 }
 
 .price-unit {
@@ -545,7 +545,7 @@
 }
 
 .room-item.selected {
-  border-color: #D1A678;
+  border-color: var(--gold);
   background: #f0f8ff;
 }
 
@@ -589,7 +589,7 @@
 .rating-number {
   font-size: 3rem;
   font-weight: bold;
-  color: #D1A678;
+  color: var(--gold);
   display: block;
 }
 
@@ -644,7 +644,7 @@
 }
 
 .review-helpful span:hover {
-  color: #D1A678;
+  color: var(--gold);
 }
 
 /* Similar Hotels Section */
@@ -690,7 +690,7 @@
 }
 
 .similar-hotel-rating span {
-  color: #D1A678;
+  color: var(--gold);
   font-weight: 600;
 }
 
@@ -723,7 +723,7 @@
 }
 
 .contact-item i {
-  color: #D1A678;
+  color: var(--gold);
   width: 20px;
 }
 
@@ -736,7 +736,7 @@
   background: #f8f9fa;
   padding: 20px;
   border-radius: 8px;
-  border-left: 4px solid #D1A678;
+  border-left: 4px solid var(--gold);
 }
 
 .location-category {
@@ -910,7 +910,7 @@
 }
 
 .breadcrumb-item a:hover {
-  color: var(--primary-color, #D1A678);
+  color: var(--primary-color, var(--gold));
 }
 
 .breadcrumb-item.active {

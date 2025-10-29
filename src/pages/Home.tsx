@@ -99,6 +99,26 @@ const Home: React.FC = () => {
             {/* Hero Slider */}
             {/* <Slider slides={slides} autoplay={true} autoplayTimeout={5000} showDots={true} /> */}
 
+            <section className="section-padding section-text-center">
+                <div className="container">
+                    <div className="row justify-content-md-center">
+                        <div className="col-md-8 text-center">
+                            <h2>
+                                Crafting Memories That <br /> Last Forever
+                            </h2>
+                            <p>
+                                At Ventus, every stay is more than a visit — it’s an experience. With world-class
+                                service, luxury comforts, and moments designed to delight, we ensure your time with us
+                                is unforgettable
+                            </p>
+                            <a className="btn btn-outline-secondary" href="/hotel/9817" data-discover="true">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Popular Cities Section */}
             <section className="popular-cities section-padding">
                 <div className="container">
