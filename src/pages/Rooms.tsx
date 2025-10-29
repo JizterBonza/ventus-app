@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
+import PageHeader from '../components/shared/PageHeader';
 
 interface Room {
   id: number;
@@ -79,23 +80,13 @@ const Rooms: React.FC = () => {
   return (
     <Layout>
       {/* Page Header */}
-      <section className="page-header">
-        <div className="container">
-          <div className="row">
-            <div className="col-md-12">
-              <div className="page-header-content">
-                <h1>Rooms & Suites</h1>
-                <nav aria-label="breadcrumb">
-                  <ol className="breadcrumb">
-                    <li className="breadcrumb-item"><a href="/">Home</a></li>
-                    <li className="breadcrumb-item active" aria-current="page">Rooms</li>
-                  </ol>
-                </nav>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHeader 
+        title="Rooms & Suites"
+        breadcrumbs={[
+          { label: 'Home', path: '/' },
+          { label: 'Rooms', active: true }
+        ]}
+      />
 
       {/* Rooms Content */}
       <section className="rooms section-padding">

@@ -1,27 +1,18 @@
 import React from 'react';
 import Layout from '../components/layout/Layout';
+import PageHeader from '../components/shared/PageHeader';
 
 const About: React.FC = () => {
   return (
     <Layout>
       {/* Page Header */}
-      <section className="page-header">
-        <div className="container">
-          <div className="row">
-            <div className="col-md-12">
-              <div className="page-header-content">
-                <h1>About Us</h1>
-                <nav aria-label="breadcrumb">
-                  <ol className="breadcrumb">
-                    <li className="breadcrumb-item"><a href="/">Home</a></li>
-                    <li className="breadcrumb-item active" aria-current="page">About</li>
-                  </ol>
-                </nav>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PageHeader 
+        title="About Us"
+        breadcrumbs={[
+          { label: 'Home', path: '/' },
+          { label: 'About', active: true }
+        ]}
+      />
 
       {/* About Content */}
       <section className="about-content section-padding">
