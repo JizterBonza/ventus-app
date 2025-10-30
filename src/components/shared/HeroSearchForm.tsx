@@ -17,7 +17,7 @@ const HeroSearchForm: React.FC<HeroSearchFormProps> = ({ className = "" }) => {
         const searchParams = new URLSearchParams({
             location: searchData.location,
         });
-        navigate(`/search?${searchParams.toString()}`);
+        navigate(`/destinations?${searchParams.toString()}`);
     };
 
     const handleInputChange = (field: string, value: string) => {
