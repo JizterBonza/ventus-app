@@ -1,10 +1,9 @@
 services:
   - type: web
     name: ventus-app
-    env: static
+    env: node
     buildCommand: npm run build
     startCommand: npm run start:prod
-    staticPublishPath: ./build
     envVars:
       - key: NODE_ENV
         value: production
