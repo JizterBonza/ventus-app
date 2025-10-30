@@ -5884,6 +5884,7 @@ select {
 }
 
 .progress-wrap.active-progress {
+    display: none;
     opacity: 1;
     visibility: visible;
     -webkit-transform: translateY(0);
@@ -6382,6 +6383,25 @@ select {
 .slick-arrow.slick-disabled:before {
     filter: unset;
     opacity: 0.25;
+}
+
+.whatsapp-floating-icon {
+    z-index: 9999;
+    color: #fff;
+    background-color: #0cc245;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: .5rem;
+    position: fixed;
+    inset: auto 1.5rem 1.5rem auto;
+}
+
+.whatsapp-floating-icon svg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 @media (max-width: 1640px) {
