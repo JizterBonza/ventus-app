@@ -95,10 +95,19 @@
     background: var(--black-200);
     border: 0;
     border-radius: 0;
+    height: 100%;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    justify-content: space-between;
+    margin-top: auto;
 }
 
 .card-image {
-    height: 480px;
+    min-height: 480px;
     position: relative;
 }
 
@@ -117,6 +126,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    height: 100%;
 }
 
 .card-content h4 {
@@ -127,6 +137,15 @@
 .card-content ul {
     margin: 0;
     padding: 0;
+    display: flex;
+    gap: 10px;
+}
+
+.card-description {
+    color: #fff;
+    font-size: 20px;
+    line-height: 120%;
+    color: rgba(255, 255, 255, 0.75);
 }
 
 .card-content span,
@@ -134,38 +153,46 @@
     color: #fff;
 }
 
-.card-content .room-price {
+.card-content .card-price {
     display: flex;
     align-items: center;
     gap: 12px;
     font-size: 12px;
 }
 
-.card-content .room-info {
+.card-content .card-info {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.room-price span {
+.card-price span {
     font-size: 20px;
 }
 
-.room-price .price-amount {
+.card-price .price-amount {
     font-size: 32px;
     text-transform: uppercase;
 }
 
-.room-info span,
-.room-info li {
+.card-info span,
+.card-info li {
     color: rgba(255, 255, 255, 0.75);
     font-size: 18px;
 }
 
-.room-info .divider {
+.card-info .divider {
     width: 1px;
     height: 18px;
     background: rgba(255, 255, 255, 0.75);
+}
+
+.card-info.has-border {
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-left: 0;
+    border-right: 0;
+    padding-block: 15px;
+    margin-block: 15px;
 }
 
 .price-unit {
@@ -173,11 +200,11 @@
     font-size: 0.9rem;
 }
 
-.card.compact .room-amenities li:last-child:not(:first-child) {
+.card.compact .card-amenities li:last-child:not(:first-child) {
     display: none;
 }
 
-.room-card .card-image:before {
+.card-image:before {
     content: '';
     position: absolute;
     top: 30px;
@@ -274,6 +301,7 @@
     margin-bottom: 0;
 }
 
+/*
 .hotel-card {
     background: white;
     border-radius: 10px;
@@ -422,7 +450,7 @@
     background-color: #218838;
     border-color: #1e7e34;
 }
-
+*/
 /* Hotel Detail Page Styles */
 .hotel-detail-page {
     background-color: #f8f9fa;

@@ -316,14 +316,14 @@ const Search: React.FC = () => {
                                         return (
                                             <div
                                                 key={hotel.id}
-                                                className={viewMode === "grid" ? "col-md-4 mb-4" : "mb-4"}
+                                                className={viewMode === "grid" ? "col-md-6 mb-5" : "mb-5"}
                                             >
                                                 <div
-                                                    className={`hotel-card ${
+                                                    className={`card hotel-card ${
                                                         viewMode === "list" ? "hotel-card-list" : ""
                                                     }`}
                                                 >
-                                                    <div className="hotel-image">
+                                                    <div className="card-image">
                                                         <img
                                                             src={
                                                                 displayHotel.images && displayHotel.images.length > 0
@@ -338,9 +338,6 @@ const Search: React.FC = () => {
                                                                     fallbackImages[hotel.id % fallbackImages.length];
                                                             }}
                                                         />
-                                                        <div className="hotel-price">
-                                                            ${displayHotel.price || "N/A"}/night
-                                                        </div>
                                                         {loadingDetails && !detailedHotel && (
                                                             <div className="loading-overlay">
                                                                 <div
@@ -352,82 +349,51 @@ const Search: React.FC = () => {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="hotel-content">
+                                                    <div className="card-content">
                                                         <h4>{displayHotel.name}</h4>
-                                                        <p className="hotel-location">
-                                                            <i className="fa fa-map-marker"></i> {displayHotel.location}
-                                                        </p>
-                                                        {displayHotel.distance && (
-                                                            <p className="hotel-distance">
-                                                                <i className="fa fa-location-arrow"></i>{" "}
-                                                                {displayHotel.address}
-                                                            </p>
-                                                        )}
-                                                        <p className="hotel-description">
+                                                        <div className="card-description">
                                                             {displayHotel.description
                                                                 ? displayHotel.description.length > 150
                                                                     ? `${displayHotel.description.substring(0, 150)}...`
                                                                     : displayHotel.description
                                                                 : "No description available"}
-                                                        </p>
-                                                        <div className="hotel-amenities">
-                                                            {(displayHotel.amenities || [])
-                                                                .slice(0, 3)
-                                                                .map((amenity, index) => (
-                                                                    <span key={index} className="amenity-tag">
-                                                                        {amenity}
-                                                                    </span>
-                                                                ))}
-                                                            {(displayHotel.amenities || []).length > 3 && (
-                                                                <span className="amenity-tag">
-                                                                    +{(displayHotel.amenities || []).length - 3} more
-                                                                </span>
-                                                            )}
-                                                            {(!displayHotel.amenities ||
-                                                                displayHotel.amenities.length === 0) && (
-                                                                <span className="amenity-tag">
-                                                                    Amenities not available
-                                                                </span>
-                                                            )}
                                                         </div>
-                                                        {detailedHotel && (
-                                                            <div className="hotel-contact-info">
-                                                                {detailedHotel.instagram && (
-                                                                    <p className="hotel-instagram">
-                                                                        <i className="fab fa-instagram"></i>
-                                                                        <a
-                                                                            href={detailedHotel.instagram}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                        >
-                                                                            Follow on Instagram
-                                                                        </a>
-                                                                    </p>
+                                                        <div className="card-info has-border">
+                                                            <ul className="card-amenities">
+                                                                {(displayHotel.amenities || [])
+                                                                    .slice(0, 3)
+                                                                    .map((amenity, index) => (
+                                                                        <li key={index} className="amenity-tag">
+                                                                            {amenity}
+                                                                        </li>
+                                                                    ))}
+                                                                {(displayHotel.amenities || []).length > 3 && (
+                                                                    <li className="amenity-tag">
+                                                                        +{(displayHotel.amenities || []).length - 3}
+                                                                        &nbsp; more
+                                                                    </li>
                                                                 )}
-                                                                {detailedHotel.website && (
-                                                                    <p className="hotel-website">
-                                                                        <i className="fa fa-globe"></i>
-                                                                        <a
-                                                                            href={detailedHotel.website}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                        >
-                                                                            Visit Website
-                                                                        </a>
-                                                                    </p>
+                                                                {(!displayHotel.amenities ||
+                                                                    displayHotel.amenities.length === 0) && (
+                                                                    <li className="amenity-tag">
+                                                                        Amenities not available
+                                                                    </li>
                                                                 )}
+                                                            </ul>
+                                                        </div>
+                                                        <div className="card-actions">
+                                                            <div className="card-price">
+                                                                <span className="price-label">from</span>
+                                                                <span className="price-amount">
+                                                                    ${displayHotel.price}/night
+                                                                </span>
                                                             </div>
-                                                        )}
-                                                        <div className="hotel-actions">
                                                             <Link
                                                                 to={`/hotel/${hotel.id}`}
                                                                 className="btn btn-outline-secondary"
                                                             >
                                                                 View Details
                                                             </Link>
-                                                            {/* <Link to={`/booking/${hotel.id}`} className="btn btn-success">
-                                Book Now
-                              </Link> */}
                                                         </div>
                                                     </div>
                                                 </div>

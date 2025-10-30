@@ -1,14 +1,14 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import About from './pages/About';
-import Rooms from './pages/Rooms';
-import Search from './pages/Search';
-import HotelDetail from './pages/HotelDetail';
-import Booking from './pages/Booking';
-import BookingTest from './pages/BookingTest';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Rooms from "./pages/Rooms";
+import Destinations from "./pages/Destinations";
+import HotelDetail from "./pages/HotelDetail";
+import Booking from "./pages/Booking";
+import BookingTest from "./pages/BookingTest";
+import "./App.css";
 
-console.log('App component is loading');
+console.log("App component is loading");
 
 // function App() {
 //   return (
@@ -32,22 +32,30 @@ console.log('App component is loading');
 // }
 
 function App() {
-  return (
-    <div className="App">
-      <Router>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/rooms" element={<Rooms />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/hotel/:id" element={<HotelDetail />} />
-          <Route path="/booking/:hotelId" element={<Booking />} />
-          <Route path="/booking-test" element={<BookingTest />} />
-          <Route path="*" element={<div className="container mt-5 text-center"><h1>Page Not Found</h1><p>The page you're looking for doesn't exist.</p></div>} />
-        </Routes>
-      </Router>
-    </div>
-  );
+    return (
+        <div className="App">
+            <Router>
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/rooms" element={<Rooms />} />
+                    <Route path="/destinations" element={<Destinations />} />
+                    <Route path="/hotel/:id" element={<HotelDetail />} />
+                    <Route path="/booking/:hotelId" element={<Booking />} />
+                    <Route path="/booking-test" element={<BookingTest />} />
+                    <Route
+                        path="*"
+                        element={
+                            <div className="container mt-5 text-center">
+                                <h1>Page Not Found</h1>
+                                <p>The page you're looking for doesn't exist.</p>
+                            </div>
+                        }
+                    />
+                </Routes>
+            </Router>
+        </div>
+    );
 }
 
 export default App;

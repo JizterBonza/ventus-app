@@ -34,8 +34,8 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/search">
-                            Search Hotels
+                        <Link className="nav-link" to="/destinations">
+                            Destinations
                         </Link>
                     </li>
                     <li className="nav-item dropdown">

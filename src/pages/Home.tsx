@@ -174,18 +174,18 @@ const Home: React.FC = () => {
                                     </div>
                                     <div className="card-content">
                                         <h4>{room.name}</h4>
-                                        <div className="room-price">
+                                        <div className="card-price">
                                             <span className="price-label">from</span>
                                             <span className="price-amount">${room.avgPrice}/night</span>
                                         </div>
-                                        <div className="room-info">
+                                        <div className="card-info">
                                             <span>{room.size}</span>
                                             <span className="divider"></span>
                                             <span>
                                                 {room.guestCount[0]} - {room.guestCount[1]} Guests
                                             </span>
                                             <span className="divider"></span>
-                                            <ul className="room-amenities">
+                                            <ul className="card-amenities">
                                                 {room.amenities.map((amenity, index) => (
                                                     <li key={index}>{amenity}</li>
                                                 ))}
