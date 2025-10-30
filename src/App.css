@@ -490,7 +490,17 @@
 
 .hotel-gallery {
     background: white;
-    padding: 2rem 0;
+    padding: 20px 0;
+}
+
+.hotel-gallery .thumbnail-image img {
+    width: 100%;
+    height: 440px;
+    object-fit: cover;
+}
+
+.hotel-gallery .thumbnail-image {
+    padding-inline: 10px;
 }
 
 .main-image {
