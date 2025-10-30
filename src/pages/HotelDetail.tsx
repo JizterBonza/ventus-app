@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getHotelDetails } from "../utils/api";
 import { Hotel, HotelImage } from "../types/search";
+import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";

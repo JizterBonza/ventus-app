@@ -2,15 +2,15 @@ import React from "react";
 import Layout from "../components/layout/Layout";
 import PageHeader from "../components/shared/PageHeader";
 
-const About: React.FC = () => {
+const Magazine: React.FC = () => {
     return (
         <Layout>
             {/* Page Header */}
             <PageHeader
-                title="About Us"
+                title="The Magazine"
                 breadcrumbs={[
                     { label: "Home", path: "/" },
-                    { label: "About", active: true },
+                    { label: "Magazine", active: true },
                 ]}
             />
 
@@ -55,4 +55,4 @@ const About: React.FC = () => {
     );
 };
 
-export default About;
+export default Magazine;

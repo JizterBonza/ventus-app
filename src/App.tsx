@@ -6,6 +6,9 @@ import Destinations from "./pages/Destinations";
 import HotelDetail from "./pages/HotelDetail";
 import Booking from "./pages/Booking";
 import BookingTest from "./pages/BookingTest";
+import Magazine from "./pages/Magazine";
+import BuyOuts from "./pages/Buyouts";
+import Contact from "./pages/Contact";
 import "./App.css";
 
 console.log("App component is loading");
@@ -37,7 +40,10 @@ function App() {
             <Router>
                 <Routes>
                     <Route path="/" element={<Home />} />
-                    <Route path="/about" element={<About />} />
+                    <Route path="/about-us" element={<About />} />
+                    <Route path="/the-magazine" element={<Magazine />} />
+                    <Route path="/buy-outs" element={<BuyOuts />} />
+                    <Route path="/contact-us" element={<Contact />} />
                     <Route path="/rooms" element={<Rooms />} />
                     <Route path="/destinations" element={<Destinations />} />
                     <Route path="/hotel/:id" element={<HotelDetail />} />

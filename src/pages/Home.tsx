@@ -187,6 +187,26 @@ const Home: React.FC = () => {
             </section>
 
             {/* About Section */}
+            <section className="about section-about section-padding">
+                <div className="container">
+                    <div className="row d-flex align-items-center">
+                        <div className="col col-md-6 animate-box" data-animate-effect="fadeInUp">
+                            <img src="/assets/img/page/about-section.png" alt="" />
+                        </div>
+                        <div className="col-md-6 mb-30 animate-box" data-animate-effect="fadeInUp">
+                            <h2>About Me</h2>
+                            <p>
+                                Welcome to my world, where elegance meets exploration and unforgettable adventure
+                                awaits!
+                            </p>
+                            <Link to="/about" className="btn btn-primary">
+                                Find Out More
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section className="about section-about section-padding bg-cream">
                 <div className="container">
                     <div className="row d-flex align-items-center">
@@ -218,7 +238,7 @@ const Home: React.FC = () => {
                 </div>
               </div> */}
                         </div>
-                        <div className="col image-col col-md-6 animate-box" data-animate-effect="fadeInUp">
+                        <div className="col col-md-6 animate-box" data-animate-effect="fadeInUp">
                             <img src="/assets/img/clients/review-1.jpg" alt="" />
                         </div>
                     </div>

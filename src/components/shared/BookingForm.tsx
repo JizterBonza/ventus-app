@@ -136,7 +136,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     };
 
     return (
-        <div className={`booking-form ${className}`}>
+        <div className={`global-form ${className}`}>
             <div className="text-center">
                 <h2>Book Your Stay</h2>
                 <p className="text-muted mb-0">Hotel: {hotelName}</p>
