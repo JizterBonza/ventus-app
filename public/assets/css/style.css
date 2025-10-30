@@ -215,6 +215,34 @@ h4 {
     font-size: 32px;
 }
 
+@media (max-width: 1024px) {
+    h1 {
+        font-size: 48px;
+    }
+
+    h2 {
+        font-size: 38px;
+    }
+
+    h4 {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 40px;
+    }
+
+    h2 {
+        font-size: 34px;
+    }
+
+    h4 {
+        font-size: 26px;
+    }
+}
+
 img {
     width: 100%;
     height: auto;
@@ -4512,13 +4540,6 @@ button.mfp-arrow {
         width: 25%;
     }
 
-    .booking-wrapper {
-        position: relative;
-        bottom: auto;
-        padding: 30px 0;
-        background: #f8f5f0;
-    }
-
 }
 
 @media (max-width: 767.98px) {
@@ -6187,6 +6208,11 @@ select {
     position: relative;
 }
 
+.page-header .container {
+    position: relative;
+    z-index: 2;
+}
+
 .page-header:before {
     content: "";
     position: absolute;
@@ -6203,8 +6229,6 @@ select {
 }
 
 .page-header.has-video .container {
-    position: relative;
-    z-index: 2;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -6245,7 +6269,10 @@ select {
     gap: 5px;
 }
 
-
+.page-header .scroll-down:hover {
+    display: flex;
+    color: #fff;
+}
 
 .page-header .scroll-down i {
     font-size: 20px;
@@ -6404,6 +6431,10 @@ select {
     transform: translate(-50%, -50%);
 }
 
+.results-section:not(.has-results) {
+    display: none;
+}
+
 @media (max-width: 1640px) {
     .slick-arrow.slick-prev {
         left: 40px;
@@ -6428,5 +6459,22 @@ select {
     .footer-bottom {
         flex-direction: column-reverse;
         gap: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header .booking-wrapper .container {
+        padding-inline: unset;
+    }
+}
+
+@media (max-width: 640px) {
+    .form {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form button[type="submit"] {
+        width: 100%;
     }
 }

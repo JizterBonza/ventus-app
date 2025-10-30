@@ -30,8 +30,8 @@ const HeroSearchForm: React.FC<HeroSearchFormProps> = ({ className = "" }) => {
     return (
         <div className={`booking-wrapper ${className}`}>
             <div className="container">
-                <div className="booking-inner clearfix">
-                    <form onSubmit={handleSearchSubmit} className="form clearfix">
+                <div className="booking-inner">
+                    <form onSubmit={handleSearchSubmit} className="form">
                         <input
                             type="text"
                             placeholder="Enter destination"
