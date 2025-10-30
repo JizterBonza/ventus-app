@@ -152,7 +152,7 @@ const Home: React.FC = () => {
                         </div>
                         <div className="col-lg-6">
                             <p>Discover the best hotels in the most popular destinations around the world</p>
-                            <a className="btn btn-outline-secondary" href="/hotel/9817" data-discover="true">
+                            <a className="btn btn-outline-secondary" href="https://ventus-app.onrender.com/hotel/9817" data-discover="true">
                                 View All Rooms
                             </a>
                         </div>
