@@ -254,6 +254,14 @@ const HotelDetail: React.FC = () => {
                             slidesToScroll: 1,
                             autoplay: false,
                             arrows: false,
+                            responsive: [
+                                {
+                                    breakpoint: 640,
+                                    settings: {
+                                        slidesToShow: 2,
+                                    },
+                                },
+                            ],
                         });
 
                         setSliderReady(true);
@@ -420,7 +428,7 @@ const HotelDetail: React.FC = () => {
                                     <Link to="/destinations">Destinations</Link>
                                 </li>
                                 <li>&gt;</li>
-                                <li className="active">{hotel.name}</li>
+                                <li className="active">Details</li>
                             </ol>
                         </nav>
                         <h1>{hotel.name}</h1>
@@ -434,7 +442,7 @@ const HotelDetail: React.FC = () => {
                                 <span className="label">Hotel Amenities</span>
                                 <span className="text">{hotel.amenities.join(", ")}</span>
                             </div>
-                            <div className="header-hotel-detail">
+                            <div className="header-hotel-detail price-detail">
                                 <span className="label">Starting from</span>
                                 <span className="text">${hotel.price || "N/A"}/night</span>
                             </div>
@@ -459,205 +467,71 @@ const HotelDetail: React.FC = () => {
                 ))}
             </section>
 
-            {/* Hotel Header */}
-            <section className="hotel-header">
+            <section className="section-text-center text-center">
                 <div className="container">
-                    <div className="row">
-                        <div className="col-md-8">
-                            <h1>{hotel.name}</h1>
-
-                            {/* Hotel Groups/Brands */}
-                            {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
-                                <div className="hotel-groups mb-2">
-                                    {hotel.hotel_groups.map((group, index) => (
-                                        <span key={group.id} className="badge bg-primary me-2"></span>
-                                    ))}
-                                </div>
-                            )}
-
-                            {hotel.address && (
-                                <p className="hotel-address">
-                                    <i className="fa fa-home"></i> {hotel.address}
-                                </p>
-                            )}
-                            {hotel.distance && (
-                                <p className="hotel-distance">
-                                    <i className="fa fa-location-arrow"></i> {hotel.distance}
-                                </p>
-                            )}
-                            <div className="hotel-rating">
-                                {renderStars(hotel.rating || 0)}
-                                <span className="rating-text">{hotel.rating || "N/A"}/5</span>
-                                {hotel.reviewCount && (
-                                    <span className="review-count">({hotel.reviewCount} reviews)</span>
-                                )}
-                            </div>
-                        </div>
-                        <div className="col-md-4 text-end"></div>
+                    <h2>About this hotel</h2>
+                    <div className="hotel-rating">
+                        {renderStars(hotel.rating || 0)}
+                        <span className="rating-text">{hotel.rating || "N/A"}/5</span>
+                        {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
                     </div>
+                    {/* Hotel Groups/Brands */}
+                    {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
+                        <div className="hotel-groups mb-2">
+                            {hotel.hotel_groups.map((group, index) => (
+                                <span key={group.id} className="badge bg-primary me-2"></span>
+                            ))}
+                        </div>
+                    )}
+
+                    {hotel.address && <p className="hotel-address">{hotel.address}</p>}
+                    {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
+                    <p>{hotel.description || "No description available for this hotel."}</p>
                 </div>
             </section>
 
-            {/* Hotel Content */}
-            <section className="hotel-content section-padding">
-                <div className="container">
-                    <div className="row">
-                        {/* Main Content */}
-                        <div className="col-md-8">
-                            {/* Description */}
-                            <div className="hotel-description">
-                                <h3>About this hotel</h3>
-                                <p>{hotel.description || "No description available for this hotel."}</p>
+            {hotel.hotel_information && hotel.hotel_information.length > 0 && (
+                <section className="section-hotel-info">
+                    <div className="container">
+                        <h3 className="text-center mb-5">Hotel Information</h3>
 
-                                {hotel.fun_fact && (
-                                    <div className="fun-fact mt-3">
-                                        <h5>
-                                            <i className="fa fa-lightbulb"></i> Fun Fact
-                                        </h5>
-                                        <p>{hotel.fun_fact}</p>
-                                    </div>
-                                )}
-
-                                {hotel.unique_experiences && (
-                                    <div className="unique-experiences mt-3">
-                                        <h5>
-                                            <i className="fa fa-star"></i> Unique Experiences
-                                        </h5>
-                                        <p>{hotel.unique_experiences}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Hotel Information */}
-                            {hotel.hotel_information && hotel.hotel_information.length > 0 && (
-                                <div className="hotel-information">
-                                    <h3>Hotel Information</h3>
-                                    <div className="row">
-                                        {hotel.hotel_information.map((info, index) => (
-                                            <div key={index} className="col-md-6 mb-3">
-                                                <div className="info-card">
-                                                    <h5>
-                                                        <i className="fa fa-info-circle"></i> {info.title}
-                                                    </h5>
-                                                    <ul className="list-unstyled">
-                                                        {info.description.map((item, itemIndex) => (
-                                                            <li key={itemIndex}>
-                                                                <i className="fa fa-check"></i> {item}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                        {/* Hotel Information */}
+                        <div className="hotel-info-list">
+                            {hotel.fun_fact && (
+                                <div className="info-card">
+                                    <h5>Fun Fact</h5>
+                                    <p>{hotel.fun_fact}</p>
                                 </div>
                             )}
 
-                            {/* Available Rooms */}
-                            {/* <div className="available-rooms">
-                <h3>Available Rooms</h3>
-                <div className="rooms-list">
-                  {mockRooms.map(room => (
-                    <div key={room.id} className={`room-item ${selectedRoom === room.id ? 'selected' : ''}`}>
-                      <div className="row">
-                        <div className="col-md-4">
-                          <img src={room.image} alt={room.name} className="img-fluid" />
-                        </div>
-                        <div className="col-md-6">
-                          <h4>{room.name}</h4>
-                          <p className="room-type">{room.type}</p>
-                          <p className="room-capacity">Up to {room.capacity} guests</p>
-                          <div className="room-amenities">
-                            {room.amenities.slice(0, 3).map((amenity, index) => (
-                              <span key={index} className="amenity-tag">{amenity}</span>
-                            ))}
-                            {room.amenities.length > 3 && (
-                              <span className="amenity-tag">+{room.amenities.length - 3} more</span>
+                            {hotel.unique_experiences && (
+                                <div className="info-card">
+                                    <h5>Unique Experiences</h5>
+                                    <p>{hotel.unique_experiences}</p>
+                                </div>
                             )}
-                          </div>
-                        </div>
-                        <div className="col-md-2 text-end">
-                          <div className="room-price">
-                            <span className="price">${room.price}</span>
-                            <span className="unit">/night</span>
-                          </div>
-                          <button 
-                            className={`btn ${selectedRoom === room.id ? 'btn-primary' : 'btn-outline-primary'} btn-sm`}
-                            onClick={() => setSelectedRoom(room.id)}
-                          >
-                            {selectedRoom === room.id ? 'Selected' : 'Select'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div> */}
-
-                            {/* Reviews */}
-                            {/* <div className="hotel-reviews">
-                <h3>Guest Reviews</h3>
-                <div className="reviews-summary">
-                  <div className="average-rating">
-                    <span className="rating-number">{calculateAverageRating()}</span>
-                    <div className="rating-stars">{renderStars(Math.round(parseFloat(calculateAverageRating())))}</div>
-                    <span className="total-reviews">Based on {mockReviews.length} reviews</span>
-                  </div>
-                </div>
-                <div className="reviews-list">
-                  {mockReviews.map(review => (
-                    <div key={review.id} className="review-item">
-                      <div className="review-header">
-                        <div className="review-author">{review.author}</div>
-                        <div className="review-rating">{renderStars(review.rating)}</div>
-                        <div className="review-date">{new Date(review.date).toLocaleDateString()}</div>
-                      </div>
-                      <div className="review-comment">{review.comment}</div>
-                      <div className="review-helpful">
-                        <span>Helpful ({review.helpful})</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div> */}
-
-                            {/* Similar Hotels */}
-                            {/* <div className="similar-hotels">
-                <h3>Similar Hotels</h3>
-                <div className="row">
-                  {mockSimilarHotels.map(similarHotel => (
-                    <div key={similarHotel.id} className="col-md-4 mb-3">
-                      <div className="similar-hotel-card">
-                        <img src={similarHotel.image} alt={similarHotel.name} />
-                        <div className="similar-hotel-content">
-                          <h5>{similarHotel.name}</h5>
-                          <p>{similarHotel.location}</p>
-                          <div className="similar-hotel-rating">
-                            {renderStars(similarHotel.rating)}
-                            <span>${similarHotel.price}/night</span>
-                          </div>
-                          <Link to={`/hotel/${similarHotel.id}`} className="btn btn-sm btn-outline-primary">
-                            View Details
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div> */}
-                        </div>
-
-                        {/* Booking Sidebar */}
-
-                        <div className="col-md-4">
-                            <BookingForm
-                                hotelId={hotel.id}
-                                hotelName={hotel.name}
-                                onBookingSuccess={handleBookingSuccess}
-                                onBookingError={handleBookingError}
-                            />
+                            {hotel.hotel_information.map((info, index) => (
+                                <div className="info-card">
+                                    <h5>{info.title}</h5>
+                                    <ul className="list-unstyled">
+                                        {info.description.map((item, itemIndex) => (
+                                            <li key={itemIndex}>{item}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
                         </div>
                     </div>
+                </section>
+            )}
+            <section className="section-padding booking-section">
+                <div className="container">
+                    <BookingForm
+                        hotelId={hotel.id}
+                        hotelName={hotel.name}
+                        onBookingSuccess={handleBookingSuccess}
+                        onBookingError={handleBookingError}
+                    />
                 </div>
             </section>
             <Footer />

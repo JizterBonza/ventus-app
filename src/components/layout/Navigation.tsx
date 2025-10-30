@@ -29,8 +29,8 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/about">
-                            About
+                        <Link className="nav-link" to="/about-us">
+                            About Us
                         </Link>
                     </li>
                     <li className="nav-item">
@@ -38,47 +38,18 @@ const Navigation: React.FC = () => {
                             Destinations
                         </Link>
                     </li>
-                    <li className="nav-item dropdown">
-                        <Link
-                            className="nav-link dropdown-toggle"
-                            to="#"
-                            role="button"
-                            data-bs-toggle="dropdown"
-                            data-bs-auto-close="outside"
-                            aria-expanded="false"
-                        >
-                            Rooms & Suites <i className="ti-angle-down"></i>
-                        </Link>
-                        <ul className="dropdown-menu">
-                            <li>
-                                <Link to="/rooms" className="dropdown-item">
-                                    <span>Rooms 1</span>
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/rooms2" className="dropdown-item">
-                                    <span>Rooms 2</span>
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/rooms3" className="dropdown-item">
-                                    <span>Rooms 3</span>
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/room-details" className="dropdown-item">
-                                    <span>Room Details</span>
-                                </Link>
-                            </li>
-                        </ul>
-                    </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/blog">
-                            Blog
+                        <Link className="nav-link" to="/the-magazine">
+                            The Magazine
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/contact">
+                        <Link className="nav-link" to="/buy-outs">
+                            Buy Outs
+                        </Link>
+                    </li>
+                    <li className="nav-item">
+                        <Link className="nav-link" to="/contact-us">
                             Contact Us
                         </Link>
                     </li>

@@ -20,9 +20,6 @@ const Footer: React.FC = () => {
                                 <Link to="/about">About</Link>
                             </li>
                             <li>
-                                <Link to="/offers">Offers</Link>
-                            </li>
-                            <li>
                                 <Link to="/contact">Contact</Link>
                             </li>
                         </ul>

@@ -78,146 +78,6 @@
     width: 16px;
 }
 
-/* Popular Cities Section Styles */
-.popular-cities {
-    background: #DBE2D6;
-}
-
-.card-slider {
-    margin-inline: -30px;
-}
-
-.card-wrap {
-    padding-inline: 30px;
-}
-
-.card {
-    background: var(--black-200);
-    border: 0;
-    border-radius: 0;
-    height: 100%;
-}
-
-.card-actions {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    justify-content: space-between;
-    margin-top: auto;
-}
-
-.card-image {
-    min-height: 480px;
-    position: relative;
-}
-
-.card-image a {
-    display: initial !important;
-}
-
-.card-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.card-content {
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    height: 100%;
-}
-
-.card-content h4 {
-    color: #fff;
-    margin: 0;
-}
-
-.card-content ul {
-    margin: 0;
-    padding: 0;
-    display: flex;
-    gap: 10px;
-}
-
-.card-description {
-    color: #fff;
-    font-size: 20px;
-    line-height: 120%;
-    color: rgba(255, 255, 255, 0.75);
-}
-
-.card-content span,
-.card-content li {
-    color: #fff;
-}
-
-.card-content .card-price {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-}
-
-.card-content .card-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.card-price span {
-    font-size: 20px;
-}
-
-.card-price .price-amount {
-    font-size: 32px;
-    text-transform: uppercase;
-}
-
-.card-info span,
-.card-info li {
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 18px;
-}
-
-.card-info .divider {
-    width: 1px;
-    height: 18px;
-    background: rgba(255, 255, 255, 0.75);
-}
-
-.card-info.has-border {
-    border: 1px solid rgba(255, 255, 255, .1);
-    border-left: 0;
-    border-right: 0;
-    padding-block: 15px;
-    margin-block: 15px;
-}
-
-.price-unit {
-    color: #666;
-    font-size: 0.9rem;
-}
-
-.card.compact .card-amenities li:last-child:not(:first-child) {
-    display: none;
-}
-
-.card-image:before {
-    content: '';
-    position: absolute;
-    top: 30px;
-    left: 0;
-    right: 0;
-    width: calc(100% - 60px);
-    height: calc(100% - 30px);
-    margin-inline: auto;
-    border: 1px solid var(--gold);
-    border-bottom: none;
-    z-index: 1;
-}
-
 /* Search Page Styles */
 .search-page {
     background-color: #f8f9fa;
@@ -284,11 +144,7 @@
 }
 
 .results-header {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 10px;
     margin-bottom: 2rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .results-header h3 {
@@ -452,10 +308,6 @@
 }
 */
 /* Hotel Detail Page Styles */
-.hotel-detail-page {
-    background-color: #f8f9fa;
-}
-
 .breadcrumb-section {
     background: white;
     padding: 1rem 0;
@@ -486,21 +338,6 @@
 .price-unit {
     color: #666;
     font-size: 1rem;
-}
-
-.hotel-gallery {
-    background: white;
-    padding: 20px 0;
-}
-
-.hotel-gallery .thumbnail-image img {
-    width: 100%;
-    height: 440px;
-    object-fit: cover;
-}
-
-.hotel-gallery .thumbnail-image {
-    padding-inline: 10px;
 }
 
 .main-image {

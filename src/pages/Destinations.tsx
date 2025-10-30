@@ -162,14 +162,13 @@ const Search: React.FC = () => {
     return (
         <div className="search-page">
             <Header />
-            <Header />
             <PageHeader
-                title="Find Your Perfect Stay"
-                text="Discover amazing hotels and resorts around the world."
+                title="Discover Your Dream Destinations"
+                text="Browse some of our favourite destinations below. If you don’t see the place you have in mind, just get in touch. We work with an extensive collection of handpicked luxury hotels across the globe, in the most extraordinary and sought after locations."
                 backgroundImage="/assets/img/slider/1.jpg"
             />
             {/* Search Form */}
-            <section className="search-form-section section-padding">
+            <section className="search-form-section">
                 <div className="container">
                     <div className="booking-inner clearfix">
                         <form onSubmit={handleSearch} className="form1 clearfix">
@@ -198,7 +197,7 @@ const Search: React.FC = () => {
             </section>
 
             {/* Filters and Results */}
-            <section className={`results-section section-padding ${filteredHotels.length > 0 ? "has-results" : ""}`}>
+            <section className={`results-section  ${filteredHotels.length > 0 ? "has-results" : ""}`}>
                 <div className="container">
                     <div className="row">
                         {/* Filters Sidebar */}
@@ -280,13 +279,15 @@ const Search: React.FC = () => {
                                         Searching for hotels in: <strong>{searchParams.location}</strong>
                                     </p>
                                 )}
-                                {loadingDetails && (
-                                    <div className="alert alert-info" role="alert">
-                                        <i className="fa fa-spinner fa-spin"></i> Loading detailed hotel information...
-                                    </div>
-                                )}
                             </div>
-
+                            {loadingDetails && (
+                                <div className="alert alert-info alert-loading " role="alert">
+                                    <div className="spinner-border" role="status">
+                                        <span className="sr-only">Loading...</span>
+                                    </div>{" "}
+                                    Loading detailed hotel information...
+                                </div>
+                            )}
                             {error && (
                                 <div className="alert alert-danger" role="alert">
                                     <strong>Search Error:</strong> {error}
@@ -316,13 +317,14 @@ const Search: React.FC = () => {
                                         return (
                                             <div
                                                 key={hotel.id}
-                                                className={viewMode === "grid" ? "col-md-6 mb-5" : "mb-5"}
+                                                className={viewMode === "grid" ? "col-md-6 mb-4" : "mb-5"}
                                             >
-                                                <div
-                                                    className={`card hotel-card ${
-                                                        viewMode === "list" ? "hotel-card-list" : ""
-                                                    }`}
+                                                <Link
+                                                    to={`/hotel/${hotel.id}`}
+                                                    title="Explore {room.name}"
+                                                    className="card hotel-card"
                                                 >
+                                                    <div className="card-overlay">Find out more</div>
                                                     <div className="card-image">
                                                         <img
                                                             src={
@@ -388,15 +390,9 @@ const Search: React.FC = () => {
                                                                     ${displayHotel.price}/night
                                                                 </span>
                                                             </div>
-                                                            <Link
-                                                                to={`/hotel/${hotel.id}`}
-                                                                className="btn btn-outline-secondary"
-                                                            >
-                                                                View Details
-                                                            </Link>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </Link>
                                             </div>
                                         );
                                     })}
