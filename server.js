@@ -10,8 +10,12 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
+const port = process.env.PORT || 10000;
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
 });
+
+// Configure timeouts to prevent 502 errors
+server.keepAliveTimeout = 120000; // 120 seconds
+server.headersTimeout = 120000; // 120 seconds
 
