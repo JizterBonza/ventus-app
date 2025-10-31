@@ -6443,6 +6443,23 @@ select {
     flex-direction: column;
     text-align: left;
     text-align: center;
+    position: relative;
+}
+
+.header-hotel-detail:not(:first-child) {
+    padding-top: 20px;
+}
+
+.header-hotel-detail:not(:first-child):before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 150px;
+    height: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+    margin-inline: auto;
 }
 
 .header-hotel-detail.price-detail {
@@ -6697,6 +6714,9 @@ select {
     height: 40px;
     background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15.9497 30.1167L5.83304 20L15.9497 9.88337' stroke='black' stroke-width='2.5' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M34.1665 20L6.1165 20' stroke='black' stroke-width='2.5' stroke-miterlimit='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E%0A");
     transition: filter 0.3s ease;
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
 }
 
 .slick-arrow.slick-next:before {
@@ -7166,6 +7186,38 @@ select {
     .section-hotel-info .container,
     .hotel-detail-page .section-text-center {
         padding-block: 30px;
+    }
+
+    .section-text-center br {
+        display: none;
+    }
+
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm {
+        max-width: 100% !important;
+        padding-right: calc(var(--bs-gutter-x) * .75);
+        padding-left: calc(var(--bs-gutter-x) * .75);
+    }
+
+    .slick-arrow.slick-next {
+        right: 30px;
+    }
+
+    .slick-arrow.slick-prev {
+        left: 30px;
+    }
+
+    .slick-arrow {
+        width: 60px;
+        height: 60px;
+    }
+
+    .slick-arrow:before {
+
+        height: 30px;
+
     }
 }
 

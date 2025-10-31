@@ -190,7 +190,7 @@ const Home: React.FC = () => {
             <section className="about section-about section-padding">
                 <div className="container">
                     <div className="row d-flex align-items-center">
-                        <div className="col col-md-6 animate-box" data-animate-effect="fadeInUp">
+                        <div className="col col-md-6 mb-4 animate-box" data-animate-effect="fadeInUp">
                             <img src="/assets/img/page/about-section.png" alt="" />
                         </div>
                         <div className="col-md-6 mb-30 animate-box" data-animate-effect="fadeInUp">
