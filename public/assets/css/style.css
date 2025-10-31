@@ -6439,6 +6439,7 @@ select {
     max-width: 100%;
 }
 
+.section-hotel-info .container,
 .hotel-detail-page .section-text-center .container {
     max-width: 970px !important;
 }
@@ -6449,7 +6450,13 @@ select {
 
 .hotel-detail-page .section-text-center p {
     font-size: 18px;
-    line-height: 125%;
+    line-height: 150%;
+}
+
+.section-hotel-info .container {
+    padding-block: 90px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .hotel-info-list {
@@ -6960,6 +6967,17 @@ select {
     padding-top: var(--padding-block);
 }
 
+.contact-list li {
+    display: flex;
+    gap: 10px;
+}
+
+.contact-list svg {
+    width: 20px;
+    height: 20px;
+    margin-top: 8px;
+}
+
 @media (max-width: 1640px) {
     .slick-arrow.slick-prev {
         left: 40px;
@@ -6997,6 +7015,7 @@ select {
         gap: 0;
     }
 
+    .section-hotel-info .container,
     .hotel-detail-page .section-text-center {
         padding-block: 60px;
     }
@@ -7068,6 +7087,11 @@ select {
 
     .accordion-flush .accordion-item .accordion-button {
         font-size: 20px;
+    }
+
+    .section-hotel-info .container,
+    .hotel-detail-page .section-text-center {
+        padding-block: 30px;
     }
 }
 
