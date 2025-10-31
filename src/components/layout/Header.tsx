@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Navigation from "./Navigation";
+import Breadcrumb from "../shared/Breadcrumb";
 
 const Header: React.FC = () => {
     return (
@@ -33,6 +34,7 @@ const Header: React.FC = () => {
                     <Navigation />
                 </div>
             </nav>
+            <Breadcrumb />
         </>
     );
 };

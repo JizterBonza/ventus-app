@@ -24,14 +24,7 @@ const Contact: React.FC = () => {
     return (
         <Layout>
             {/* Page Header */}
-            <PageHeader
-                title="Contact Us"
-                backgroundImage="/assets/img/page/contact.webp"
-                breadcrumbs={[
-                    { label: "Home", path: "/" },
-                    { label: "Contact Us", active: true },
-                ]}
-            />
+            <PageHeader title="Contact Us" backgroundImage="/assets/img/page/contact.webp" />
 
             {/* About Content */}
             <section className="section-text-center section-contact">

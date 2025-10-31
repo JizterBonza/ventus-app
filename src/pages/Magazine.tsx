@@ -6,13 +6,7 @@ const Magazine: React.FC = () => {
     return (
         <Layout>
             {/* Page Header */}
-            <PageHeader
-                title="The Magazine"
-                breadcrumbs={[
-                    { label: "Home", path: "/" },
-                    { label: "Magazine", active: true },
-                ]}
-            />
+            <PageHeader title="The Magazine" />
 
             {/* About Content */}
             <section className="about-content section-padding">

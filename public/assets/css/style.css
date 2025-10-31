@@ -1081,6 +1081,44 @@ blockquote cite:before {
     background-image: none;
 }
 
+.breadcrumb-nav {
+    position: absolute;
+    top: calc(75px + 5px);
+    left: 0;
+    z-index: 3;
+    transition: all 0.3s ease;
+}
+
+@media screen and (max-width: 991px) {
+    .breadcrumb-nav {
+        left: -15px;
+    }
+}
+
+.navbar.nav-scroll+.breadcrumb-nav {
+    opacity: 0;
+    transform: translateY(-50px);
+}
+
+.breadcrumb-nav .breadcrumb-item,
+.breadcrumb-nav .breadcrumb-separator {
+    font-size: 14px;
+}
+
+.breadcrumb-nav .breadcrumb-item.active,
+.breadcrumb-nav li,
+.breadcrumb-nav a {
+    color: #fff;
+    transition: color 0.3s ease;
+}
+
+.breadcrumb-nav .breadcrumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
 .navbar .navbar-toggler-icon,
 .navbar .icon-bar {
     color: #FFF;

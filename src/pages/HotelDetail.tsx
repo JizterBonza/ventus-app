@@ -419,19 +419,6 @@ const HotelDetail: React.FC = () => {
                 </div>
                 <div className="container">
                     <div className="page-header-content text-center">
-                        <nav aria-label="breadcrumb">
-                            <ol className="breadcrumb">
-                                <li>
-                                    <Link to="/">Home</Link>
-                                </li>
-                                <li>&gt;</li>
-                                <li>
-                                    <Link to="/destinations">Destinations</Link>
-                                </li>
-                                <li>&gt;</li>
-                                <li className="active">Details</li>
-                            </ol>
-                        </nav>
                         <h1>{hotel.name}</h1>
                         <div className="header-hotel-details">
                             <div className="header-hotel-detail">

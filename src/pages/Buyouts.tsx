@@ -10,10 +10,6 @@ const BuyOuts: React.FC = () => {
                 title="Buy out your favourite properties and make them your private oasis."
                 text="Discover the breathtaking destinations Ventus Luxury Travel has to offer."
                 backgroundImage="/assets/img/page/buyout.webp"
-                breadcrumbs={[
-                    { label: "Home", path: "/" },
-                    { label: "Buy Outs", active: true },
-                ]}
             />
 
             {/* About Content */}
