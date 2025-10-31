@@ -7,6 +7,7 @@ import HotelDetail from "./pages/HotelDetail";
 import Booking from "./pages/Booking";
 import BookingTest from "./pages/BookingTest";
 import Magazine from "./pages/Magazine";
+import MagazinePost from "./pages/MagazinePost";
 import BuyOuts from "./pages/Buyouts";
 import Contact from "./pages/Contact";
 import "./App.css";
@@ -42,6 +43,7 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/about-us" element={<About />} />
                     <Route path="/the-magazine" element={<Magazine />} />
+                    <Route path="/magazine/:slug" element={<MagazinePost />} />
                     <Route path="/buy-outs" element={<BuyOuts />} />
                     <Route path="/contact-us" element={<Contact />} />
                     <Route path="/rooms" element={<Rooms />} />

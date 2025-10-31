@@ -317,7 +317,7 @@ const Search: React.FC = () => {
                                         return (
                                             <div
                                                 key={hotel.id}
-                                                className={viewMode === "grid" ? "col-md-6 mb-4" : "mb-5"}
+                                                className={viewMode === "grid" ? "col-md-4 mb-4" : "mb-5"}
                                             >
                                                 <Link
                                                     to={`/hotel/${hotel.id}`}

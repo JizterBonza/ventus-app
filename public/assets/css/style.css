@@ -1090,8 +1090,6 @@ blockquote cite:before {
     width: 100%;
 }
 
-@media screen and (max-width: 1600px) {}
-
 @media screen and (max-width: 991px) {
     .breadcrumb-nav {
         left: -15px;
@@ -1115,10 +1113,22 @@ blockquote cite:before {
     transition: color 0.3s ease;
 }
 
+.breadcrumb-nav .breadcrumb-item.active {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.breadcrumb-nav .breadcrumb-item.active span {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: block;
+}
+
 .breadcrumb-nav .breadcrumb {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: nowrap;
 }
 
 .navbar .navbar-toggler-icon,
@@ -6292,7 +6302,8 @@ select {
 }
 
 .page-header-content p,
-.page-header-content h1 {
+.page-header-content h1,
+.page-header-content h2 {
     color: #fff;
 }
 
@@ -6907,6 +6918,57 @@ select {
     border: 1px solid var(--gold);
     border-bottom: none;
     z-index: 1;
+}
+
+.post-card .card-overlay {
+    opacity: 1;
+    padding: 30px;
+    background-color: rgba(0, 0, 0, 0.5);
+    transition: background-color 0.3s ease;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.post-card .card-overlay:before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    border: 1px solid var(--gold);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.post-card .card-overlay:hover {
+    background-color: rgba(0, 0, 0, 0.75);
+}
+
+.post-card .card-overlay:hover:before {
+    opacity: 1;
+}
+
+.post-card .card-overlay:after {
+    display: none;
+}
+
+.post-card .card-overlay h4 {
+    color: #fff;
+    margin: 0;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.post-card .card-overlay .date {
+    font-size: 18px;
+}
+
+.post-card .card-image:before {
+    display: none;
 }
 
 .results-header+.alert {

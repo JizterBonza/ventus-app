@@ -8,6 +8,7 @@ interface PageHeaderProps {
     className?: string;
     video?: boolean;
     booking?: boolean;
+    magazinePost?: boolean;
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({
@@ -17,6 +18,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
     className = "",
     video = false,
     booking = false,
+    magazinePost = false,
 }) => {
     const style = backgroundImage
         ? {
@@ -46,7 +48,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
             )}
             <div className="container">
                 <div className="page-header-content text-center">
-                    <h1>{title}</h1>
+                    {magazinePost ? <h2>{title}</h2> : <h1>{title}</h1>}
                     {text && <p>{text}</p>}
                     {booking && <HeroSearchForm />}
 

@@ -33,6 +33,24 @@ const Breadcrumb: React.FC<BreadcrumbProps> = () => {
             return items;
         }
 
+        // Special handling for magazine detail routes (/magazine/{slug})
+        if (pathnames.length === 2 && pathnames[0] === "magazine") {
+            items.push({
+                label: "Magazine",
+                path: "/the-magazine",
+            });
+            const label = pathnames[1]
+                .split(/[-_]/)
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
+            items.push({
+                label,
+                path: location.pathname,
+                active: true,
+            });
+            return items;
+        }
+
         // Add intermediate paths
         pathnames.forEach((segment, index) => {
             const path = `/${pathnames.slice(0, index + 1).join("/")}`;

@@ -1,47 +1,46 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import PageHeader from "../components/shared/PageHeader";
+import { magazinePosts } from "../utils/magazinePosts";
+import { MagazinePostWithSlug } from "../types/magazine";
 
 const Magazine: React.FC = () => {
     return (
         <Layout>
             {/* Page Header */}
-            <PageHeader title="The Magazine" />
+            <PageHeader title="our travel magazine" text="Your ultimate guide to exploring the world!" />
 
-            {/* About Content */}
-            <section className="about-content section-padding">
+            {/* Intro Section */}
+            {/* Magazine Posts */}
+            <section className="news2 section-padding bg-cream">
                 <div className="container">
-                    <div className="row d-flex align-items-center">
-                        <div className="col-md-7">
-                            <div className="about-text">
-                                <h2>
-                                    Welcome to my world, where elegance meets exploration and unforgettable adventure
-                                    awaits!
-                                </h2>
-                                <p>
-                                    I am Daniella, a passionate traveller with a deep appreciation for the finer things
-                                    in life. Over the years, I've had the privilege of exploring some of the most
-                                    breathtaking corners of the world, each adventure revealing unique experiences and
-                                    hidden gems that I can't wait to share with you. From exclusive resorts to private
-                                    jet charters, my goal is to elevate your travel experience beyond the ordinary, to
-                                    make memories that will last a life time. Join me as I unveil the world’s most
-                                    magical destinations, share insider insights, and provide tailored recommendations
-                                    that will elevate your travel experience to new heights.{" "}
-                                </p>
-                                <p>
-                                    <strong>
-                                        Whether you just seek access to our unique benefits or desire extra assistance
-                                        to make your journey truly unforgettable, our team is dedicated to turning all
-                                        your travel dreams into reality.
-                                    </strong>
-                                </p>
-                            </div>
+                    <div className="row mb-5 justify-content-md-center">
+                        <div className="col-md-8 text-center">
+                            <h2>Latest Stories</h2>
+                            <p>
+                                Join us as we share exciting travel stories, tips, and itineraries that will inspire
+                                your next adventure. From breathtaking landscapes to vibrant cultures, we aim to ignite
+                                your wanderlust and provide valuable insights for your journeys. Whether you're a
+                                seasoned traveler or planning your first trip, our blog is here to help you navigate
+                                your way to unforgettable experiences.
+                            </p>
                         </div>
-                        <div className="col-md-5">
-                            <div className="about-images">
-                                <img src="/assets/img/clients/7.webp" alt="Hotel Interior" className="img-fluid" />
+                    </div>
+                    <div className="row">
+                        {magazinePosts.map((post) => (
+                            <div key={post.id} className="col-md-4 mb-4">
+                                <Link to={`/magazine/${post.slug}`} className="card post-card">
+                                    <div className="card-overlay">
+                                        <h4>{post.title}</h4>
+                                        <span className="date">{post.date}</span>
+                                    </div>
+                                    <div className="card-image">
+                                        <img src={post.image} alt={post.title} />
+                                    </div>
+                                </Link>
                             </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
