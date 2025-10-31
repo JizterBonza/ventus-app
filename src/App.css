@@ -126,7 +126,7 @@
     display: block;
 }
 
-.filters-sidebar {
+/* .filters-sidebar {
     background: white;
     padding: 1.5rem;
     border-radius: 10px;
@@ -141,7 +141,7 @@
     font-size: 1rem;
     margin-bottom: 0.5rem;
     color: #333;
-}
+} */
 
 .results-header {
     margin-bottom: 2rem;
@@ -677,7 +677,7 @@
 }
 
 /* Filter Group Styles */
-.filter-group {
+/* .filter-group {
     margin-bottom: 25px;
     padding: 15px;
     background: #f8f9fa;
@@ -720,6 +720,7 @@
     margin-right: 0;
 }
 
+*/
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .hotel-card-list {

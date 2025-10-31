@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel, SearchParams } from "../types/search";
 import { getHotelDetailsBatch } from "../utils/api";
+import { interestCategories } from "../utils/interestCategories";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import PageHeader from "../components/shared/PageHeader";
@@ -21,6 +22,15 @@ const Search: React.FC = () => {
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+    // Interest categories filter state
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedLocation, setSelectedLocation] = useState<string>("all");
+    const [filteredInterests, setFilteredInterests] = useState(interestCategories);
+
+    // Extract unique categories and locations
+    const allCategories = Array.from(new Set(interestCategories.flatMap((interest) => interest.categories))).sort();
+    const allLocations = Array.from(new Set(interestCategories.map((interest) => interest.location))).sort();
 
     // Fallback hotel images for when API doesn't provide images
     const fallbackImages = [
@@ -152,6 +162,36 @@ const Search: React.FC = () => {
             [field]: value,
         }));
     };
+
+    // Interest category filter handlers
+    const toggleCategory = (category: string) => {
+        setSelectedCategories((prev) =>
+            prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+        );
+    };
+
+    const handleLocationChange = (location: string) => {
+        setSelectedLocation(location);
+    };
+
+    // Filter interests based on selected categories and location
+    useEffect(() => {
+        let filtered = interestCategories;
+
+        // Filter by location
+        if (selectedLocation !== "all") {
+            filtered = filtered.filter((interest) => interest.location === selectedLocation);
+        }
+
+        // Filter by categories (show if ANY selected category matches)
+        if (selectedCategories.length > 0) {
+            filtered = filtered.filter((interest) =>
+                interest.categories.some((cat) => selectedCategories.includes(cat))
+            );
+        }
+
+        setFilteredInterests(filtered);
+    }, [selectedCategories, selectedLocation]);
 
     const renderStars = (rating: number) => {
         return Array.from({ length: 5 }, (_, i) => (
@@ -407,6 +447,103 @@ const Search: React.FC = () => {
                             )}
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section className="interests-section">
+                <div className="container">
+                    {/* Filters */}
+                    <div className="interests-filters">
+                        <div className="filter-row">
+                            <div className="filter-group">
+                                <label className="filter-label">Filter by Interest:</label>
+                                <div className="category-filters">
+                                    {allCategories.map((category) => (
+                                        <button
+                                            key={category}
+                                            className={`category-filter-btn ${
+                                                selectedCategories.includes(category) ? "active" : ""
+                                            }`}
+                                            onClick={() => toggleCategory(category)}
+                                        >
+                                            {category}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="filter-group">
+                                <label className="filter-label">Location:</label>
+                                <select
+                                    className="location-filter-dropdown"
+                                    value={selectedLocation}
+                                    onChange={(e) => handleLocationChange(e.target.value)}
+                                >
+                                    <option value="all">All Locations</option>
+                                    {allLocations.map((location) => (
+                                        <option key={location} value={location}>
+                                            {location}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        {(selectedCategories.length > 0 || selectedLocation !== "all") && (
+                            <div className="filter-summary">
+                                Showing {filteredInterests.length} of {interestCategories.length} interests
+                                <button
+                                    className="clear-filters-btn"
+                                    onClick={() => {
+                                        setSelectedCategories([]);
+                                        setSelectedLocation("all");
+                                    }}
+                                >
+                                    Clear All Filters
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Interest Cards */}
+                    <div className="row">
+                        {filteredInterests.map((interest) => (
+                            <div key={interest.id} className="col-md-4 mb-4">
+                                <Link to={`/contact-us`} className="card interest-card">
+                                    <div className="card-overlay">Find out more</div>
+                                    <div className="card-categories">
+                                        {interest.categories.map((category, index) => (
+                                            <span key={index} className="category-tag">
+                                                {category}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div className="card-image">
+                                        <img src={interest.image} alt={interest.title} />
+                                    </div>
+                                    <div className="card-content">
+                                        <h4>Interested in {interest.title}?</h4>
+                                        <div className="card-description">{interest.description}</div>
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* No results message */}
+                    {filteredInterests.length === 0 && (
+                        <div className="text-center no-results">
+                            <h4>No interests match your filters</h4>
+                            <p>Try adjusting your filter criteria</p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    setSelectedCategories([]);
+                                    setSelectedLocation("all");
+                                }}
+                            >
+                                Clear All Filters
+                            </button>
+                        </div>
+                    )}
                 </div>
             </section>
             <Footer />
