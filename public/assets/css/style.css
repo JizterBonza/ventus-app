@@ -1090,12 +1090,6 @@ blockquote cite:before {
     width: 100%;
 }
 
-@media screen and (max-width: 991px) {
-    .breadcrumb-nav {
-        left: -15px;
-    }
-}
-
 .navbar.nav-scroll+.breadcrumb-nav {
     opacity: 0;
     transform: translateY(-50px);
@@ -6260,16 +6254,22 @@ select {
     z-index: 2;
 }
 
-.page-header:before {
+.page-header:before,
+.page-header:after {
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
     background: rgba(0, 0, 0, 0.5);
+    transition: opacity 1s ease;
     z-index: 1;
+}
+
+.page-header:after {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+    opacity: 0;
 }
 
 .page-header.has-video {
@@ -6293,8 +6293,13 @@ select {
     transition: opacity 1s ease;
 }
 
-.page-header .page-header-content.slide-transitioning {
+.page-header.slide-transitioning .page-header-content,
+.page-header.slide-transitioning:before {
     opacity: 0;
+}
+
+.page-header.slide-transitioning:after {
+    /* opacity: 1; */
 }
 
 .page-header:not(.has-video) .page-header-content {

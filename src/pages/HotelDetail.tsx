@@ -251,7 +251,7 @@ const HotelDetail: React.FC = () => {
                         $hotelHeaderGallery.on(
                             "beforeChange",
                             function (event: any, slick: any, currentSlide: number, nextSlide: number) {
-                                const $pageHeaderContent = $(".page-header-content");
+                                const $pageHeaderContent = $(".page-header");
 
                                 // Remove class if transitioning to first slide, otherwise add it
                                 if (nextSlide === 0) {
