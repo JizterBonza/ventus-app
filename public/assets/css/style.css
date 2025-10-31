@@ -6299,7 +6299,7 @@ select {
 }
 
 .page-header.slide-transitioning:after {
-    /* opacity: 1; */
+    opacity: 1;
 }
 
 .page-header:not(.has-video) .page-header-content {
