@@ -474,7 +474,7 @@ const Search: React.FC = () => {
                             <div className="filter-group">
                                 <label className="filter-label">Location:</label>
                                 <select
-                                    className="location-filter-dropdown"
+                                    className="location-filter-dropdown form-select"
                                     value={selectedLocation}
                                     onChange={(e) => handleLocationChange(e.target.value)}
                                 >

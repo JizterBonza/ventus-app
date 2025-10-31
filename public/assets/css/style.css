@@ -7398,30 +7398,7 @@ select {
 
 /* Responsive Design for Filters */
 @media (max-width: 768px) {
-    .interests-filters {
-        padding: 20px;
-    }
-
     .filter-row {
-        gap: 20px;
-    }
-
-    .category-filters {
-        gap: 8px;
-    }
-
-    .category-filter-btn {
-        padding: 6px 16px;
-        font-size: 13px;
-    }
-
-    .location-filter-dropdown {
-        max-width: 100%;
-    }
-
-    .filter-summary {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
+        flex-direction: column-reverse;
     }
 }
