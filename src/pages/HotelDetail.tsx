@@ -247,6 +247,21 @@ const HotelDetail: React.FC = () => {
                             pauseOnHover: true,
                         });
 
+                        // Add class to page-header-content when slider changes
+                        $hotelHeaderGallery.on(
+                            "beforeChange",
+                            function (event: any, slick: any, currentSlide: number, nextSlide: number) {
+                                const $pageHeaderContent = $(".page-header-content");
+
+                                // Remove class if transitioning to first slide, otherwise add it
+                                if (nextSlide === 0) {
+                                    $pageHeaderContent.removeClass("slide-transitioning");
+                                } else {
+                                    $pageHeaderContent.addClass("slide-transitioning");
+                                }
+                            }
+                        );
+
                         $hotelGallery.slick({
                             dots: false,
                             infinite: false,
@@ -283,7 +298,12 @@ const HotelDetail: React.FC = () => {
             clearTimeout(timer);
             setSliderReady(false);
             if (typeof $ !== "undefined" && $.fn.slick) {
+                const $hotelHeaderGallery = $(".hotel-header-gallery");
                 const $slider = $(".hotel-header-gallery, .hotel-gallery");
+
+                // Remove event listener
+                $hotelHeaderGallery.off("beforeChange");
+
                 if ($slider.hasClass("slick-initialized")) {
                     try {
                         $slider.slick("unslick");
@@ -420,21 +440,6 @@ const HotelDetail: React.FC = () => {
                 <div className="container">
                     <div className="page-header-content text-center">
                         <h1>{hotel.name}</h1>
-                        <div className="header-hotel-details">
-                            <div className="header-hotel-detail">
-                                <span className="label">Location</span>
-                                <span className="text">{hotel.location}</span>
-                            </div>
-                            {/* Amenities */}
-                            <div className="header-hotel-detail">
-                                <span className="label">Hotel Amenities</span>
-                                <span className="text">{hotel.amenities.join(", ")}</span>
-                            </div>
-                            <div className="header-hotel-detail price-detail">
-                                <span className="label">Starting from</span>
-                                <span className="text">${hotel.price || "N/A"}/night</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </section>
@@ -474,6 +479,22 @@ const HotelDetail: React.FC = () => {
 
                     {hotel.address && <p className="hotel-address">{hotel.address}</p>}
                     {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
+
+                    <div className="header-hotel-details">
+                        <div className="header-hotel-detail">
+                            <span className="label">Location</span>
+                            <span className="text">{hotel.location}</span>
+                        </div>
+                        {/* Amenities */}
+                        <div className="header-hotel-detail amenities-detail">
+                            <span className="label">Hotel Amenities</span>
+                            <span className="text">{hotel.amenities.join(", ")}</span>
+                        </div>
+                        <div className="header-hotel-detail price-detail">
+                            <span className="label">Starting from</span>
+                            <span className="text">${hotel.price || "N/A"}/night</span>
+                        </div>
+                    </div>
                     <p>{hotel.description || "No description available for this hotel."}</p>
                 </div>
             </section>

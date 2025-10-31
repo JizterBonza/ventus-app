@@ -6280,6 +6280,11 @@ select {
     flex-direction: column;
     max-width: 1020px;
     margin-inline: auto;
+    transition: opacity 1s ease;
+}
+
+.page-header .page-header-content.slide-transitioning {
+    opacity: 0;
 }
 
 .page-header:not(.has-video) .page-header-content {
@@ -6415,25 +6420,30 @@ select {
 
 .header-hotel-details {
     display: flex;
-    gap: 50px;
-    color: #fff;
-    padding-top: 50px;
-    padding-inline: 40px;
+    /* grid-template-columns: repeat(2, 1fr); */
+    gap: 20px;
+    justify-content: center;
+    flex-direction: column;
+    padding-block: 10px 30px;
 }
 
 .header-hotel-detail {
     display: flex;
     flex-direction: column;
-    gap: 20px;
     text-align: left;
+    text-align: center;
 }
 
 .header-hotel-detail.price-detail {
     white-space: nowrap;
 }
 
+/* .header-hotel-detail.amenities-detail {
+    grid-column: span 2;
+} */
+
 .header-hotel-detail .text {
-    font-size: 40px;
+    font-size: 24px;
     text-transform: uppercase;
 }
 
