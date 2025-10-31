@@ -50,5 +50,6 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0"
-  }
+  },
+  "build": "react-scripts build && cp public/_redirects build/_redirects"
 }
