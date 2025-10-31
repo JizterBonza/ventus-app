@@ -404,7 +404,7 @@ const HotelDetail: React.FC = () => {
                     className="hotel-header-gallery"
                     style={{ opacity: sliderReady ? 1 : 0, transition: "opacity 0.3s ease-in-out" }}
                 >
-                    {hotelImages.map((image, index) => (
+                    {hotelImages.slice(0, 7).map((image, index) => (
                         <div key={index} className="hotel-header-gallery-item">
                             <img
                                 src={image}
@@ -441,7 +441,7 @@ const HotelDetail: React.FC = () => {
 
             {/* Image Gallery */}
             <section className="hotel-gallery">
-                {hotelImages.map((image, index) => (
+                {hotelImages.slice(0, 7).map((image, index) => (
                     <div key={index} className="thumbnail-image" onClick={() => setSelectedImage(index)}>
                         <img
                             src={image}
