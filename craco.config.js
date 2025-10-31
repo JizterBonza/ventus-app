@@ -3,6 +3,10 @@ const path = require('path');
 
 module.exports = {
   devServer: (devServerConfig, { env, paths }) => {
+    // Remove deprecated options to prevent warnings
+    delete devServerConfig.onAfterSetupMiddleware;
+    delete devServerConfig.onBeforeSetupMiddleware;
+
     // Fix deprecation warnings by using setupMiddlewares instead of deprecated options
     devServerConfig.setupMiddlewares = (middlewares, devServer) => {
       if (!devServer) {
