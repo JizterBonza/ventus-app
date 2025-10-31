@@ -1087,7 +1087,10 @@ blockquote cite:before {
     left: 0;
     z-index: 3;
     transition: all 0.3s ease;
+    width: 100%;
 }
+
+@media screen and (max-width: 1600px) {}
 
 @media screen and (max-width: 991px) {
     .breadcrumb-nav {
@@ -1115,7 +1118,6 @@ blockquote cite:before {
 .breadcrumb-nav .breadcrumb {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 10px;
 }
 
