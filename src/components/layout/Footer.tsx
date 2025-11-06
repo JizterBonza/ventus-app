@@ -1,10 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Membership from "../shared/Membership";
 import BannerCTA from "../shared/BannerCTA";
 
 const Footer: React.FC = () => {
     return (
         <>
+            <Membership />
             <BannerCTA />
             <footer className="footer">
                 <div className="container">

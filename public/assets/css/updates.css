@@ -37,6 +37,38 @@
     gap: 15px;
     align-items: baseline;
 }
+
+.section-membership{
+    background: #DBE2D6;
+    padding: 100px 0 30px;
+}
+.membership-content_heading{
+    max-width: 450px;
+    margin: 0 auto 150px;
+}
+.membership-content_heading img{
+    max-width: 53px;
+    margin-bottom: 20px;
+}
+.membership-content_heading h3{
+    font-weight: 300;
+}
+.membership-content_heading .btn{
+    text-transform: uppercase;
+    font-size: 14px;
+}
+.membership-content_heading .btn:after{
+    display: none;
+}
+.membership-content_foot p{
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 0;
+}
+.membership-content_foot p a{
+    border-bottom: 1px solid;
+}
 .footer{
     padding-top:0;
     padding-bottom: 40px;
@@ -190,5 +222,11 @@
     }
     .cta-content_buttons .btn{
         width:100%;
+    }
+    .section-membership{
+        padding-top: 50px;
+    }
+    .membership-content_heading{
+        margin-bottom: 20px;
     }
 }
