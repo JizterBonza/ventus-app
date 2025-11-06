@@ -44,7 +44,7 @@
 :root {
     --black-200: #222224;
     --gold: #D1A678;
-    --padding-block: 160px;
+    --padding-block: 80px;
 }
 
 @media (max-width: 1024px) {
@@ -6681,7 +6681,7 @@ select {
 .global-form .form input[type="date"],
 .global-form .form input[type="tel"],
 .global-form .form select {
-    border: 1px solid #d8d8d8;
+    border: 1px solid #000000;
     border-radius: 0;
     font-size: 20px;
     height: 48px;

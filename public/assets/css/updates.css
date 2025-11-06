@@ -69,6 +69,22 @@
 .membership-content_foot p a{
     border-bottom: 1px solid;
 }
+.section-quote{
+    background: #fff;
+}
+.section-text-center .global-form .form{
+    padding-top: 0;
+}
+textarea.form-control{
+    border: 1px solid #000;
+    border-radius: 0;
+}
+.section-quote .btn{
+    min-width: 200px;
+}
+.section-quote .btn:after{
+    display: none;
+}
 .footer{
     padding-top:0;
     padding-bottom: 40px;
@@ -228,5 +244,12 @@
     }
     .membership-content_heading{
         margin-bottom: 20px;
+    }
+    .section-text-center .global-form .form .d-grid{
+        justify-content: flex-start;
+    }
+   
+    .section-text-center form .btn{
+        min-width: fit-content;
     }
 }
