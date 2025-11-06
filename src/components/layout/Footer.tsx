@@ -1,11 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Newsletter from "../shared/Newsletter";
+import BannerCTA from "../shared/BannerCTA";
 
 const Footer: React.FC = () => {
     return (
         <>
-            <Newsletter />
+            <BannerCTA />
             <footer className="footer">
                 <div className="container">
                     <div className="footer-wrapper">
@@ -30,12 +30,12 @@ const Footer: React.FC = () => {
                                         <Link to="/">Destinations</Link>
                                     </li>
                                     <li>
-                                        <Link to="/">The Magazine</Link>
+                                        <Link to="/the-magazine">The Magazine</Link>
                                     </li>
                                 </ul>
                                 <ul>
                                     <li>
-                                        <Link to="/">Buy Outs</Link>
+                                        <Link to="/buy-outs">Buy Outs</Link>
                                     </li>
                                     <li>
                                         <Link to="/contact">Contact</Link>
