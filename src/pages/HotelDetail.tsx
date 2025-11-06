@@ -7,6 +7,9 @@ import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 
+import QuoteForm from "../components/shared/QuoteForm";
+import BannerCTA from "../components/shared/BannerCTA";
+
 interface Room {
     id: number;
     name: string;
@@ -437,11 +440,7 @@ const HotelDetail: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                <div className="container">
-                    <div className="page-header-content text-center">
-                        <h1>{hotel.name}</h1>
-                    </div>
-                </div>
+               
             </section>
 
             {/* Image Gallery */}
@@ -460,42 +459,65 @@ const HotelDetail: React.FC = () => {
                 ))}
             </section>
 
-            <section className="section-text-center text-center">
+            <section className="section-hotel-content">
                 <div className="container">
-                    <h2>About this hotel</h2>
-                    <div className="hotel-rating">
-                        {renderStars(hotel.rating || 0)}
-                        <span className="rating-text">{hotel.rating || "N/A"}/5</span>
-                        {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
-                    </div>
-                    {/* Hotel Groups/Brands */}
-                    {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
-                        <div className="hotel-groups mb-2">
-                            {hotel.hotel_groups.map((group, index) => (
-                                <span key={group.id} className="badge bg-primary me-2"></span>
-                            ))}
-                        </div>
-                    )}
+                    <div className="hotel-content_left">
+                            <div className="hotel-content_heading">
+                                <h1>{hotel.name}</h1>
+                                <span className="text">{hotel.location}</span>
+                                <p>{hotel.description || "No description available for this hotel."}</p>
+                            </div>
+                        
+                            
+                            <div className="hotel-rating">
+                                {renderStars(hotel.rating || 0)}
+                                <span className="rating-text">{hotel.rating || "N/A"}/5</span>
+                                {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
+                            </div>
+                            {/* Hotel Groups/Brands */}
+                            {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
+                                <div className="hotel-groups mb-2">
+                                    {hotel.hotel_groups.map((group, index) => (
+                                        <span key={group.id} className="badge bg-primary me-2"></span>
+                                    ))}
+                                </div>
+                            )}
 
-                    {hotel.address && <p className="hotel-address">{hotel.address}</p>}
-                    {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
+                            {hotel.address && <p className="hotel-address">{hotel.address}</p>}
+                            {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
 
-                    <div className="header-hotel-details">
-                        <div className="header-hotel-detail">
-                            <span className="label">Location</span>
-                            <span className="text">{hotel.location}</span>
+                            <div className="header-hotel-details">
+                               
+                                {/* Amenities */}
+                                <div className="header-hotel-detail amenities-detail">
+                                    <span className="label">Hotel Amenities</span>
+                                    <span className="text">{hotel.amenities.join(", ")}</span>
+                                </div>
+                                <div className="header-hotel-detail price-detail">
+                                    <span className="label">Starting from</span>
+                                    <span className="text">${hotel.price || "N/A"}/night</span>
+                                </div>
+                            </div>
                         </div>
-                        {/* Amenities */}
-                        <div className="header-hotel-detail amenities-detail">
-                            <span className="label">Hotel Amenities</span>
-                            <span className="text">{hotel.amenities.join(", ")}</span>
-                        </div>
-                        <div className="header-hotel-detail price-detail">
-                            <span className="label">Starting from</span>
-                            <span className="text">${hotel.price || "N/A"}/night</span>
+                    <div className="hotel-content_sidebar">
+                        <div className="section-membership">
+                            <div className="container">
+                                <div className="section-membership-content text-center">
+                                    <div className="membership-content_heading">
+                                        <img src="/assets/img/ventus-logo.png" />
+                                        
+                                        <h3>Join now to unlock exclusive member benefits</h3>
+                                        <a href="#" className="btn btn-primary btn-lg">Join Now</a>
+                                    </div>
+                                    <div className="membership-content_foot">
+                                    <p>Already have an account? Sign in here <a href="#">here</a></p>
+                                        
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <p>{hotel.description || "No description available for this hotel."}</p>
+                   
                 </div>
             </section>
 
@@ -519,20 +541,79 @@ const HotelDetail: React.FC = () => {
                                     <p>{hotel.unique_experiences}</p>
                                 </div>
                             )}
-                            {hotel.hotel_information.map((info, index) => (
-                                <div className="info-card">
-                                    <h5>{info.title}</h5>
-                                    <ul className="list-unstyled">
-                                        {info.description.map((item, itemIndex) => (
-                                            <li key={itemIndex}>{item}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
+                            {hotel.hotel_information.map((info, index) => {
+                                let iconSrc = '/images/info-icon.png'; // default icon
+                                
+                                const title = info.title.toLowerCase();
+                                if (title.includes('dining')) {
+                                    iconSrc = '/assets/img/hotelInfo/dining.svg';
+                                } else if (title.includes('family')) {
+                                    iconSrc = '/assets/img/hotelInfo/family.svg';
+                                } else if (title.includes('wellness')) {
+                                    iconSrc = '/assets/img/hotelInfo/wellness.svg';
+                                } else if (title.includes('transport')) {
+                                    iconSrc = '/assets/img/hotelInfo/transport.svg';
+                                } else if (title.includes('positive impact')) {
+                                    iconSrc = '/assets/img/hotelInfo/positive_impact.svg';
+                                } else if (title.includes('pool')) {
+                                    iconSrc = '/assets/img/hotelInfo/pool.svg';
+                                } 
+                                
+                                return (
+                                    <div className="info-card" key={index}>
+                                        <div className="info-card_icon">
+                                            <img src={iconSrc} alt={info.title} />
+                                        </div>
+                                        <div className="info-card_cont">
+                                            <h5>{info.title}</h5>
+                                            <ul className="list-unstyled">
+                                                {info.description.map((item, itemIndex) => (
+                                                    <li key={itemIndex}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </section>
             )}
+             {/* Related Hotels Section */}
+             <section className="section-related-hotels">
+                <div className="container">
+                    <h3>Other Hotels in {hotel.location}</h3>
+                    <div className="hotels-grid row">
+                        {mockSimilarHotels.map((relatedHotel) => (
+                            <div key={relatedHotel.id} className="col-md-4 mb-4">
+                                <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
+                                    <div className="card-image">
+                                        <img 
+                                            src={relatedHotel.image} 
+                                            alt={relatedHotel.name}
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                target.src = fallbackImages[0];
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="card-content">
+                                        <h4>{relatedHotel.name}</h4>
+                                        <div className="card-description">
+                                            {relatedHotel.location}
+                                        </div>
+                                        <a href="{`/hotel/${relatedHotel.id}`}">View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+<path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
+</svg></a>
+                                      
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+            {/* 
             <section className="section-padding booking-section">
                 <div className="container">
                     <BookingForm
@@ -543,6 +624,9 @@ const HotelDetail: React.FC = () => {
                     />
                 </div>
             </section>
+            */}
+              <BannerCTA />
+              <QuoteForm />
             <Footer />
         </div>
     );

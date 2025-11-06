@@ -8,6 +8,10 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import PageHeader from "../components/shared/PageHeader";
 
+import Membership from "../components/shared/Membership";
+import QuoteForm from "../components/shared/QuoteForm";
+import BannerCTA from "../components/shared/BannerCTA";
+
 const Home: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const [searchParams, setSearchParams] = useState({
@@ -364,7 +368,7 @@ const Home: React.FC = () => {
                                                     title="Explore {room.name}"
                                                     className="card hotel-card"
                                                 >
-                                                    <div className="card-overlay">Find out more</div>
+                                                   {/* <div className="card-overlay">Find out more</div> */} 
                                                     <div className="card-image">
                                                         <img
                                                             src={
@@ -394,12 +398,19 @@ const Home: React.FC = () => {
                                                     <div className="card-content">
                                                         <h4>{displayHotel.name}</h4>
                                                         <div className="card-description">
+                                                        <a>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+<path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
+</svg></a>
+                                                            {/* 
                                                             {displayHotel.description
                                                                 ? displayHotel.description.length > 150
                                                                     ? `${displayHotel.description.substring(0, 150)}...`
                                                                     : displayHotel.description
                                                                 : "No description available"}
+
+                                                                */}
                                                         </div>
+                                                        {/* 
                                                         <div className="card-info has-border">
                                                             <ul className="card-amenities">
                                                                 {(displayHotel.amenities || [])
@@ -431,6 +442,7 @@ const Home: React.FC = () => {
                                                                 </span>
                                                             </div>
                                                         </div>
+                                                        */}
                                                     </div>
                                                 </Link>
                                             </div>
@@ -508,6 +520,7 @@ const Home: React.FC = () => {
                         {filteredInterests.map((interest) => (
                             <div key={interest.id} className="col-md-4 mb-4">
                                 <Link to={`/contact-us`} className="card interest-card">
+                                {/* 
                                     <div className="card-overlay">Find out more</div>
                                     <div className="card-categories">
                                         {interest.categories.map((category, index) => (
@@ -516,13 +529,18 @@ const Home: React.FC = () => {
                                             </span>
                                         ))}
                                     </div>
+                                    */}
                                     <div className="card-image">
                                         <img src={interest.image} alt={interest.title} />
                                     </div>
                                     <div className="card-content">
                                         <h4>Interested in {interest.title}?</h4>
                                         <div className="card-description">{interest.description}</div>
+                                        <a>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+<path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
+</svg></a>
                                     </div>
+                                    
                                 </Link>
                             </div>
                         ))}
@@ -546,6 +564,9 @@ const Home: React.FC = () => {
                     )}
                 </div>
             </section>
+            <Membership />
+            <QuoteForm />
+            <BannerCTA />
             <Footer />
         </div>
     );

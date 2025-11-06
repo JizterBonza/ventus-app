@@ -1,3 +1,7 @@
+.navbar{
+    position: relative;
+    background-color: var(--black-200);
+}
 .section-cta{
     background: url('/assets/img/slider/1.jpg');
     position: relative;
@@ -173,7 +177,90 @@ textarea.form-control{
     flex: 1;
     justify-content: end;
 }
-
+.section-hotel-content{
+    padding-top: 80px;
+}
+.section-hotel-content .container{
+    display: flex;
+    gap: 50px;
+}
+.hotel-content_left{
+    max-width: 769px;
+}
+.hotel-content_heading{
+    border-bottom: 1px solid #0000001A;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+.hotel-content_heading h1{
+    font-size: 40px;
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 0;
+}
+.hotel-content_heading h1 + span{
+    font-weight: 500;
+    font-size: 18px;
+    margin-bottom: 50px;
+}
+.hotel-content_heading p{
+    font-size: 16px;
+    margin-bottom: 0;
+}
+.hotel-detail-page .breadcrumb-nav,
+.hotel-info-list .info-card li:before,
+.hotel-detail-page .section-membership{
+    display: none;
+}
+.hotel-detail-page .hotel-content_sidebar .section-membership{
+    display: block;
+}
+.section-hotel-info .container{
+    max-width: 1600px !important;
+    border:0;
+}
+.hotel-info-list{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+.hotel-info-list .info-card{
+    flex: 1 1 calc(33.333% - 20px);
+    max-width: calc(33.333% - 20px);
+    display: flex;
+    gap: 30px;
+}
+.info-card_icon{
+    background: #DBE2D6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 127px;
+    min-width: 127px;
+}
+.info-card_icon img{
+    max-height: 36px;
+}
+.hotel-info-list .info-card h5{
+    font-size: 16px;
+    font-weight: 500;
+}
+.hotel-info-list .info-card li{
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.3;
+}
+.section-hotel-info h3{
+    font-size: 32px;
+    font-weight: 300;
+}
+.section-related-hotels .container > h3{
+    font-size: 32px;
+    font-weight: 300;
+    margin-bottom: 50px;
+    border-top: 1px solid #0000001A;
+    padding-top: 80px;
+}
 @media screen and (max-width:1200px){
     .footer-left{
         padding-right: 100px;

@@ -1,16 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Membership from "../shared/Membership";
-import QuoteForm from "../shared/QuoteForm";
-import BannerCTA from "../shared/BannerCTA";
+
+
 
 
 const Footer: React.FC = () => {
     return (
         <>
-            <Membership />
-            <QuoteForm />
-            <BannerCTA />
+           
             <footer className="footer">
                 <div className="container">
                     <div className="footer-wrapper">

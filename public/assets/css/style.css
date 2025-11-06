@@ -6812,7 +6812,7 @@ select {
     border: 0;
     border-radius: 0;
     height: 100%;
-    display: block !important;
+    display: flex !important;
     color: #fff;
     position: relative;
 }
@@ -6862,6 +6862,7 @@ select {
 .card-image {
     position: relative;
     overflow: hidden;
+    min-height: 262px;
 }
 
 .card-image a {
@@ -6870,23 +6871,33 @@ select {
 
 .card-image img {
     width: 100%;
-    height: 480px;
+    height: 262px;
     object-fit: cover;
 }
 
 .card-content {
-    padding: 30px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    height: calc(100% - 480px);
+    gap: 10px;
+    height:100%;
 }
 
 .card-content h4 {
     color: #fff;
     margin: 0;
+    font-size: 24px;
 }
-
+.card-content a{
+    color: #fff !important;
+    font-size: 16.61px;
+    font-weight: 300;
+    line-height: 1;
+    margin-top: auto;
+}
+.card-content a svg{
+    margin-left: 10px;
+}
 .card-content ul {
     margin: 0;
     padding: 0;
@@ -6896,9 +6907,10 @@ select {
 
 .card-description {
     color: #fff;
-    font-size: 18px;
+    font-size: 16.61px;
     line-height: 120%;
     color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 40px;
 }
 
 .card-content span,
