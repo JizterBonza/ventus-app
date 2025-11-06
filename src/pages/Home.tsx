@@ -1,256 +1,551 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useSearch } from "../hooks/useSearch";
+import { Hotel, SearchParams } from "../types/search";
+import { getHotelDetailsBatch } from "../utils/api";
+import { interestCategories } from "../utils/interestCategories";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import PageHeader from "../components/shared/PageHeader";
-import Accordion from "../components/shared/Accordion";
-
-declare const $: any;
 
 const Home: React.FC = () => {
-    const [sliderReady, setSliderReady] = useState(false);
-    // Popular cities data
-    const popularRooms = [
-        {
-            name: "Dubai",
-            image: "/assets/img/featured/1.webp",
-            description:
-                "Dubai, a dazzling metropolis of innovation and luxury, offers an extraordinary blend of ultramodern architecture, lavish shopping, and world-class dining, making it an unparalleled destination for travelers seeking opulence and adventure.",
-        },
-        {
-            name: "Megeve",
-            image: "/assets/img/featured/2.webp",
-            description:
-                "Discover the alpine elegance of Megève, where charming cobblestone streets, luxurious chalets, and breathtaking mountain views come together to offer an exclusive ski experience paired with gourmet dining and world-class amenities.",
-        },
-        {
-            name: "Maldives",
-            image: "/assets/img/featured/3.jpeg",
-            description:
-                "The Maldives, a tropical paradise of pristine beaches and crystalline waters, offers an unparalleled luxury escape with its exclusive overwater bungalows, world-class spas, and vibrant marine life, creating an idyllic retreat for discerning travelers.",
-        },
-    ];
+    const [urlSearchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useState({
+        location: "",
+        priceRange: "all",
+        rating: "all",
+        sortBy: "recommended",
+    });
 
-    const faqs = [
-        {
-            question: "HOW DO I BOOK?",
-            answer: "Booking with Ventus is easy. Simply go to our contact us page, let us know your destination, travel dates, and follow the prompts to complete your enquiry. Our team will come back to you with options to book and any help that you may require.",
-        },
-        {
-            question: "WHAT ARE THE PAYMENT OPTIONS?",
-            answer: "We accept various payment methods, including credit cards, debit cards, and online bank transfers. You can choose the option that is most convenient for you during the booking process.",
-        },
-        {
-            question: "CAN I CANCEL MY BOOKING?",
-            answer: "Yes, if the cancellation policy upon making your booking allows. Often there will be the option for you to pick a refundable or non refundable rate, which may affect the rate the hotel charges. You can contact our customer support team by WhatsApp, email, or through our website's live chat feature and we will be more than happy to assist.",
-        },
-        {
-            question: "HOW CAN I CONTACT YOU?",
-            answer: "You can contact our customer support team by our contact us page, WhatsApp, email, or through our website's live chat feature. We are UK based and available throughout the day to assist you with any questions or concerns you may have.",
-        },
+    const { hotels, loading, error, searchByQuery, searchAdvanced, clearError } = useSearch();
+    const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
+    const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+    // Interest categories filter state
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedLocation, setSelectedLocation] = useState<string>("all");
+    const [filteredInterests, setFilteredInterests] = useState(interestCategories);
+
+    // Extract unique categories and locations
+    const allCategories = Array.from(new Set(interestCategories.flatMap((interest) => interest.categories))).sort();
+    const allLocations = Array.from(new Set(interestCategories.map((interest) => interest.location))).sort();
+
+    // Fallback hotel images for when API doesn't provide images
+    const fallbackImages = [
+        "/assets/img/rooms/1.jpg",
+        "/assets/img/rooms/2.jpg",
+        "/assets/img/rooms/3.jpg",
+        "/assets/img/rooms/4.jpg",
+        "/assets/img/rooms/5.jpg",
+        "/assets/img/rooms/6.jpg",
+        "/assets/img/rooms/7.jpg",
+        "/assets/img/rooms/8.jpg",
     ];
 
     useEffect(() => {
-        // Initialize the card slider when component mounts
-        const initSlider = () => {
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $slider = $(".card-slider");
+        // Handle URL parameters from home page
+        const location = urlSearchParams.get("location");
 
-                // Check if slider is not already initialized
-                if (!$slider.hasClass("slick-initialized")) {
-                    $slider.slick({
-                        dots: false,
-                        infinite: false,
-                        speed: 300,
-                        slidesToShow: 3,
-                        slidesToScroll: 1,
-                        autoplay: false,
-                        arrows: true,
-                        responsive: [
-                            {
-                                breakpoint: 1160,
-                                settings: {
-                                    slidesToShow: 2,
-                                    slidesToScroll: 1,
-                                },
-                            },
-                            {
-                                breakpoint: 768,
-                                settings: {
-                                    slidesToShow: 1,
-                                    slidesToScroll: 1,
-                                },
-                            },
-                        ],
-                    });
+        if (location) {
+            setSearchParams((prev) => ({
+                ...prev,
+                location: location || "",
+            }));
 
-                    // Show the slider after initialization
-                    setSliderReady(true);
-                }
-            }
+            // Auto-search for the location
+            searchByQuery(location, 20);
+        }
+    }, [urlSearchParams, searchByQuery]);
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const searchQuery = searchParams.location || "hotels";
+
+        const searchParamsForAPI: SearchParams = {
+            query: searchQuery,
+            limit: 20,
+            location: searchParams.location || undefined,
+            priceRange: searchParams.priceRange !== "all" ? searchParams.priceRange : undefined,
+            rating: searchParams.rating !== "all" ? searchParams.rating : undefined,
+            sortBy: searchParams.sortBy !== "recommended" ? searchParams.sortBy : undefined,
         };
 
-        // Small delay to ensure DOM is ready
-        const timer = setTimeout(initSlider, 100);
+        await searchAdvanced(searchParamsForAPI);
+    };
 
-        // Cleanup function to destroy slider when component unmounts
-        return () => {
-            clearTimeout(timer);
-            setSliderReady(false);
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $slider = $(".card-slider");
-                if ($slider.hasClass("slick-initialized")) {
-                    $slider.slick("unslick");
+    // Function to fetch detailed hotel information
+    const fetchHotelDetails = async (hotelIds: number[]) => {
+        if (hotelIds.length === 0) return;
+
+        setLoadingDetails(true);
+        try {
+            console.log("Fetching detailed information for hotels:", hotelIds);
+            const detailedHotelsData = await getHotelDetailsBatch(hotelIds);
+            setDetailedHotels(detailedHotelsData);
+            console.log("Successfully fetched detailed hotel information:", detailedHotelsData);
+        } catch (error) {
+            console.error("Error fetching hotel details:", error);
+            // If detailed fetch fails, we'll still show the basic hotel information
+            // Clear any partial data to avoid confusion
+            setDetailedHotels([]);
+        } finally {
+            setLoadingDetails(false);
+        }
+    };
+
+    // Apply client-side filtering and sorting to API results
+    useEffect(() => {
+        let filtered = hotels;
+
+        // Apply price filter
+        if (searchParams.priceRange !== "all") {
+            filtered = filtered.filter((hotel) => {
+                const price = hotel.price || 0;
+                switch (searchParams.priceRange) {
+                    case "low":
+                        return price < 200;
+                    case "medium":
+                        return price >= 200 && price < 300;
+                    case "high":
+                        return price >= 300;
+                    default:
+                        return true;
                 }
-            }
-        };
-    }, []); // Empty dependency array means this runs once on mount
+            });
+        }
+
+        // Apply rating filter
+        if (searchParams.rating !== "all") {
+            const minRating = parseInt(searchParams.rating);
+            filtered = filtered.filter((hotel) => (hotel.rating || 0) >= minRating);
+        }
+
+        // Apply sorting
+        switch (searchParams.sortBy) {
+            case "price-low":
+                filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+                break;
+            case "price-high":
+                filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+                break;
+            case "rating":
+                filtered = [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                break;
+            case "distance":
+                filtered = [...filtered].sort((a, b) => {
+                    const aDist = parseFloat(a.distance?.split(" ")[0] || "0");
+                    const bDist = parseFloat(b.distance?.split(" ")[0] || "0");
+                    return aDist - bDist;
+                });
+                break;
+            default:
+                break;
+        }
+
+        setFilteredHotels(filtered);
+
+        // Fetch detailed information for the filtered hotels
+        if (filtered.length > 0) {
+            const hotelIds = filtered.map((hotel) => hotel.id);
+            fetchHotelDetails(hotelIds);
+        } else {
+            setDetailedHotels([]);
+        }
+    }, [hotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
+
+    const handleInputChange = (field: string, value: string) => {
+        setSearchParams((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    // Interest category filter handlers
+    const toggleCategory = (category: string) => {
+        setSelectedCategories((prev) =>
+            prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+        );
+    };
+
+    const handleLocationChange = (location: string) => {
+        setSelectedLocation(location);
+    };
+
+    // Filter interests based on selected categories and location
+    useEffect(() => {
+        let filtered = interestCategories;
+
+        // Filter by location
+        if (selectedLocation !== "all") {
+            filtered = filtered.filter((interest) => interest.location === selectedLocation);
+        }
+
+        // Filter by categories (show if ANY selected category matches)
+        if (selectedCategories.length > 0) {
+            filtered = filtered.filter((interest) =>
+                interest.categories.some((cat) => selectedCategories.includes(cat))
+            );
+        }
+
+        setFilteredInterests(filtered);
+    }, [selectedCategories, selectedLocation]);
+
+    const renderStars = (rating: number) => {
+        return Array.from({ length: 5 }, (_, i) => (
+            <i key={i} className={`star-rating ${i < rating ? "active" : ""}`}></i>
+        ));
+    };
 
     return (
-        <div>
+        <div className="search-page">
             <Header />
             <PageHeader
-                title="Start Your Journey With Ventus Hotels"
-                text="A World of Endless Travel Possibilities"
-                video={true}
-                booking={true}
+                title="Discover Your Dream Destinations"
+                text="Browse some of our favourite destinations below. If you don't see the place you have in mind, just get in touch. We work with an extensive collection of handpicked luxury hotels across the globe, in the most extraordinary and sought after locations."
+                backgroundImage="/assets/img/slider/1.jpg"
             />
-
-            {/* Hero Slider */}
-            {/* <Slider slides={slides} autoplay={true} autoplayTimeout={5000} showDots={true} /> */}
-
-            <section className="section-padding section-text-center">
+            {/* Search Form */}
+            <section className="search-form-section">
                 <div className="container">
-                    <div className="row justify-content-md-center">
-                        <div className="col-md-8 text-center">
-                            <h2>Immerse yourself in the art of refined travel</h2>
-                            <p>
-                                Our handpicked destinations promise to indulge your every desire. <br />A world of
-                                endless travel possibilities awaits.
-                            </p>
-                            <a className="btn btn-primary" href="/hotel/9817" data-discover="true">
-                                View Details
-                            </a>
+                    <div className="booking-inner clearfix">
+                        <form onSubmit={handleSearch} className="form1 clearfix">
+                            <div className="col1 c1" style={{ width: "65%" }}>
+                                <div className="input1_wrapper">
+                                    <label>Location</label>
+                                    <div className="input1_inner">
+                                        <input
+                                            type="text"
+                                            className="form-control input"
+                                            placeholder="Where are you going?"
+                                            value={searchParams.location}
+                                            onChange={(e) => handleInputChange("location", e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col4 c5" style={{ width: "35%" }}>
+                                <button type="submit" className="btn-form1-submit">
+                                    {loading ? "Searching..." : "Search Hotels"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            {/* Filters and Results */}
+            <section className={`results-section  ${filteredHotels.length > 0 ? "has-results" : ""}`}>
+                <div className="container">
+                    <div className="row">
+                        {/* Filters Sidebar */}
+                        {/* <div className="col-md-3">
+              <div className="filters-sidebar">
+                <h4>Filters</h4>
+                
+                <div className="filter-group">
+                  <h5>Price Range</h5>
+                  <select
+                    className="form-control"
+                    value={searchParams.priceRange}
+                    onChange={(e) => handleInputChange('priceRange', e.target.value)}
+                  >
+                    <option value="all">All Prices</option>
+                    <option value="low">Under $200</option>
+                    <option value="medium">$200 - $300</option>
+                    <option value="high">Over $300</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <h5>Rating</h5>
+                  <select
+                    className="form-control"
+                    value={searchParams.rating}
+                    onChange={(e) => handleInputChange('rating', e.target.value)}
+                  >
+                    <option value="all">All Ratings</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4+ Stars</option>
+                    <option value="3">3+ Stars</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <h5>Sort By</h5>
+                  <select
+                    className="form-control"
+                    value={searchParams.sortBy}
+                    onChange={(e) => handleInputChange('sortBy', e.target.value)}
+                  >
+                    <option value="recommended">Recommended</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="distance">Distance</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <h5>View Mode</h5>
+                  <div className="btn-group" role="group">
+                    <button
+                      type="button"
+                      className={`btn ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setViewMode('grid')}
+                    >
+                      <i className="fa fa-th"></i> Grid
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setViewMode('list')}
+                    >
+                      <i className="fa fa-list"></i> List
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div> */}
+
+                        {/* Results */}
+                        <div className="col-md-12">
+                            <div className="results-header">
+                                <h3>Found {filteredHotels.length} hotels</h3>
+                                {searchParams.location && (
+                                    <p>
+                                        Searching for hotels in: <strong>{searchParams.location}</strong>
+                                    </p>
+                                )}
+                            </div>
+                            {loadingDetails && (
+                                <div className="alert alert-info alert-loading " role="alert">
+                                    <div className="spinner-border" role="status">
+                                        <span className="sr-only">Loading...</span>
+                                    </div>{" "}
+                                    Loading detailed hotel information...
+                                </div>
+                            )}
+                            {error && (
+                                <div className="alert alert-danger" role="alert">
+                                    <strong>Search Error:</strong> {error}
+                                    <button
+                                        type="button"
+                                        className="btn-close float-end"
+                                        onClick={clearError}
+                                        aria-label="Close"
+                                    ></button>
+                                </div>
+                            )}
+
+                            {loading ? (
+                                <div className="text-center">
+                                    <div className="spinner-border" role="status">
+                                        <span className="sr-only">Loading...</span>
+                                    </div>
+                                    <p className="mt-2">Searching for hotels...</p>
+                                </div>
+                            ) : (
+                                <div className={`hotels-container ${viewMode === "grid" ? "row" : ""}`}>
+                                    {filteredHotels.map((hotel) => {
+                                        // Use detailed hotel information if available, otherwise fall back to basic info
+                                        const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
+                                        const displayHotel = detailedHotel || hotel;
+
+                                        return (
+                                            <div
+                                                key={hotel.id}
+                                                className={viewMode === "grid" ? "col-md-4 mb-4" : "mb-5"}
+                                            >
+                                                <Link
+                                                    to={`/hotel/${hotel.id}`}
+                                                    title="Explore {room.name}"
+                                                    className="card hotel-card"
+                                                >
+                                                    <div className="card-overlay">Find out more</div>
+                                                    <div className="card-image">
+                                                        <img
+                                                            src={
+                                                                displayHotel.images && displayHotel.images.length > 0
+                                                                    ? displayHotel.images[0].url
+                                                                    : displayHotel.image ||
+                                                                      fallbackImages[hotel.id % fallbackImages.length]
+                                                            }
+                                                            alt={displayHotel.name}
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.src =
+                                                                    fallbackImages[hotel.id % fallbackImages.length];
+                                                            }}
+                                                        />
+                                                        {loadingDetails && !detailedHotel && (
+                                                            <div className="loading-overlay">
+                                                                <div
+                                                                    className="spinner-border spinner-border-sm"
+                                                                    role="status"
+                                                                >
+                                                                    <span className="sr-only">Loading details...</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="card-content">
+                                                        <h4>{displayHotel.name}</h4>
+                                                        <div className="card-description">
+                                                            {displayHotel.description
+                                                                ? displayHotel.description.length > 150
+                                                                    ? `${displayHotel.description.substring(0, 150)}...`
+                                                                    : displayHotel.description
+                                                                : "No description available"}
+                                                        </div>
+                                                        <div className="card-info has-border">
+                                                            <ul className="card-amenities">
+                                                                {(displayHotel.amenities || [])
+                                                                    .slice(0, 3)
+                                                                    .map((amenity, index) => (
+                                                                        <li key={index} className="amenity-tag">
+                                                                            {amenity}
+                                                                        </li>
+                                                                    ))}
+                                                                {(displayHotel.amenities || []).length > 3 && (
+                                                                    <li className="amenity-tag">
+                                                                        +{(displayHotel.amenities || []).length - 3}
+                                                                        &nbsp; more
+                                                                    </li>
+                                                                )}
+                                                                {(!displayHotel.amenities ||
+                                                                    displayHotel.amenities.length === 0) && (
+                                                                    <li className="amenity-tag">
+                                                                        Amenities not available
+                                                                    </li>
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                        <div className="card-actions">
+                                                            <div className="card-price">
+                                                                <span className="price-label">from</span>
+                                                                <span className="price-amount">
+                                                                    ${displayHotel.price}/night
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {!loading && filteredHotels.length === 0 && (
+                                <div className="text-center">
+                                    <h4>No hotels found</h4>
+                                    <p>Try adjusting your search criteria</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Popular Cities Section */}
-            <section className="popular-cities section-padding">
+            <section className="interests-section">
                 <div className="container">
-                    <div className="row mb-5">
-                        <div className="col-lg-6">
-                            <div className="subtitle">For Global Luxury Travellers </div>
-                            <h2>Where are you travelling? </h2>
-                        </div>
-                        <div className="col-lg-6">
-                            <p>Discover the best hotels in the most popular destinations around the world</p>
-                            <a className="btn btn-primary" href="/destinations" data-discover="true">
-                                View Our Featured Destinations
-                            </a>
-                        </div>
-                    </div>
-                    <div
-                        className="card-slider"
-                        style={{
-                            opacity: sliderReady ? 1 : 0,
-                            transition: "opacity 0.3s ease-in-out",
-                        }}
-                    >
-                        {popularRooms.map((room, index) => (
-                            <div key={index} className="card-wrap">
-                                <Link
-                                    to={`/destinations?location=${room.name}`}
-                                    title="Explore {room.name}"
-                                    className="card room-card compact"
+                    {/* Filters */}
+                    <div className="interests-filters">
+                        <div className="filter-row">
+                            <div className="filter-group">
+                                <label className="filter-label">Filter by Interest:</label>
+                                <div className="category-filters">
+                                    {allCategories.map((category) => (
+                                        <button
+                                            key={category}
+                                            className={`category-filter-btn ${
+                                                selectedCategories.includes(category) ? "active" : ""
+                                            }`}
+                                            onClick={() => toggleCategory(category)}
+                                        >
+                                            {category}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="filter-group">
+                                <label className="filter-label">Location:</label>
+                                <select
+                                    className="location-filter-dropdown form-select"
+                                    value={selectedLocation}
+                                    onChange={(e) => handleLocationChange(e.target.value)}
                                 >
+                                    <option value="all">All Locations</option>
+                                    {allLocations.map((location) => (
+                                        <option key={location} value={location}>
+                                            {location}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        {(selectedCategories.length > 0 || selectedLocation !== "all") && (
+                            <div className="filter-summary">
+                                Showing {filteredInterests.length} of {interestCategories.length} interests
+                                <button
+                                    className="clear-filters-btn"
+                                    onClick={() => {
+                                        setSelectedCategories([]);
+                                        setSelectedLocation("all");
+                                    }}
+                                >
+                                    Clear All Filters
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Interest Cards */}
+                    <div className="row">
+                        {filteredInterests.map((interest) => (
+                            <div key={interest.id} className="col-md-4 mb-4">
+                                <Link to={`/contact-us`} className="card interest-card">
                                     <div className="card-overlay">Find out more</div>
+                                    <div className="card-categories">
+                                        {interest.categories.map((category, index) => (
+                                            <span key={index} className="category-tag">
+                                                {category}
+                                            </span>
+                                        ))}
+                                    </div>
                                     <div className="card-image">
-                                        <img src={room.image} alt={room.name} />
+                                        <img src={interest.image} alt={interest.title} />
                                     </div>
                                     <div className="card-content">
-                                        <h4>{room.name}</h4>
-                                        <div className="card-description">
-                                            {room.description
-                                                ? room.description.length > 150
-                                                    ? `${room.description.substring(0, 150)}...`
-                                                    : room.description
-                                                : "No description available"}
-                                        </div>
+                                        <h4>Interested in {interest.title}?</h4>
+                                        <div className="card-description">{interest.description}</div>
                                     </div>
                                 </Link>
                             </div>
                         ))}
                     </div>
+
+                    {/* No results message */}
+                    {filteredInterests.length === 0 && (
+                        <div className="text-center no-results">
+                            <h4>No interests match your filters</h4>
+                            <p>Try adjusting your filter criteria</p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    setSelectedCategories([]);
+                                    setSelectedLocation("all");
+                                }}
+                            >
+                                Clear All Filters
+                            </button>
+                        </div>
+                    )}
                 </div>
             </section>
-
-            {/* About Section */}
-            <section className="about section-about section-padding">
-                <div className="container">
-                    <div className="row d-flex align-items-center">
-                        <div className="col col-md-6 mb-4 animate-box" data-animate-effect="fadeInUp">
-                            <img src="/assets/img/page/about-section.png" alt="" />
-                        </div>
-                        <div className="col-md-6 mb-30 animate-box" data-animate-effect="fadeInUp">
-                            <h2>About Me</h2>
-                            <p>
-                                Welcome to my world, where elegance meets exploration and unforgettable adventure
-                                awaits!
-                            </p>
-                            <Link to="/about" className="btn btn-primary">
-                                Find Out More
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="about section-about section-padding bg-cream">
-                <div className="container">
-                    <div className="row d-flex align-items-center">
-                        <div className="col-md-6 mb-30 animate-box" data-animate-effect="fadeInUp">
-                            <div className="star-rating-container">
-                                <i className="star-rating"></i>
-                                <i className="star-rating"></i>
-                                <i className="star-rating"></i>
-                                <i className="star-rating"></i>
-                                <i className="star-rating"></i>
-                            </div>
-                            <div className="subtitle">Hear from our clients</div>
-                            <h2>Rachel Speed</h2>
-                            <p>
-                                I recently booked with Daniella and the experience was beyond incredible. From the
-                                moment I reached out, she took the time to understand exactly what I was looking for and
-                                sent me several beautiful options to choose from. The hotel was stunning, with
-                                breathtaking views and world-class amenities. But what truly exceeded my expectations
-                                was the upgrade I received—an over-the-top suite with panoramic ocean views! It was the
-                                perfect blend of luxury, personal attention, and thoughtful surprises. I couldn't have
-                                asked for a better experience, and I'm already looking forward to booking my next trip
-                                with them!
-                            </p>
-                            {/* call */}
-                            {/* <div className="reservations">
-                <div className="icon"><span className="flaticon-call"></span></div>
-                <div className="text">
-                  <p>Reservation</p> <a href="tel:855-100-4444">855 100 4444</a>
-                </div>
-              </div> */}
-                        </div>
-                        <div className="col col-md-6 animate-box" data-animate-effect="fadeInUp">
-                            <img src="/assets/img/clients/review-1.jpg" alt="" />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <Accordion
-                id="faqs"
-                title="FAQs"
-                text="Find answers to common questions about travel arrangements, booking process, and our services."
-                faqs={faqs}
-            />
             <Footer />
         </div>
     );
