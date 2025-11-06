@@ -1086,7 +1086,7 @@ blockquote cite:before {
     left: 0;
     top: 0;
     width: 100%;
-    background: transparent;
+    background-color: #222224;
     z-index: 99;
     padding-right: 0;
     padding-left: 0;
