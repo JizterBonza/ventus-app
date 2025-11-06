@@ -202,11 +202,11 @@ const Home: React.FC = () => {
     return (
         <div className="search-page">
             <Header />
-            <PageHeader
+            {/* <PageHeader
                 title="Discover Your Dream Destinations"
                 text="Browse some of our favourite destinations below. If you don't see the place you have in mind, just get in touch. We work with an extensive collection of handpicked luxury hotels across the globe, in the most extraordinary and sought after locations."
                 backgroundImage="/assets/img/slider/1.jpg"
-            />
+            /> */}
             {/* Search Form */}
             <section className="search-form-section">
                 <div className="container">
@@ -455,7 +455,7 @@ const Home: React.FC = () => {
                     {/* Filters */}
                     <div className="interests-filters">
                         <div className="filter-row">
-                            <div className="filter-group">
+                            {/* <div className="filter-group">
                                 <label className="filter-label">Filter by Interest:</label>
                                 <div className="category-filters">
                                     {allCategories.map((category) => (
@@ -470,8 +470,8 @@ const Home: React.FC = () => {
                                         </button>
                                     ))}
                                 </div>
-                            </div>
-                            <div className="filter-group">
+                            </div> */}
+                            {/* <div className="filter-group">
                                 <label className="filter-label">Location:</label>
                                 <select
                                     className="location-filter-dropdown form-select"
@@ -485,7 +485,7 @@ const Home: React.FC = () => {
                                         </option>
                                     ))}
                                 </select>
-                            </div>
+                            </div> */}
                         </div>
                         {(selectedCategories.length > 0 || selectedLocation !== "all") && (
                             <div className="filter-summary">
