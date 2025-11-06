@@ -1,6 +1,6 @@
 import React from "react";
 
-const Newsletter: React.FC = () => {
+const Membership: React.FC = () => {
     return (
         <section className="section-membership">
             <div className="container">
@@ -21,4 +21,4 @@ const Newsletter: React.FC = () => {
     );
 };
 
-export default Newsletter;
+export default Membership;

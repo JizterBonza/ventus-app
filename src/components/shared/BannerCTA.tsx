@@ -1,6 +1,6 @@
 import React from "react";
 
-const Newsletter: React.FC = () => {
+const BannerCTA: React.FC = () => {
     return (
         <section className="section-cta section-padding">
             <div className="container">
@@ -19,4 +19,4 @@ const Newsletter: React.FC = () => {
     );
 };
 
-export default Newsletter;
+export default BannerCTA;
