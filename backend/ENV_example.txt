@@ -1,0 +1,8 @@
+# Backend Environment Variables for Render
+# Copy these to your Render backend service environment variables
+
+DATABASE_URL=<your-render-postgresql-internal-url>
+JWT_SECRET=<generate-a-secure-random-string>
+NODE_ENV=production
+PORT=10000
+

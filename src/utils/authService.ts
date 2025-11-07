@@ -4,67 +4,20 @@ import { User, LoginCredentials, SignupData, AuthResponse } from '../types/auth'
 const AUTH_TOKEN_KEY = 'ventus_auth_token';
 const AUTH_USER_KEY = 'ventus_auth_user';
 
-// API configuration (to be replaced with actual backend)
-const AUTH_API_URL = process.env.REACT_APP_AUTH_API_URL || '/api/auth';
+// API configuration
+const AUTH_API_URL = process.env.REACT_APP_AUTH_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://ventus-backend.onrender.com/api/auth'  // Update with your Render backend URL
+    : 'http://localhost:5000/api/auth');
 
 /**
  * Login user with email and password
  */
 export const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    // TODO: Replace with actual API call
-    // For now, using mock authentication
     console.log('Login attempt:', credentials.email);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Mock validation
-    if (!credentials.email || !credentials.password) {
-      return {
-        success: false,
-        error: 'Email and password are required'
-      };
-    }
-
-    if (!isValidEmail(credentials.email)) {
-      return {
-        success: false,
-        error: 'Invalid email format'
-      };
-    }
-
-    if (credentials.password.length < 6) {
-      return {
-        success: false,
-        error: 'Password must be at least 6 characters'
-      };
-    }
-
-    // Mock user data
-    const mockUser: User = {
-      id: generateUserId(),
-      email: credentials.email,
-      firstName: 'John',
-      lastName: 'Doe',
-      createdAt: new Date().toISOString()
-    };
-
-    const mockToken = generateMockToken();
-
-    // Store in localStorage
-    localStorage.setItem(AUTH_TOKEN_KEY, mockToken);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
-
-    return {
-      success: true,
-      user: mockUser,
-      token: mockToken,
-      message: 'Login successful'
-    };
-
-    // Actual API call (uncomment when backend is ready):
-    /*
+    // Call actual backend API
     const response = await fetch(`${AUTH_API_URL}/login`, {
       method: 'POST',
       headers: {
@@ -78,7 +31,7 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
     if (!response.ok) {
       return {
         success: false,
-        error: data.message || 'Login failed'
+        error: data.error || 'Login failed'
       };
     }
 
@@ -96,7 +49,6 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
       token: data.token,
       message: data.message || 'Login successful'
     };
-    */
   } catch (error) {
     console.error('Login error:', error);
     return {
@@ -113,31 +65,7 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
   try {
     console.log('Signup attempt:', data.email);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Validation
-    if (!data.email || !data.password || !data.firstName || !data.lastName) {
-      return {
-        success: false,
-        error: 'All fields are required'
-      };
-    }
-
-    if (!isValidEmail(data.email)) {
-      return {
-        success: false,
-        error: 'Invalid email format'
-      };
-    }
-
-    if (data.password.length < 6) {
-      return {
-        success: false,
-        error: 'Password must be at least 6 characters'
-      };
-    }
-
+    // Client-side validation
     if (data.password !== data.confirmPassword) {
       return {
         success: false,
@@ -152,37 +80,19 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
       };
     }
 
-    // Mock user data
-    const mockUser: User = {
-      id: generateUserId(),
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
-      createdAt: new Date().toISOString()
-    };
-
-    const mockToken = generateMockToken();
-
-    // Store in localStorage
-    localStorage.setItem(AUTH_TOKEN_KEY, mockToken);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
-
-    return {
-      success: true,
-      user: mockUser,
-      token: mockToken,
-      message: 'Signup successful'
-    };
-
-    // Actual API call (uncomment when backend is ready):
-    /*
+    // Call actual backend API
     const response = await fetch(`${AUTH_API_URL}/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone
+      })
     });
 
     const result = await response.json();
@@ -190,7 +100,7 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
     if (!response.ok) {
       return {
         success: false,
-        error: result.message || 'Signup failed'
+        error: result.error || 'Signup failed'
       };
     }
 
@@ -208,7 +118,6 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
       token: result.token,
       message: result.message || 'Signup successful'
     };
-    */
   } catch (error) {
     console.error('Signup error:', error);
     return {
@@ -239,11 +148,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
       return null;
     }
 
-    const user = JSON.parse(userStr) as User;
-    return user;
-
-    // TODO: Verify token with backend
-    /*
+    // Verify token with backend
     const response = await fetch(`${AUTH_API_URL}/verify`, {
       method: 'GET',
       headers: {
@@ -257,8 +162,13 @@ export const getCurrentUser = async (): Promise<User | null> => {
     }
 
     const data = await response.json();
+    
+    // Update localStorage with fresh user data
+    if (data.user) {
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+    }
+    
     return data.user;
-    */
   } catch (error) {
     console.error('Error getting current user:', error);
     return null;
