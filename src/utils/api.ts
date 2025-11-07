@@ -308,6 +308,8 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
       short_info: hotelData.short_info,
       hotel_information: hotelData.hotel_information || [],
       amenities: hotelData.amenities || [],
+      benefits: hotelData.benefits || [], 
+      benefits_footnotes: hotelData.benefits_footnotes || [],
       images: hotelData.images || [],
       videos: hotelData.videos || [],
       links: hotelData.links,

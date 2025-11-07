@@ -112,6 +112,19 @@ $(function () {
     // YouTubePopUp
     $("a.vid").YouTubePopUp();
 
+    $('.header-image-container').click(function(){
+        console.log('test');
+        $(".gallery-modal").fadeIn();
+    });
+
+     // hotel gallery
+     $(".modal-hotel-gallery").slick({
+        slidesToShow:1,
+        slidesToScroll:1
+       
+        
+     });
+
     // Testimonials owlCarousel *
     $(".testimonials .owl-carousel").owlCarousel({
         loop: true,

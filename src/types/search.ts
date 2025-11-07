@@ -59,6 +59,8 @@ export interface Hotel {
   images: HotelImage[];
   videos: any[];
   links: HotelLinks;
+  benefits?: string[]; 
+  benefits_footnotes?: string[];  
   
   // Legacy fields for backward compatibility
   rating?: number;

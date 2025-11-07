@@ -224,100 +224,7 @@ const HotelDetail: React.FC = () => {
         fetchHotelDetails();
     }, [id]);
 
-    // Separate useEffect for slider initialization
-    useEffect(() => {
-        // Don't initialize slider until hotel data is loaded
-        if (!hotel || loading) return;
-
-        const initSlider = () => {
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $hotelHeaderGallery = $(".hotel-header-gallery");
-                const $hotelGallery = $(".hotel-gallery");
-                // Check if slider exists and is not already initialized
-                if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
-                    try {
-                        $hotelHeaderGallery.slick({
-                            dots: true,
-                            infinite: true,
-                            speed: 1000,
-                            slidesToShow: 1,
-                            slidesToScroll: 1,
-                            autoplay: true,
-                            autoplaySpeed: 5000,
-                            arrows: false,
-                            fade: true,
-                            cssEase: "linear",
-                            pauseOnHover: true,
-                        });
-
-                        // Add class to page-header-content when slider changes
-                        $hotelHeaderGallery.on(
-                            "beforeChange",
-                            function (event: any, slick: any, currentSlide: number, nextSlide: number) {
-                                const $pageHeaderContent = $(".page-header");
-
-                                // Remove class if transitioning to first slide, otherwise add it
-                                if (nextSlide === 0) {
-                                    $pageHeaderContent.removeClass("slide-transitioning");
-                                } else {
-                                    $pageHeaderContent.addClass("slide-transitioning");
-                                }
-                            }
-                        );
-
-                        $hotelGallery.slick({
-                            dots: false,
-                            infinite: false,
-                            speed: 1000,
-                            slidesToShow: 3,
-                            slidesToScroll: 1,
-                            autoplay: false,
-                            arrows: false,
-                            responsive: [
-                                {
-                                    breakpoint: 640,
-                                    settings: {
-                                        slidesToShow: 2,
-                                    },
-                                },
-                            ],
-                        });
-
-                        setSliderReady(true);
-                    } catch (error) {
-                        console.error("Error initializing slider:", error);
-                    }
-                }
-            } else {
-                console.warn("Slick slider library not loaded");
-            }
-        };
-
-        // Wait for DOM to be ready and images to start loading
-        const timer = setTimeout(initSlider, 300);
-
-        // Cleanup function to destroy slider when component unmounts
-        return () => {
-            clearTimeout(timer);
-            setSliderReady(false);
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $hotelHeaderGallery = $(".hotel-header-gallery");
-                const $slider = $(".hotel-header-gallery, .hotel-gallery");
-
-                // Remove event listener
-                $hotelHeaderGallery.off("beforeChange");
-
-                if ($slider.hasClass("slick-initialized")) {
-                    try {
-                        $slider.slick("unslick");
-                        console.log("Slider destroyed");
-                    } catch (error) {
-                        console.error("Error destroying slider:", error);
-                    }
-                }
-            }
-        };
-    }, [hotel, loading]);
+   
 
     const handleBookingSuccess = (response: any) => {
         console.log("Booking successful:", response);
@@ -418,17 +325,41 @@ const HotelDetail: React.FC = () => {
 
     const hotelImages = getHotelImages();
 
+    
+
     return (
+  
         <div className="hotel-detail-page">
             <Header />
             {/* Hero Section */}
+
+            
             <section className="page-header">
-                <div
-                    className="hotel-header-gallery"
-                    style={{ opacity: sliderReady ? 1 : 0, transition: "opacity 0.3s ease-in-out" }}
+                <div 
+                    className="header-image-container" 
+                    style={{ cursor: 'pointer', position: 'relative' }}
                 >
+                    <img
+                        src={hotelImages[0]}
+                        alt={`${hotel.name}`}
+                        style={{ width: '100%', height: '500px', objectFit: 'cover' }}
+                        onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = fallbackImages[0];
+                        }}
+                    />
+                    <div className="view-btn">
+                        <span>View all photos</span>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* Image Gallery */}
+            <div className="gallery-modal">
+                <div className="modal-hotel-gallery">
                     {hotelImages.slice(0, 7).map((image, index) => (
-                        <div key={index} className="hotel-header-gallery-item">
+                        <div key={index} className="thumbnail-image" onClick={() => setSelectedImage(index)}>
                             <img
                                 src={image}
                                 alt={`${hotel.name} ${index + 1}`}
@@ -440,24 +371,8 @@ const HotelDetail: React.FC = () => {
                         </div>
                     ))}
                 </div>
-               
-            </section>
-
-            {/* Image Gallery */}
-            <section className="hotel-gallery">
-                {hotelImages.slice(0, 7).map((image, index) => (
-                    <div key={index} className="thumbnail-image" onClick={() => setSelectedImage(index)}>
-                        <img
-                            src={image}
-                            alt={`${hotel.name} ${index + 1}`}
-                            onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = fallbackImages[index];
-                            }}
-                        />
-                    </div>
-                ))}
-            </section>
+            </div>
+           
 
             <section className="section-hotel-content">
                 <div className="container">
@@ -467,39 +382,93 @@ const HotelDetail: React.FC = () => {
                                 <span className="text">{hotel.location}</span>
                                 <p>{hotel.description || "No description available for this hotel."}</p>
                             </div>
+                            <div className="hotel-content_details">
+                                <div className="hotel-group-logo">
+                                    {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
+                                        <div className="hotel-groups-logos">
+                                            {hotel.hotel_groups.map((group) => (
+                                                group.logo && group.logo.url && (
+                                                    <div key={group.id} className="hotel-group-logo-item">
+                                                        <img 
+                                                            src={group.logo.thumbnail_url || group.logo.url} 
+                                                            alt={group.logo.description || `${group.name} logo`}
+                                                            title={group.name}
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="hotel-details">
+                                        <div className="hotel-rating">
+                                        {renderStars(hotel.rating || 0)}
+                                        <span className="rating-text">{hotel.rating || "N/A"}/5</span>
+                                        {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
+                                    </div>
+                                    {/* Hotel Groups/Brands */}
+                                    {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
+                                        <div className="hotel-groups mb-2">
+                                            {hotel.hotel_groups.map((group, index) => (
+                                                <span key={group.id} className="badge bg-primary me-2"></span>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {hotel.address && <p className="hotel-address">{hotel.address}</p>}
+                                    {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
+                                     
+                                    {/* Amenities */}
+                                    <div className="header-hotel-detail amenities-detail">
+                                        <span className="label">Hotel Amenities</span>
+                                        <span className="text">{hotel.amenities.join(", ")}</span>
+                                    </div>
+                                    <div className="header-hotel-detail price-detail">
+                                        <span className="label">Starting from</span>
+                                        <span className="text">${hotel.price || "N/A"}/night</span>
+                                    </div>
+
+                                </div>
+
+                            </div>
                         
                             
-                            <div className="hotel-rating">
-                                {renderStars(hotel.rating || 0)}
-                                <span className="rating-text">{hotel.rating || "N/A"}/5</span>
-                                {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
-                            </div>
-                            {/* Hotel Groups/Brands */}
-                            {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
-                                <div className="hotel-groups mb-2">
-                                    {hotel.hotel_groups.map((group, index) => (
-                                        <span key={group.id} className="badge bg-primary me-2"></span>
-                                    ))}
-                                </div>
-                            )}
-
-                            {hotel.address && <p className="hotel-address">{hotel.address}</p>}
-                            {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
-
+                          
                             <div className="header-hotel-details">
-                               
-                                {/* Amenities */}
-                                <div className="header-hotel-detail amenities-detail">
-                                    <span className="label">Hotel Amenities</span>
-                                    <span className="text">{hotel.amenities.join(", ")}</span>
-                                </div>
-                                <div className="header-hotel-detail price-detail">
-                                    <span className="label">Starting from</span>
-                                    <span className="text">${hotel.price || "N/A"}/night</span>
-                                </div>
+                              
                             </div>
                         </div>
                     <div className="hotel-content_sidebar">
+
+                        <div className="hotel-benefits">
+                            <div className="hotel-benefits_heading">
+                                <h3>Your Benefits</h3>
+                                <img src="/assets/img/ventus-logo.png" />
+                            </div>
+                            <div className="hotel-benefits_cont">
+                              
+                                {hotel.benefits && hotel.benefits.length > 0 && (
+                                    <ul>
+                                        {hotel.benefits.map((benefit, index) => (
+                                            <li key={index}>{benefit}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                                {hotel.benefits_footnotes && hotel.benefits_footnotes.length > 0 && (
+                                    <div className="benefits-footnotes">
+                                        {hotel.benefits_footnotes.map((footnote, index) => (
+                                            <p key={index} className="footnote-text">{footnote}</p>
+                                        ))}
+                                    </div>
+                                )}
+                                <a href="" className="btn btn-primary">Get a trip quote</a>
+                            </div>
+                        </div>      
+                        {/*               
                         <div className="section-membership">
                             <div className="container">
                                 <div className="section-membership-content text-center">
@@ -516,6 +485,8 @@ const HotelDetail: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                        */}
+
                     </div>
                    
                 </div>
@@ -580,6 +551,7 @@ const HotelDetail: React.FC = () => {
                 </section>
             )}
              {/* Related Hotels Section */}
+             
              <section className="section-related-hotels">
                 <div className="container">
                     <h3>Other Hotels in {hotel.location}</h3>
