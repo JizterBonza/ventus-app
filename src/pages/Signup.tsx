@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import BannerCTA from "../components/shared/BannerCTA";
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -111,33 +112,17 @@ const Signup: React.FC = () => {
 
   return (
     <Layout>
-      <section className="banner-header section-padding bg-img" data-overlay-dark="5" style={{
-        backgroundImage: 'url(/assets/img/slider/2.jpg)',
-        minHeight: '400px'
-      }}>
-        <div className="v-middle">
-          <div className="container">
-            <div className="row">
-              <div className="col-md-12 text-center">
-                <h6>Join Us</h6>
-                <h1>Create Your Account</h1>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+   
 
-      <section className="rooms1 section-padding" data-scroll-index="1">
+      <section className="signup-page rooms1 section-padding" data-scroll-index="1">
         <div className="container">
           <div className="row justify-content-center">
             <div className="col-md-10 col-lg-8">
-              <div className="auth-card" style={{
-                background: '#fff',
-                padding: '40px',
-                borderRadius: '8px',
-                boxShadow: '0 0 20px rgba(0,0,0,0.1)'
-              }}>
-                <h3 className="text-center mb-4">Sign Up</h3>
+              <div className="auth-card">
+                <div className="auth-card_heading">
+                  <img src="/assets/img/ventus-logo.png" />
+                  <h3 className="text-center mb-4">Join now to unlock <br />exclusive member benefits</h3>
+                </div>
 
                 {error && (
                   <div className="alert alert-danger" role="alert">
@@ -150,9 +135,6 @@ const Signup: React.FC = () => {
                     {/* First Name */}
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="firstName" className="form-label">
-                          First Name <span className="text-danger">*</span>
-                        </label>
                         <input
                           type="text"
                           className={`form-control ${validationErrors.firstName ? 'is-invalid' : ''}`}
@@ -160,7 +142,7 @@ const Signup: React.FC = () => {
                           name="firstName"
                           value={formData.firstName}
                           onChange={handleChange}
-                          placeholder="Enter your first name"
+                          placeholder="First Name *"
                           disabled={isLoading}
                         />
                         {validationErrors.firstName && (
@@ -172,9 +154,6 @@ const Signup: React.FC = () => {
                     {/* Last Name */}
                     <div className="col-md-6">
                       <div className="form-group mb-3">
-                        <label htmlFor="lastName" className="form-label">
-                          Last Name <span className="text-danger">*</span>
-                        </label>
                         <input
                           type="text"
                           className={`form-control ${validationErrors.lastName ? 'is-invalid' : ''}`}
@@ -182,7 +161,7 @@ const Signup: React.FC = () => {
                           name="lastName"
                           value={formData.lastName}
                           onChange={handleChange}
-                          placeholder="Enter your last name"
+                          placeholder="Last Name *"
                           disabled={isLoading}
                         />
                         {validationErrors.lastName && (
@@ -194,9 +173,6 @@ const Signup: React.FC = () => {
 
                   {/* Email */}
                   <div className="form-group mb-3">
-                    <label htmlFor="email" className="form-label">
-                      Email Address <span className="text-danger">*</span>
-                    </label>
                     <input
                       type="email"
                       className={`form-control ${validationErrors.email ? 'is-invalid' : ''}`}
@@ -204,7 +180,7 @@ const Signup: React.FC = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="Enter your email"
+                      placeholder="Email Address *"
                       disabled={isLoading}
                     />
                     {validationErrors.email && (
@@ -214,9 +190,6 @@ const Signup: React.FC = () => {
 
                   {/* Phone */}
                   <div className="form-group mb-3">
-                    <label htmlFor="phone" className="form-label">
-                      Phone Number (Optional)
-                    </label>
                     <input
                       type="tel"
                       className={`form-control ${validationErrors.phone ? 'is-invalid' : ''}`}
@@ -224,7 +197,7 @@ const Signup: React.FC = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      placeholder="Enter your phone number"
+                      placeholder="Phone Number (Optional)"
                       disabled={isLoading}
                     />
                     {validationErrors.phone && (
@@ -232,71 +205,61 @@ const Signup: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="row">
-                    {/* Password */}
-                    <div className="col-md-6">
-                      <div className="form-group mb-3">
-                        <label htmlFor="password" className="form-label">
-                          Password <span className="text-danger">*</span>
-                        </label>
-                        <div className="input-group">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            className={`form-control ${validationErrors.password ? 'is-invalid' : ''}`}
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Create a password"
-                            disabled={isLoading}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            <i className={showPassword ? 'ti-eye' : 'ti-eye'}></i>
-                          </button>
-                        </div>
-                        {validationErrors.password && (
-                          <div className="invalid-feedback d-block">{validationErrors.password}</div>
-                        )}
-                        <small className="form-text text-muted">
-                          Must be at least 6 characters with uppercase, lowercase, and number
-                        </small>
-                      </div>
+                  {/* Password */}
+                  <div className="form-group mb-3">
+                    <div className="input-group">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        className={`form-control ${validationErrors.password ? 'is-invalid' : ''}`}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Password *"
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary show-password-btn"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <i className={showPassword ? 'ti-eye' : 'ti-eye'}></i>
+                      </button>
                     </div>
+                    {validationErrors.password && (
+                      <div className="invalid-feedback d-block">{validationErrors.password}</div>
+                    )}
+                    {/* 
+                    <small className="form-text text-muted">
+                      Must be at least 6 characters with uppercase, lowercase, and number
+                    </small>
+                    */}
+                  </div>
 
-                    {/* Confirm Password */}
-                    <div className="col-md-6">
-                      <div className="form-group mb-3">
-                        <label htmlFor="confirmPassword" className="form-label">
-                          Confirm Password <span className="text-danger">*</span>
-                        </label>
-                        <div className="input-group">
-                          <input
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            className={`form-control ${validationErrors.confirmPassword ? 'is-invalid' : ''}`}
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Confirm your password"
-                            disabled={isLoading}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          >
-                            <i className={showConfirmPassword ? 'ti-eye' : 'ti-eye'}></i>
-                          </button>
-                        </div>
-                        {validationErrors.confirmPassword && (
-                          <div className="invalid-feedback d-block">{validationErrors.confirmPassword}</div>
-                        )}
-                      </div>
+                  {/* Confirm Password */}
+                  <div className="form-group mb-3">
+                    <div className="input-group">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        className={`form-control ${validationErrors.confirmPassword ? 'is-invalid' : ''}`}
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Confirm Password *"
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary show-password-btn"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        <i className={showConfirmPassword ? 'ti-eye' : 'ti-eye'}></i>
+                      </button>
                     </div>
+                    {validationErrors.confirmPassword && (
+                      <div className="invalid-feedback d-block">{validationErrors.confirmPassword}</div>
+                    )}
                   </div>
 
                   {/* Terms and Conditions */}
@@ -330,14 +293,9 @@ const Signup: React.FC = () => {
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    className="butn-dark w-100"
+                    className="btn btn-primary btn-lg butn-dark w-100"
                     disabled={isLoading}
-                    style={{
-                      padding: '12px',
-                      fontSize: '16px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}
+                   
                   >
                     {isLoading ? (
                       <>
@@ -345,12 +303,12 @@ const Signup: React.FC = () => {
                         Creating Account...
                       </>
                     ) : (
-                      'Create Account'
+                      'Join Now'
                     )}
                   </button>
                 </form>
 
-                {/* Social Signup (Optional) */}
+                {/* Social Signup (Optional) 
                 <div className="text-center mt-4">
                   <p className="mb-3">Or sign up with</p>
                   <div className="d-flex gap-2 justify-content-center">
@@ -362,8 +320,9 @@ const Signup: React.FC = () => {
                     </button>
                   </div>
                 </div>
+                */}
 
-                {/* Login Link */}
+                {/* Login Link 
                 <div className="text-center mt-4">
                   <p className="mb-0">
                     Already have an account?{' '}
@@ -372,11 +331,13 @@ const Signup: React.FC = () => {
                     </Link>
                   </p>
                 </div>
+                */}
               </div>
             </div>
           </div>
         </div>
       </section>
+      <BannerCTA />
     </Layout>
   );
 };
