@@ -7,8 +7,21 @@ require('dotenv').config();
 
 const app = express();
 
+// CORS configuration - Allow frontend origins
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',  // Local development
+    'https://ventus-app.onrender.com',  // Production frontend
+    'https://ventus-travel-staging.onrender.com',  // Staging frontend
+    /\.onrender\.com$/  // Allow all Render subdomains
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // PostgreSQL connection pool
