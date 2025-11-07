@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel, SearchParams } from "../types/search";
@@ -12,6 +12,8 @@ import Membership from "../components/shared/Membership";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
 
+declare const $: any;
+
 const Home: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const [searchParams, setSearchParams] = useState({
@@ -20,12 +22,28 @@ const Home: React.FC = () => {
         rating: "all",
         sortBy: "recommended",
     });
+    const [checkInDate, setCheckInDate] = useState("");
+    const [checkOutDate, setCheckOutDate] = useState("");
+    const [guests, setGuests] = useState("2");
+    const selectingCheckInRef = useRef(true);
+    const checkInDateRef = useRef("");
+    const checkOutDateRef = useRef("");
+
+    // Keep refs in sync with state
+    useEffect(() => {
+        checkInDateRef.current = checkInDate;
+    }, [checkInDate]);
+
+    useEffect(() => {
+        checkOutDateRef.current = checkOutDate;
+    }, [checkOutDate]);
 
     const { hotels, loading, error, searchByQuery, searchAdvanced, clearError } = useSearch();
     const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    const [sliderReady, setSliderReady] = useState(false);
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -197,6 +215,130 @@ const Home: React.FC = () => {
         setFilteredInterests(filtered);
     }, [selectedCategories, selectedLocation]);
 
+    // Datepicker initialization for date range
+    useEffect(() => {
+        if (typeof $ !== "undefined" && $.fn.datepicker) {
+            const $dateRangeInput = $(".date-range-input");
+
+            if ($dateRangeInput.length > 0 && !$dateRangeInput.hasClass("hasDatepicker")) {
+                $dateRangeInput.datepicker({
+                    dateFormat: "mm/dd/yy",
+                    minDate: 0,
+                    beforeShow: function () {
+                        // Reset to check-in selection if both dates are cleared
+                        if (!checkInDateRef.current && !checkOutDateRef.current) {
+                            selectingCheckInRef.current = true;
+                            $(this).datepicker("option", "minDate", 0);
+                        } else if (checkInDateRef.current && !checkOutDateRef.current) {
+                            selectingCheckInRef.current = false;
+                            $(this).datepicker("option", "minDate", checkInDateRef.current);
+                        } else if (checkInDateRef.current && checkOutDateRef.current) {
+                            // Both dates selected, allow reselection
+                            selectingCheckInRef.current = true;
+                            $(this).datepicker("option", "minDate", 0);
+                        }
+                    },
+                    onSelect: function (dateText: string, inst: any) {
+                        if (selectingCheckInRef.current) {
+                            setCheckInDate(dateText);
+                            setCheckOutDate("");
+                            selectingCheckInRef.current = false;
+                            // Update minDate for check-out selection
+                            $(this).datepicker("option", "minDate", dateText);
+                            // Reopen datepicker for check-out selection
+                            setTimeout(() => {
+                                $dateRangeInput.datepicker("show");
+                            }, 10);
+                        } else {
+                            setCheckOutDate(dateText);
+                            selectingCheckInRef.current = true;
+                            // Close datepicker after both dates are selected
+                            $dateRangeInput.datepicker("hide");
+                        }
+                    },
+                });
+            }
+
+            return () => {
+                if ($dateRangeInput.hasClass("hasDatepicker")) {
+                    $dateRangeInput.datepicker("destroy");
+                }
+            };
+        }
+    }, []); // Only initialize once
+
+    // Slider initialization
+    useEffect(() => {
+        const initSlider = () => {
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $hotelHeaderGallery = $(".hotel-header-gallery");
+                // Check if slider exists and is not already initialized
+                if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
+                    try {
+                        $hotelHeaderGallery.slick({
+                            dots: true,
+                            infinite: true,
+                            speed: 1000,
+                            slidesToShow: 1,
+                            slidesToScroll: 1,
+                            autoplay: true,
+                            autoplaySpeed: 5000,
+                            arrows: false,
+                            fade: true,
+                            cssEase: "linear",
+                            pauseOnHover: true,
+                        });
+
+                        // Add class to page-header-content when slider changes
+                        $hotelHeaderGallery.on(
+                            "beforeChange",
+                            function (event: any, slick: any, currentSlide: number, nextSlide: number) {
+                                const $pageHeaderContent = $(".page-header");
+
+                                // Remove class if transitioning to first slide, otherwise add it
+                                if (nextSlide === 0) {
+                                    $pageHeaderContent.removeClass("slide-transitioning");
+                                } else {
+                                    $pageHeaderContent.addClass("slide-transitioning");
+                                }
+                            }
+                        );
+
+                        setSliderReady(true);
+                    } catch (error) {
+                        console.error("Error initializing slider:", error);
+                    }
+                }
+            } else {
+                console.warn("Slick slider library not loaded");
+            }
+        };
+
+        // Wait for DOM to be ready and images to start loading
+        const timer = setTimeout(initSlider, 300);
+
+        // Cleanup function to destroy slider when component unmounts
+        return () => {
+            clearTimeout(timer);
+            setSliderReady(false);
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $hotelHeaderGallery = $(".hotel-header-gallery");
+
+                // Remove event listener
+                $hotelHeaderGallery.off("beforeChange");
+
+                if ($hotelHeaderGallery.hasClass("slick-initialized")) {
+                    try {
+                        $hotelHeaderGallery.slick("unslick");
+                        console.log("Slider destroyed");
+                    } catch (error) {
+                        console.error("Error destroying slider:", error);
+                    }
+                }
+            }
+        };
+    }, []);
+
     const renderStars = (rating: number) => {
         return Array.from({ length: 5 }, (_, i) => (
             <i key={i} className={`star-rating ${i < rating ? "active" : ""}`}></i>
@@ -215,28 +357,99 @@ const Home: React.FC = () => {
             <section className="search-form-section">
                 <div className="container">
                     <div className="booking-inner clearfix">
-                        <form onSubmit={handleSearch} className="form1 clearfix">
-                            <div className="col1 c1" style={{ width: "65%" }}>
+                        <form onSubmit={handleSearch} className="form1 clearfix modern-search-form">
+                            <div className="col1 c1 search-field" style={{ width: "30%" }}>
                                 <div className="input1_wrapper">
                                     <label>Location</label>
                                     <div className="input1_inner">
+                                        <i className="ti-search search-icon"></i>
                                         <input
                                             type="text"
                                             className="form-control input"
-                                            placeholder="Where are you going?"
+                                            placeholder="Search a hotel or destination"
                                             value={searchParams.location}
                                             onChange={(e) => handleInputChange("location", e.target.value)}
                                         />
                                     </div>
                                 </div>
                             </div>
-                            <div className="col4 c5" style={{ width: "35%" }}>
-                                <button type="submit" className="btn-form1-submit">
-                                    {loading ? "Searching..." : "Search Hotels"}
+                            <div className="col2 c2 date-field" style={{ width: "30%" }}>
+                                <div className="input1_wrapper">
+                                    <label>Date</label>
+                                    <div className="input1_inner">
+                                        <i className="ti-calendar calendar-icon"></i>
+                                        <input
+                                            type="text"
+                                            className="form-control input date-range-input"
+                                            placeholder="Arrival-Departure"
+                                            value={checkInDate && checkOutDate ? `${checkInDate} - ${checkOutDate}` : checkInDate || checkOutDate || ""}
+                                            readOnly
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col3 c3 guest-field" style={{ width: "20%" }}>
+                                <div className="input1_wrapper">
+                                    <label>Guests</label>
+                                    <div className="input1_inner">
+                                        <i className="ti-user user-icon"></i>
+                                        <select
+                                            className="form-control input guest-select"
+                                            value={guests}
+                                            onChange={(e) => setGuests(e.target.value)}
+                                        >
+                                            <option value="1">1 adult</option>
+                                            <option value="2">2 adults</option>
+                                            <option value="3">3 adults</option>
+                                            <option value="4">4 adults</option>
+                                            <option value="5">5 adults</option>
+                                            <option value="6">6 adults</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col4 c4 search-button" style={{ width: "20%" }}>
+                                <button type="submit" className="btn-form1-submit modern-search-btn">
+                                    {loading ? "Searching..." : "SEARCH"}
                                 </button>
                             </div>
                         </form>
                     </div>
+                </div>
+            </section>
+            <br />
+            <div className="container">
+                <div className="page-header-content">
+                    <h2 style={{ color: "#000" }}>VENTUS' PICKS</h2>
+                </div>
+            </div>
+
+            {/* Hero Slider Section */}
+            <section className="page-header" style={{ height: "700px", overflow: "hidden" }}>
+                <div
+                    className="hotel-header-gallery"
+                    style={{ opacity: sliderReady ? 1 : 0, transition: "opacity 0.3s ease-in-out" }}
+                >
+                    {[
+                        "/assets/img/slider/1.jpg",
+                        "/assets/img/slider/2.jpg",
+                        "/assets/img/slider/3.jpg",
+                        "/assets/img/slider/4.jpg",
+                        "/assets/img/slider/5.jpg",
+                        "/assets/img/slider/6.jpg",
+                        "/assets/img/slider/7.jpg",
+                    ].map((image, index) => (
+                        <div key={index} className="hotel-header-gallery-item">
+                            <img
+                                src={image}
+                                alt={`Slider ${index + 1}`}
+                                onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = fallbackImages[index % fallbackImages.length];
+                                }}
+                            />
+                        </div>
+                    ))}
                 </div>
             </section>
 
