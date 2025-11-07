@@ -56,6 +56,7 @@
 }
 .membership-content_heading h3{
     font-weight: 300;
+    font-size: 32px;
 }
 .membership-content_heading .btn{
     text-transform: uppercase;
@@ -138,7 +139,6 @@ textarea.form-control{
 }
 .footer-subscribe form{
     background: none;
-    height: 49px;
     margin-block: 15px;
     padding: 0;
     gap: 15px;
@@ -259,6 +259,7 @@ textarea.form-control{
     position: relative;
     padding-left: 20px;
     line-height: 1.2;
+    font-weight: 300;
     padding-bottom: 10px;
 }
 .hotel-benefits_cont ul li:before{
@@ -371,6 +372,7 @@ textarea.form-control{
     font-weight: 300;
     border-top: 1px solid #0000001A;
     padding-top: 80px;
+    margin-top: 80px;
 }
 .section-related-hotels .container > h3{
     font-size: 32px;
@@ -390,6 +392,132 @@ textarea.form-control{
 .modal-hotel-gallery .thumbnail-image{
     max-height: calc(-50px + 85vh);
 }
+.signup-page{
+    background: #DBE2D6;
+    padding: 150px 0 250px;
+}
+.auth-card_heading{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.auth-card_heading img{
+    max-height: 64px;   
+    width: auto;
+}
+.auth-card_heading h3{
+    font-size: 40px;
+    font-weight: 300;
+}
+.auth-card form{
+    max-width: 465px;
+    margin: 0 auto;
+}
+.auth-card form input:not(.form-check-input){
+   background: #fff;
+   border-radius: 0;
+   height: 53px;
+   padding-inline: 20px;
+   font-size: 14.07px;
+   font-weight: 300;
+   line-height: 1.2;
+   margin-bottom: 10px;
+   color: #000;
+   width: 100%;
+   outline: 0;
+}
+.auth-card form input#password{
+    margin-bottom: 0;
+}
+.btn.show-password-btn{
+    background: none;
+    position: absolute;
+    right: 20px;
+    top: 38%;
+    transform: translateY(-50%);
+    color: #000;
+    height: 53px;
+    border: 0;
+    padding: 0;
+}
+.auth-card form button[type="submit"]{
+  height: 53px;
+  text-transform: uppercase;
+}
+.btn.show-password-btn:after,
+.auth-card form button[type="submit"]:after{
+    display: none;
+}
+.form-group.mb-3{
+    margin-bottom: 10px !important;
+}
+.auth-card form .row{
+    margin-right: -5px;
+    margin-left: -5px;
+}
+.auth-card form .col-md-6{
+    padding-right: 5px;
+    padding-left: 5px;
+}
+.form-check{
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.form-check-label{
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.2;
+    color: #000;
+}
+.login-page{
+    background: #DBE2D6;
+}
+.login-page h2{
+    font-size: 40px;
+    font-weight: 300;
+}
+.login-page .col-lg-6:first-child{
+    border-right: 1px solid #0000001A;
+    padding-right: 180px;
+}
+.login-page .col-lg-6:last-child{
+    padding-left: 180px;
+}
+.login-page form{
+   margin-left: 0;
+   max-width: 100%;
+}
+.login-page .sidebar{
+    background: #fff;
+    padding: 60px;
+}
+.login-page .sidebar img{
+    max-height: 64px;
+    width: auto;
+    margin-bottom: 20px;
+}
+.login-page .sidebar h4{
+    font-size: 18px;
+    font-weight: 300;
+    margin-bottom: 10px;
+}
+.login-page .sidebar h3{
+    font-size: 32px;
+    font-weight: 300;
+}
+.login-page .sidebar .btn{
+    font-size: 14.07px;
+    text-transform: uppercase;
+}
+.login-page .sidebar .btn:after{
+    display: none;
+}
+.form-check-input[type="checkbox"]{
+   border-radius: 0;
+}
 @media screen and (max-width:1200px){
     .footer-left{
         padding-right: 100px;
@@ -398,11 +526,27 @@ textarea.form-control{
     .hotel-content_heading p{
         padding-right: 0;
     }
+    .login-page .col-lg-6:first-child{
+        padding-right: 100px;
+    }
+    .login-page .col-lg-6:last-child{
+        padding-left: 100px;
+    }
+  
 }
 @media screen and (max-width:1023px){
     .hotel-info-list .info-card{
         flex-direction: column;
         gap: 10px;
+    }
+    .login-page .col-lg-6:first-child{
+        padding-right: 0;
+        padding-left: 0;
+        border-right: 0;
+    }
+    .login-page .col-lg-6:last-child{
+        padding-left: 0;
+        padding-right: 0;
     }
   
 }
@@ -443,9 +587,13 @@ textarea.form-control{
         max-width: 300px;
     }
     .section-hotel-content,
-    .section-hotel-info h3,
+   
     .section-related-hotels .container > h3 {
         padding-top: 30px;
+    }
+    .section-hotel-info h3{
+        padding-top: 0;
+        border-top: 0;
     }
     .section-hotel-content .container{
         flex-direction: column;
@@ -457,8 +605,9 @@ textarea.form-control{
         min-width: 100%;
     }
     .hotel-content_left {
-        padding: 0 calc(var(--bs-gutter-x) * 1.5);
+        padding: 0 calc(var(--bs-gutter-x) * .75);
     }
+   
 }
 
 @media screen and (max-width:768px){
@@ -475,6 +624,17 @@ textarea.form-control{
     .hotel-info-list{
         gap:20px;
     }
+    .signup-page{
+        padding: 50px 0;
+    }
+    .login-page .col-lg-6:first-child,
+    .login-page .col-lg-6:last-child{
+        padding-right:calc(var(--bs-gutter-x) * .5);
+        padding-left: calc(var(--bs-gutter-x) * .5);
+    }
+    .login-page h2{
+        text-align: center;
+    }
    
 }
 @media screen and (max-width:640px) {
@@ -486,6 +646,12 @@ textarea.form-control{
     }
     .hotel-info-list .info-card{
         max-width: calc(50% - 10px);
+    }
+    .auth-card_heading h3{
+        font-size: 32px;
+    }
+    .header-image-container img{
+        height: 370px !important;
     }
     
 }
@@ -514,6 +680,19 @@ textarea.form-control{
         max-width: none;
         padding:0;
        
+    }
+    .login-page form .justify-content-between{
+        flex-direction: column;
+        gap: 10px;
+    }
+    .login-page .auth-card form button[type="submit"]{
+        width: 100%;
+    }
+    .login-page .sidebar h3{
+        font-size: 28px;
+    }
+    .login-page .sidebar h4{
+        font-size: 16px;
     }
     
 }

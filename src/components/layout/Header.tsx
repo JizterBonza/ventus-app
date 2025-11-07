@@ -1,9 +1,12 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Navigation from "./Navigation";
 import Breadcrumb from "../shared/Breadcrumb";
 
 const Header: React.FC = () => {
+    const location = useLocation();
+    const hideBreadcrumbs = location.pathname === '/signup' || location.pathname === '/login';
+    
     return (
         <>
             {/* Preloader */}
@@ -34,7 +37,7 @@ const Header: React.FC = () => {
                     <Navigation />
                 </div>
             </nav>
-            <Breadcrumb />
+            {!hideBreadcrumbs && <Breadcrumb />}
         </>
     );
 };

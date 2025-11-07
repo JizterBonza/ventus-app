@@ -33,9 +33,11 @@
 
 ## 📋 What You Need to Do Next
 
-### Step 1: Deploy to Render (30 minutes)
+### Step 1: Deploy Backend to Render (10 minutes) ⚡
 
-Follow the complete guide: **`POSTGRES_RENDER_SETUP.md`**
+**Quick Start:** Follow **`BACKEND_DEPLOYMENT_GUIDE.md`** for fast backend deployment.
+
+**Or follow the complete guide:** **`POSTGRES_RENDER_SETUP.md`** for full stack deployment.
 
 **Quick Overview:**
 
@@ -168,7 +170,8 @@ npm start
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| **POSTGRES_RENDER_SETUP.md** | Complete deployment guide | When deploying to Render |
+| **BACKEND_DEPLOYMENT_GUIDE.md** ⭐ | Quick backend deployment (10 min) | Deploy backend to Render |
+| **POSTGRES_RENDER_SETUP.md** ⭐ | Complete deployment guide | Full stack deployment |
 | **AUTH_IMPLEMENTATION_GUIDE.md** | Technical auth documentation | For developers |
 | **AUTH_SETUP_GUIDE.md** | User guide for auth features | For testing and users |
 | **RENDER_AUTO_DEPLOY_GUIDE.md** | Auto-deploy setup | Already configured! |

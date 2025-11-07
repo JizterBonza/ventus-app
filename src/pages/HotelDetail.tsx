@@ -6,6 +6,7 @@ import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
+import { useAuth } from "../contexts/AuthContext";
 
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
@@ -44,6 +45,7 @@ declare const $: any;
 const HotelDetail: React.FC = () => {
     const [sliderReady, setSliderReady] = useState(false);
     const { id } = useParams<{ id: string }>();
+    const { isAuthenticated } = useAuth();
     const [hotel, setHotel] = useState<Hotel | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
@@ -452,7 +454,7 @@ const HotelDetail: React.FC = () => {
                         }}
                     />
                     <div className="view-btn">
-                        <span>View all photos</span>
+                        <span>View all {hotelImages.length} photos</span>
                     </div>
                 </section>
 
@@ -560,56 +562,50 @@ const HotelDetail: React.FC = () => {
                               
                             </div>
                         </div>
-                        {hotel.benefits && hotel.benefits.length > 0 && (  
-                        
+                        {/* Sidebar - Show benefits if logged in, membership if logged out */}
                     <div className="hotel-content_sidebar">
-                                 
-                        <div className="hotel-benefits">
-                            <div className="hotel-benefits_heading">
-                                <h3>Your Benefits</h3>
-                                <img src="/assets/img/ventus-logo.png" />
-                            </div>
-                            <div className="hotel-benefits_cont">
-                              
-                              
-                                    <ul>
-                                        {hotel.benefits.map((benefit, index) => (
-                                            <li key={index}>{benefit}</li>
-                                        ))}
-                                    </ul>
-                               
-                                {hotel.benefits_footnotes && hotel.benefits_footnotes.length > 0 && (
-                                    <div className="benefits-footnotes">
-                                        {hotel.benefits_footnotes.map((footnote, index) => (
-                                            <p key={index} className="footnote-text">{footnote}</p>
-                                        ))}
+                        {isAuthenticated ? (
+                            // Show benefits if logged in and benefits exist
+                            hotel.benefits && hotel.benefits.length > 0 ? (
+                                <div className="hotel-benefits">
+                                    <div className="hotel-benefits_heading">
+                                        <h3>Your Benefits</h3>
+                                        <img src="/assets/img/ventus-logo.png" />
                                     </div>
-                                )}
-                                <a href="" className="btn btn-primary">Get a trip quote</a>
-                            </div>
-                        </div>      
-                        
-                        {/*               
-                        <div className="section-membership">
-                            <div className="container">
+                                    <div className="hotel-benefits_cont">
+                                        <ul>
+                                            {hotel.benefits.map((benefit, index) => (
+                                                <li key={index}>{benefit}</li>
+                                            ))}
+                                        </ul>
+                                    
+                                        {hotel.benefits_footnotes && hotel.benefits_footnotes.length > 0 && (
+                                            <div className="benefits-footnotes">
+                                                {hotel.benefits_footnotes.map((footnote, index) => (
+                                                    <p key={index} className="footnote-text">{footnote}</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <a href="" className="btn btn-primary">Get a trip quote</a>
+                                    </div>
+                                </div>
+                            ) : null
+                        ) : (
+                            // Show membership section if logged out
+                            <div className="section-membership">
                                 <div className="section-membership-content text-center">
                                     <div className="membership-content_heading">
                                         <img src="/assets/img/ventus-logo.png" />
-                                        
                                         <h3>Join now to unlock exclusive member benefits</h3>
-                                        <a href="#" className="btn btn-primary btn-lg">Join Now</a>
+                                        <Link to="/signup" className="btn btn-primary btn-lg">Join Now</Link>
                                     </div>
                                     <div className="membership-content_foot">
-                                    <p>Already have an account? Sign in here <a href="#">here</a></p>
-                                        
+                                        <p>Already have an account? Sign in <Link to="/login">here</Link></p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        */}
-
+                        )}
                     </div>
-                    )}
                 </div>
             </section>
 
@@ -673,46 +669,45 @@ const HotelDetail: React.FC = () => {
                     </div>
                 </section>
             )}
-             {/* Related Hotels Section    */}
             {/* Related Hotels Section */}
-{relatedHotels.length > 0 && (
-    <section className="section-related-hotels">
-        <div className="container">
-            <h3>Other Hotels in {hotel.location}</h3>
-            <div className="hotels-grid row">
-                {relatedHotels.map((relatedHotel) => (
-                    <div key={relatedHotel.id} className="col-md-4 mb-4">
-                        <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
-                            <div className="card-image">
-                                <img 
-                                    src={relatedHotel.image || relatedHotel.images?.[0]?.url || fallbackImages[0]} 
-                                    alt={relatedHotel.name}
-                                    onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = fallbackImages[0];
-                                    }}
-                                />
-                            </div>
-                            <div className="card-content">
-                                <h4>{relatedHotel.name}</h4>
-                                <div className="card-description">
-                                    {relatedHotel.address || relatedHotel.location}
+            {relatedHotels.length > 0 && (
+                <section className="section-related-hotels">
+                    <div className="container">
+                        <h3>Other Hotels in {hotel.location}</h3>
+                        <div className="hotels-grid row">
+                            {relatedHotels.map((relatedHotel) => (
+                                <div key={relatedHotel.id} className="col-md-4 mb-4">
+                                    <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
+                                        <div className="card-image">
+                                            <img 
+                                                src={relatedHotel.image || relatedHotel.images?.[0]?.url || fallbackImages[0]} 
+                                                alt={relatedHotel.name}
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.src = fallbackImages[0];
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="card-content">
+                                            <h4>{relatedHotel.name}</h4>
+                                            <div className="card-description">
+                                                {relatedHotel.address || relatedHotel.location}
+                                            </div>
+                                        
+                                            <a>
+                                                View Hotel 
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                                    <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </Link>
                                 </div>
-                              
-                                <a>
-                                    View Hotel 
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
-                                        <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
-                                    </svg>
-                                </a>
-                            </div>
-                        </Link>
+                            ))}
+                        </div>
                     </div>
-                ))}
-            </div>
-        </div>
-    </section>
-)}
+                </section>
+            )}
          
             {/* 
             <section className="section-padding booking-section">

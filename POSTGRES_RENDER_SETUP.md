@@ -111,10 +111,11 @@ This guide will help you deploy the complete Ventus app stack on Render.com with
    
    | Key | Value |
    |-----|-------|
-   | `DATABASE_URL` | Paste the **Internal Database URL** from Step 2 |
-   | `JWT_SECRET` | Generate a secure random string (e.g., `your-super-secret-jwt-key-12345`) |
+   | `DATABASE_URL` | `postgresql://ventus_database_user:GA2Fi8db98gIW0GmZ6f7U6lIkORDnNzs@dpg-d46q1t8gjchc73ekv27g-a/ventus_database` |
+   | `JWT_SECRET` | `your-secret-key-12345` |
    | `NODE_ENV` | `production` |
-   | `PORT` | `10000` (Render default) |
+   
+   **Note:** The `DATABASE_URL` above is the internal database URL. Use this exact value for the backend service.
 
 4. **Create Web Service**
    - Click **"Create Web Service"**

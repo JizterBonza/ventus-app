@@ -1,8 +1,25 @@
 services:
+  # Frontend Service
   - type: web
     name: ventus-app
     buildCommand: npm install && npm run build
     startCommand: npm run start:prod
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+
+  # Backend Service
+  - type: web
+    name: ventus-backend
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Note: DATABASE_URL and JWT_SECRET should be set in Render dashboard
+      - key: DATABASE_URL
+        value: postgresql://ventus_database_user:GA2Fi8db98gIW0GmZ6f7U6lIkORDnNzs@dpg-d46q1t8gjchc73ekv27g-a/ventus_database
+      - key: JWT_SECRET
+        value: e45c0de4aab06e3b36199fe196217bbe
