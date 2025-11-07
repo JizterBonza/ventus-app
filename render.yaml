@@ -18,5 +18,7 @@ services:
       - key: NODE_ENV
         value: production
       # Note: DATABASE_URL and JWT_SECRET should be set in Render dashboard
-      DATABASE_URL = postgresql://ventus_database_user:GA2Fi8db98gIW0GmZ6f7U6lIkORDnNzs@dpg-d46q1t8gjchc73ekv27g-a/ventus_database
-      JWT_SECRET = e45c0de4aab06e3b36199fe196217bbe
+      - key: DATABASE_URL
+        value: postgresql://ventus_database_user:GA2Fi8db98gIW0GmZ6f7U6lIkORDnNzs@dpg-d46q1t8gjchc73ekv27g-a/ventus_database
+      - key: JWT_SECRET
+        value: e45c0de4aab06e3b36199fe196217bbe
