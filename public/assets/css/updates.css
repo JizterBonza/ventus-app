@@ -183,9 +183,11 @@ textarea.form-control{
 .section-hotel-content .container{
     display: flex;
     gap: 50px;
+    justify-content: space-between;
 }
-.hotel-content_left{
-    max-width: 769px;
+
+.hotel-content_left.no-benefits{
+    max-width: none;
 }
 .hotel-content_heading{
     border-bottom: 1px solid #0000001A;
@@ -197,6 +199,7 @@ textarea.form-control{
     font-weight: 300;
     line-height: 1.1;
     margin-bottom: 0;
+    max-width: 700px;
 }
 .hotel-content_heading h1 + span{
     font-weight: 500;
@@ -206,6 +209,7 @@ textarea.form-control{
 .hotel-content_heading p{
     font-size: 16px;
     margin-bottom: 0;
+    padding-right: 100px;
 }
 .hotel-detail-page .breadcrumb-nav,
 .hotel-info-list .info-card li:before,
@@ -217,6 +221,8 @@ textarea.form-control{
 }
 .hotel-content_sidebar{
     flex: 1;
+    max-width: 472px;
+    min-width: 472px;
 }
 .hotel-benefits{
     background: #DBE2D6;
@@ -225,7 +231,8 @@ textarea.form-control{
 }
 .hotel-benefits_heading{
     display: flex;
-    margin-bottom: 30px
+    margin-bottom: 30px;
+    align-items: flex-start;
 }
 .hotel-benefits_heading h3{
     flex: 1;
@@ -278,10 +285,28 @@ textarea.form-control{
 .gallery-modal{
     display: none;
     position: fixed;
-    background: #00000078;
+    background: #ffffff;
     padding: 60px;
     z-index: 999;
     top: 0;
+    width: 100%;
+    height: 100%;
+}
+.gallery-modal.open{
+    display: block;
+}
+.close-modal{
+    position: absolute;
+    right: 30px;
+    top: 30px;
+    border: 0;
+    font-size: 50px;
+    line-height: 1;
+}
+.header-image-container{
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
 }
 .footnote-text{
     font-size: 14px;
@@ -289,6 +314,7 @@ textarea.form-control{
 .section-hotel-info .container{
     max-width: 1600px !important;
     border:0;
+    padding-top: 0;
 }
 
 .hotel-info-list{
@@ -301,6 +327,24 @@ textarea.form-control{
     max-width: calc(33.333% - 20px);
     display: flex;
     gap: 30px;
+}
+.hotel-details > div{
+    display: flex;
+    font-size: 16px;
+    gap: 5px;
+    font-weight: 300;
+    align-items: baseline;
+    line-height: 1.2;
+    padding-bottom: 10px;
+}
+.hotel-details div p{
+    margin-bottom: 0;
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.2;
+}
+.hotel-details div strong{
+    font-weight: 700;
 }
 .info-card_icon{
     background: #DBE2D6;
@@ -325,6 +369,8 @@ textarea.form-control{
 .section-hotel-info h3{
     font-size: 32px;
     font-weight: 300;
+    border-top: 1px solid #0000001A;
+    padding-top: 80px;
 }
 .section-related-hotels .container > h3{
     font-size: 32px;
@@ -337,15 +383,28 @@ textarea.form-control{
     display: flex;
     gap: 10px;
 }
-.hotel-group-logo{
+.hotel-groups-logos{
     padding: 30px;
     max-width: 170px;
+}
+.modal-hotel-gallery .thumbnail-image{
+    max-height: calc(-50px + 85vh);
 }
 @media screen and (max-width:1200px){
     .footer-left{
         padding-right: 100px;
         padding-left: 100px;
     }
+    .hotel-content_heading p{
+        padding-right: 0;
+    }
+}
+@media screen and (max-width:1023px){
+    .hotel-info-list .info-card{
+        flex-direction: column;
+        gap: 10px;
+    }
+  
 }
 @media screen and (max-width:991px) {
     .footer-wrapper{
@@ -383,6 +442,23 @@ textarea.form-control{
     .cta-content_heading{
         max-width: 300px;
     }
+    .section-hotel-content,
+    .section-hotel-info h3,
+    .section-related-hotels .container > h3 {
+        padding-top: 30px;
+    }
+    .section-hotel-content .container{
+        flex-direction: column;
+        gap: 0;
+        padding:0;
+    }
+    .hotel-content_sidebar{
+        max-width: none;
+        min-width: 100%;
+    }
+    .hotel-content_left {
+        padding: 0 calc(var(--bs-gutter-x) * 1.5);
+    }
 }
 
 @media screen and (max-width:768px){
@@ -396,7 +472,22 @@ textarea.form-control{
         max-width: 200px;
         margin: 0 auto;
     }
+    .hotel-info-list{
+        gap:20px;
+    }
    
+}
+@media screen and (max-width:640px) {
+    .hotel-content_details{
+        flex-direction: column;
+    }
+    .hotel-groups-logos{
+        margin: 0 auto;
+    }
+    .hotel-info-list .info-card{
+        max-width: calc(50% - 10px);
+    }
+    
 }
 @media screen and (max-width:480px){
     .cta-content_buttons{
@@ -419,4 +510,10 @@ textarea.form-control{
     .section-text-center form .btn{
         min-width: fit-content;
     }
+    .hotel-groups-logos{
+        max-width: none;
+        padding:0;
+       
+    }
+    
 }

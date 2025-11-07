@@ -224,6 +224,89 @@ const HotelDetail: React.FC = () => {
         fetchHotelDetails();
     }, [id]);
 
+    const [showGallery, setShowGallery] = useState(false);
+
+    useEffect(() => {
+    if (showGallery) {
+        // init slick only when modal becomes visible
+        if (typeof $ !== 'undefined' && $.fn.slick) {
+        const $el = $('.modal-hotel-gallery');
+        if ($el.length && !$el.hasClass('slick-initialized')) {
+            $el.slick({
+            dots: true,
+            infinite: true,
+            speed: 1000,
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            autoplay: true,
+            autoplaySpeed: 5000,
+            arrows: false,
+            fade: true,
+            cssEase: "linear",
+            pauseOnHover: true
+            });
+        }
+        }
+    }
+    }, [showGallery]);
+
+
+      // Slider initialization
+      useEffect(() => {
+        const initSlider = () => {
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $hotelHeaderGallery = $(".modal-hotel-gallery");
+                // Check if slider exists and is not already initialized
+                if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
+                    try {
+                        $hotelHeaderGallery.slick({
+                            dots: false,
+                            infinite: true,
+                            speed: 1000,
+                            slidesToShow: 1,
+                            slidesToScroll: 1,
+                            autoplay: false,
+                            arrows: true,
+                            cssEase: "linear",
+                        });
+
+                      
+
+                        setSliderReady(true);
+                    } catch (error) {
+                        console.error("Error initializing slider:", error);
+                    }
+                }
+            } else {
+                console.warn("Slick slider library not loaded");
+            }
+        };
+
+        // Wait for DOM to be ready and images to start loading
+        const timer = setTimeout(initSlider, 300);
+
+        // Cleanup function to destroy slider when component unmounts
+        return () => {
+            clearTimeout(timer);
+            setSliderReady(false);
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $hotelHeaderGallery = $(".modal-hotel-gallery");
+
+                // Remove event listener
+                $hotelHeaderGallery.off("beforeChange");
+
+                if ($hotelHeaderGallery.hasClass("slick-initialized")) {
+                    try {
+                        $hotelHeaderGallery.slick("unslick");
+                        console.log("Slider destroyed");
+                    } catch (error) {
+                        console.error("Error destroying slider:", error);
+                    }
+                }
+            }
+        };
+    }, []);
+
    
 
     const handleBookingSuccess = (response: any) => {
@@ -325,7 +408,7 @@ const HotelDetail: React.FC = () => {
 
     const hotelImages = getHotelImages();
 
-    
+  
 
     return (
   
@@ -334,11 +417,7 @@ const HotelDetail: React.FC = () => {
             {/* Hero Section */}
 
             
-            <section className="page-header">
-                <div 
-                    className="header-image-container" 
-                    style={{ cursor: 'pointer', position: 'relative' }}
-                >
+            <section className="header-image-container" onClick={() => setShowGallery(true)}>
                     <img
                         src={hotelImages[0]}
                         alt={`${hotel.name}`}
@@ -351,44 +430,56 @@ const HotelDetail: React.FC = () => {
                     <div className="view-btn">
                         <span>View all photos</span>
                     </div>
-                </div>
-            </section>
+                </section>
 
 
             {/* Image Gallery */}
-            <div className="gallery-modal">
-                <div className="modal-hotel-gallery">
-                    {hotelImages.slice(0, 7).map((image, index) => (
-                        <div key={index} className="thumbnail-image" onClick={() => setSelectedImage(index)}>
-                            <img
-                                src={image}
-                                alt={`${hotel.name} ${index + 1}`}
-                                onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = fallbackImages[index];
-                                }}
-                            />
-                        </div>
-                    ))}
+            <div className={`gallery-modal ${showGallery ? 'open' : ''}`}>
+                 <button className="close-modal" onClick={() => setShowGallery(false)}>×</button>
+                 
+                    <div className="modal-hotel-gallery">
+                        {hotelImages.slice(0, 7).map((image, index) => (
+                            <div key={index} className="thumbnail-image" onClick={() => setSelectedImage(index)}>
+                                <img
+                                    src={image}
+                                    alt={`${hotel.name} ${index + 1}`}
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = fallbackImages[index];
+                                    }}
+                                />
+                            </div>
+                        ))}
+                  
                 </div>
             </div>
            
 
             <section className="section-hotel-content">
                 <div className="container">
-                    <div className="hotel-content_left">
+                <div
+                className={`hotel-content_left ${
+                    !hotel.benefits || hotel.benefits.length === 0 ? "no-benefits" : ""
+                }`}
+                >
+
                             <div className="hotel-content_heading">
                                 <h1>{hotel.name}</h1>
                                 <span className="text">{hotel.location}</span>
                                 <p>{hotel.description || "No description available for this hotel."}</p>
                             </div>
                             <div className="hotel-content_details">
+                                
+                                {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
                                 <div className="hotel-group-logo">
-                                    {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
-                                        <div className="hotel-groups-logos">
-                                            {hotel.hotel_groups.map((group) => (
+                                   {hotel.hotel_groups.map((group) => (
                                                 group.logo && group.logo.url && (
+                                        <div className="hotel-groups-logos">
+                                            
+                                            
+                                                    
                                                     <div key={group.id} className="hotel-group-logo-item">
+                                                     
                                                         <img 
                                                             src={group.logo.thumbnail_url || group.logo.url} 
                                                             alt={group.logo.description || `${group.name} logo`}
@@ -399,18 +490,22 @@ const HotelDetail: React.FC = () => {
                                                             }}
                                                         />
                                                     </div>
-                                                )
-                                            ))}
+                                             
                                         </div>
-                                    )}
+                                     )
+                                    ))}
                                 </div>
+                                  )}
                                 <div className="hotel-details">
+                                <div> <strong>Rating</strong>
                                         <div className="hotel-rating">
-                                        {renderStars(hotel.rating || 0)}
-                                        <span className="rating-text">{hotel.rating || "N/A"}/5</span>
-                                        {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
-                                    </div>
-                                    {/* Hotel Groups/Brands */}
+                                           
+                                            {renderStars(hotel.rating || 0)}
+                                            <span className="rating-text">{hotel.rating || "N/A"}/5</span>
+                                            {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
+                                        </div>
+                                        </div>
+                                    {/* Hotel Groups/Brands 
                                     {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
                                         <div className="hotel-groups mb-2">
                                             {hotel.hotel_groups.map((group, index) => (
@@ -418,18 +513,17 @@ const HotelDetail: React.FC = () => {
                                             ))}
                                         </div>
                                     )}
-
-                                    {hotel.address && <p className="hotel-address">{hotel.address}</p>}
-                                    {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}
+                                    */}
+                                    <div><strong>Address</strong>  {hotel.address && <p className="hotel-address">{hotel.address}</p>}</div>
+                                   
+                                    <div><strong>Distance</strong>  {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}</div>
                                      
                                     {/* Amenities */}
-                                    <div className="header-hotel-detail amenities-detail">
-                                        <span className="label">Hotel Amenities</span>
-                                        <span className="text">{hotel.amenities.join(", ")}</span>
+                                    <div>
+                                        <strong>Hotel Amenities</strong> {hotel.amenities.join(", ")}
                                     </div>
-                                    <div className="header-hotel-detail price-detail">
-                                        <span className="label">Starting from</span>
-                                        <span className="text">${hotel.price || "N/A"}/night</span>
+                                    <div>
+                                        <strong>Starting from</strong> ${hotel.price || "N/A"}/night
                                     </div>
 
                                 </div>
@@ -442,8 +536,10 @@ const HotelDetail: React.FC = () => {
                               
                             </div>
                         </div>
+                        {hotel.benefits && hotel.benefits.length > 0 && (  
+                        
                     <div className="hotel-content_sidebar">
-
+                                 
                         <div className="hotel-benefits">
                             <div className="hotel-benefits_heading">
                                 <h3>Your Benefits</h3>
@@ -451,13 +547,13 @@ const HotelDetail: React.FC = () => {
                             </div>
                             <div className="hotel-benefits_cont">
                               
-                                {hotel.benefits && hotel.benefits.length > 0 && (
+                              
                                     <ul>
                                         {hotel.benefits.map((benefit, index) => (
                                             <li key={index}>{benefit}</li>
                                         ))}
                                     </ul>
-                                )}
+                               
                                 {hotel.benefits_footnotes && hotel.benefits_footnotes.length > 0 && (
                                     <div className="benefits-footnotes">
                                         {hotel.benefits_footnotes.map((footnote, index) => (
@@ -468,6 +564,7 @@ const HotelDetail: React.FC = () => {
                                 <a href="" className="btn btn-primary">Get a trip quote</a>
                             </div>
                         </div>      
+                        
                         {/*               
                         <div className="section-membership">
                             <div className="container">
@@ -488,7 +585,7 @@ const HotelDetail: React.FC = () => {
                         */}
 
                     </div>
-                   
+                    )}
                 </div>
             </section>
 
@@ -528,6 +625,8 @@ const HotelDetail: React.FC = () => {
                                     iconSrc = '/assets/img/hotelInfo/positive_impact.svg';
                                 } else if (title.includes('pool')) {
                                     iconSrc = '/assets/img/hotelInfo/pool.svg';
+                                } else if (title.includes('activities')) {
+                                    iconSrc = '/assets/img/hotelInfo/activity.svg';
                                 } 
                                 
                                 return (
@@ -550,7 +649,7 @@ const HotelDetail: React.FC = () => {
                     </div>
                 </section>
             )}
-             {/* Related Hotels Section */}
+             {/* Related Hotels Section    */}
              
              <section className="section-related-hotels">
                 <div className="container">
@@ -585,6 +684,7 @@ const HotelDetail: React.FC = () => {
                     </div>
                 </div>
             </section>
+         
             {/* 
             <section className="section-padding booking-section">
                 <div className="container">
