@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import BannerCTA from "../components/shared/BannerCTA";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -86,33 +87,16 @@ const Login: React.FC = () => {
 
   return (
     <Layout>
-      <section className="banner-header section-padding bg-img" data-overlay-dark="5" style={{
-        backgroundImage: 'url(/assets/img/slider/1.jpg)',
-        minHeight: '400px'
-      }}>
-        <div className="v-middle">
-          <div className="container">
-            <div className="row">
-              <div className="col-md-12 text-center">
-                <h6>Welcome Back</h6>
-                <h1>Login to Your Account</h1>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="rooms1 section-padding" data-scroll-index="1">
+     
+      <section className="login-page rooms1 section-padding" data-scroll-index="1">
         <div className="container">
-          <div className="row justify-content-center">
-            <div className="col-md-8 col-lg-6">
-              <div className="auth-card" style={{
-                background: '#fff',
-                padding: '40px',
-                borderRadius: '8px',
-                boxShadow: '0 0 20px rgba(0,0,0,0.1)'
-              }}>
-                <h3 className="text-center mb-4">Login</h3>
+          <div className="row">
+           
+            
+            {/* Main Content */}
+            <div className="col-md-12 col-lg-6">
+              <div className="auth-card" >
+                <h2>Access your account</h2>
 
                 {error && (
                   <div className="alert alert-danger" role="alert">
@@ -123,9 +107,6 @@ const Login: React.FC = () => {
                 <form onSubmit={handleSubmit}>
                   {/* Email */}
                   <div className="form-group mb-3">
-                    <label htmlFor="email" className="form-label">
-                      Email Address <span className="text-danger">*</span>
-                    </label>
                     <input
                       type="email"
                       className={`form-control ${validationErrors.email ? 'is-invalid' : ''}`}
@@ -133,7 +114,7 @@ const Login: React.FC = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="Enter your email"
+                      placeholder="Your Email Address *"
                       disabled={isLoading}
                     />
                     {validationErrors.email && (
@@ -143,9 +124,6 @@ const Login: React.FC = () => {
 
                   {/* Password */}
                   <div className="form-group mb-3">
-                    <label htmlFor="password" className="form-label">
-                      Password <span className="text-danger">*</span>
-                    </label>
                     <input
                       type="password"
                       className={`form-control ${validationErrors.password ? 'is-invalid' : ''}`}
@@ -153,7 +131,7 @@ const Login: React.FC = () => {
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
-                      placeholder="Enter your password"
+                      placeholder="Your Password *"
                       disabled={isLoading}
                     />
                     {validationErrors.password && (
@@ -161,7 +139,7 @@ const Login: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Remember Me & Forgot Password */}
+                  {/* Remember Me & Login Button */}
                   <div className="form-group mb-4 d-flex justify-content-between align-items-center">
                     <div className="form-check">
                       <input
@@ -177,35 +155,31 @@ const Login: React.FC = () => {
                         Remember me
                       </label>
                     </div>
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-lg butn-dark "
+                      disabled={isLoading}
+                     
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Logging in...
+                        </>
+                      ) : (
+                        'Log in'
+                      )}
+                    </button>
+                    {/* 
                     <Link to="/forgot-password" className="text-decoration-none">
                       Forgot Password?
                     </Link>
+                    */}
                   </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    className="butn-dark w-100"
-                    disabled={isLoading}
-                    style={{
-                      padding: '12px',
-                      fontSize: '16px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}
-                  >
-                    {isLoading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Logging in...
-                      </>
-                    ) : (
-                      'Login'
-                    )}
-                  </button>
                 </form>
 
-                {/* Social Login (Optional) */}
+                {/* Social Login (Optional)
                 <div className="text-center mt-4">
                   <p className="mb-3">Or login with</p>
                   <div className="d-flex gap-2 justify-content-center">
@@ -217,8 +191,8 @@ const Login: React.FC = () => {
                     </button>
                   </div>
                 </div>
-
-                {/* Signup Link */}
+ */}
+                {/* Signup Link 
                 <div className="text-center mt-4">
                   <p className="mb-0">
                     Don't have an account?{' '}
@@ -227,11 +201,22 @@ const Login: React.FC = () => {
                     </Link>
                   </p>
                 </div>
+*/}
+              </div>
+            </div>
+             {/* Sidebar */}
+             <div className="col-md-12 col-lg-6">
+              <div className="sidebar text-center">
+                <img src="/assets/img/ventus-logo.png" alt="Login Sidebar" />
+                <h4>Don't have an account?</h4>
+                <h3>Join now to unlock exclusive member benefits</h3>
+                <a href="/signup" className="btn btn-primary btn-lg">Join Now</a>
               </div>
             </div>
           </div>
         </div>
       </section>
+      <BannerCTA />
     </Layout>
   );
 };
