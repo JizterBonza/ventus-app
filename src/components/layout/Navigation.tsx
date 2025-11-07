@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import UserMenu from "../shared/UserMenu";
 
 const Navigation: React.FC = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { isAuthenticated, isLoading } = useAuth();
 
     return (
         <>
@@ -53,6 +56,36 @@ const Navigation: React.FC = () => {
                             Contact Us
                         </Link>
                     </li>
+                    
+                    {/* Authentication Links */}
+                    {!isLoading && (
+                        <>
+                            {isAuthenticated ? (
+                                <li className="nav-item" style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
+                                    <UserMenu />
+                                </li>
+                            ) : (
+                                <>
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/login">
+                                            <i className="ti-user"></i> Login
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/signup" style={{
+                                            background: '#aa8453',
+                                            color: '#fff',
+                                            padding: '8px 20px',
+                                            borderRadius: '4px',
+                                            marginLeft: '10px'
+                                        }}>
+                                            Sign Up
+                                        </Link>
+                                    </li>
+                                </>
+                            )}
+                        </>
+                    )}
                 </ul>
             </div>
         </>
