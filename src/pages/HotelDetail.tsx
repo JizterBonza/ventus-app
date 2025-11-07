@@ -233,15 +233,13 @@ const HotelDetail: React.FC = () => {
         const $el = $('.modal-hotel-gallery');
         if ($el.length && !$el.hasClass('slick-initialized')) {
             $el.slick({
-            dots: true,
+            dots: false,
             infinite: true,
             speed: 1000,
             slidesToShow: 1,
             slidesToScroll: 1,
-            autoplay: true,
-            autoplaySpeed: 5000,
-            arrows: false,
-            fade: true,
+            autoplay: false,
+            arrows: true,
             cssEase: "linear",
             pauseOnHover: true
             });
