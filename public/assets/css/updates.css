@@ -139,7 +139,6 @@ textarea.form-control{
 }
 .footer-subscribe form{
     background: none;
-    height: 49px;
     margin-block: 15px;
     padding: 0;
     gap: 15px;
@@ -482,10 +481,10 @@ textarea.form-control{
 }
 .login-page .col-lg-6:first-child{
     border-right: 1px solid #0000001A;
-    padding-right: 200px;
+    padding-right: 180px;
 }
 .login-page .col-lg-6:last-child{
-    padding-left: 200px;
+    padding-left: 180px;
 }
 .login-page form{
    margin-left: 0;
