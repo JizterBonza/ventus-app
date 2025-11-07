@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getHotelDetails } from "../utils/api";
+import { getHotelDetails, searchHotelsByQuery } from "../utils/api";
 import { Hotel, HotelImage } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
@@ -305,7 +305,35 @@ const HotelDetail: React.FC = () => {
         };
     }, []);
 
-   
+    const [relatedHotels, setRelatedHotels] = useState<Hotel[]>([]);
+
+    // Fetch related hotels based on location
+    useEffect(() => {
+        const fetchRelatedHotels = async () => {
+            if (!hotel || !hotel.location) return;
+            
+            try {
+                console.log('Fetching related hotels for location:', hotel.location);
+                
+                // Search for hotels in the same location
+                const searchResults = await searchHotelsByQuery(hotel.location, 10);
+                
+                // Filter out the current hotel and limit to 3 results
+                const filteredHotels = searchResults
+                    .filter(h => h.id !== hotel.id)
+                    .slice(0, 3);
+                
+                setRelatedHotels(filteredHotels);
+                console.log('Related hotels fetched:', filteredHotels);
+            } catch (error) {
+                console.error('Error fetching related hotels:', error);
+                // Keep empty array on error
+                setRelatedHotels([]);
+            }
+        };
+
+        fetchRelatedHotels();
+    }, [hotel]);
 
     const handleBookingSuccess = (response: any) => {
         console.log("Booking successful:", response);
@@ -405,8 +433,6 @@ const HotelDetail: React.FC = () => {
     }
 
     const hotelImages = getHotelImages();
-
-  
 
     return (
   
@@ -648,40 +674,45 @@ const HotelDetail: React.FC = () => {
                 </section>
             )}
              {/* Related Hotels Section    */}
-             
-             <section className="section-related-hotels">
-                <div className="container">
-                    <h3>Other Hotels in {hotel.location}</h3>
-                    <div className="hotels-grid row">
-                        {mockSimilarHotels.map((relatedHotel) => (
-                            <div key={relatedHotel.id} className="col-md-4 mb-4">
-                                <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
-                                    <div className="card-image">
-                                        <img 
-                                            src={relatedHotel.image} 
-                                            alt={relatedHotel.name}
-                                            onError={(e) => {
-                                                const target = e.target as HTMLImageElement;
-                                                target.src = fallbackImages[0];
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="card-content">
-                                        <h4>{relatedHotel.name}</h4>
-                                        <div className="card-description">
-                                            {relatedHotel.location}
-                                        </div>
-                                        <a href="{`/hotel/${relatedHotel.id}`}">View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
-<path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
-</svg></a>
-                                      
-                                    </div>
-                                </Link>
+            {/* Related Hotels Section */}
+{relatedHotels.length > 0 && (
+    <section className="section-related-hotels">
+        <div className="container">
+            <h3>Other Hotels in {hotel.location}</h3>
+            <div className="hotels-grid row">
+                {relatedHotels.map((relatedHotel) => (
+                    <div key={relatedHotel.id} className="col-md-4 mb-4">
+                        <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
+                            <div className="card-image">
+                                <img 
+                                    src={relatedHotel.image || relatedHotel.images?.[0]?.url || fallbackImages[0]} 
+                                    alt={relatedHotel.name}
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = fallbackImages[0];
+                                    }}
+                                />
                             </div>
-                        ))}
+                            <div className="card-content">
+                                <h4>{relatedHotel.name}</h4>
+                                <div className="card-description">
+                                    {relatedHotel.address || relatedHotel.location}
+                                </div>
+                              
+                                <a>
+                                    View Hotel 
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                        <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        </Link>
                     </div>
-                </div>
-            </section>
+                ))}
+            </div>
+        </div>
+    </section>
+)}
          
             {/* 
             <section className="section-padding booking-section">
