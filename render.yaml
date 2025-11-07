@@ -4,6 +4,7 @@ services:
     name: ventus-app
     buildCommand: npm install && npm run build
     startCommand: npm run start:prod
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
