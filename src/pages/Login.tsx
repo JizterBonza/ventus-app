@@ -80,6 +80,7 @@ const Login: React.FC = () => {
         email: formData.email,
         password: formData.password
       });
+      // Navigation will be handled by useEffect when isAuthenticated becomes true
     } catch (err) {
       console.error('Login error:', err);
     }
