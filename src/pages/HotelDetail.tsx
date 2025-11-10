@@ -7,6 +7,7 @@ import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../contexts/AuthContext";
+import SearchBarNew from "../components/shared/SearchBarNew";
 
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
@@ -441,7 +442,7 @@ const HotelDetail: React.FC = () => {
         <div className="hotel-detail-page">
             <Header />
             {/* Hero Section */}
-
+        <SearchBarNew />
             
             <section className="header-image-container" onClick={() => setShowGallery(true)}>
                     <img

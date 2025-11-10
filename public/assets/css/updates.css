@@ -613,6 +613,7 @@ textarea.form-control{
 }
 .hotel-card .card-image{
     width: 40%;
+    max-width: 473px;
 }
 .card_content{
     padding: 0 100px 0 40px;
