@@ -442,7 +442,7 @@ const HotelDetail: React.FC = () => {
         <div className="hotel-detail-page">
             <Header />
             {/* Hero Section */}
-        SearchBarNew
+        <SearchBarNew />
             
             <section className="header-image-container" onClick={() => setShowGallery(true)}>
                     <img
@@ -630,7 +630,8 @@ const HotelDetail: React.FC = () => {
                                     <h5>Unique Experiences</h5>
                                     <p>{hotel.unique_experiences}</p>
                                 </div>
-                            )}*/}
+                            )}
+                                */}
                             {hotel.hotel_information.map((info, index) => {
                                 let iconSrc = '/images/info-icon.png'; // default icon
                                 
