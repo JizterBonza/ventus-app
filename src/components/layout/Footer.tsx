@@ -23,24 +23,24 @@ const Footer: React.FC = () => {
                                         <Link to="/">Home</Link>
                                     </li>
                                     <li>
-                                        <Link to="/about">About</Link>
+                                        <Link target="_blank" to="https://www.ventustravel.co.uk/about-us">About</Link>
                                     </li>
                                 
                                 </ul>
                                 <ul>
                                     <li>
-                                        <Link to="/">Destinations</Link>
+                                        <Link target="_blank" to="https://www.ventustravel.co.uk/destinations">Destinations</Link>
                                     </li>
                                     <li>
-                                        <Link to="/the-magazine">The Magazine</Link>
+                                        <Link target="_blank" to="https://www.ventustravel.co.uk/the-magazine">The Magazine</Link>
                                     </li>
                                 </ul>
                                 <ul>
                                     <li>
-                                        <Link to="/buy-outs">Buy Outs</Link>
+                                        <Link target="_blank" to="https://www.ventustravel.co.uk/buy-outs">Buy Outs</Link>
                                     </li>
                                     <li>
-                                        <Link to="/contact">Contact</Link>
+                                        <Link target="_blank" to="https://www.ventustravel.co.uk/contact-us">Contact</Link>
                                     </li>
                                 </ul>
                             </div>

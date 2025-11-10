@@ -32,7 +32,7 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/about-us">
+                        <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/about-us">
                             About Us
                         </Link>
                     </li>
@@ -42,17 +42,17 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li> */}
                     <li className="nav-item">
-                        <Link className="nav-link" to="/the-magazine">
+                        <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/the-magazine">
                             The Magazine
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/buy-outs">
+                        <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/buy-outs">
                             Buy Outs
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/contact-us">
+                        <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/contact-us">
                             Contact Us
                         </Link>
                     </li>
