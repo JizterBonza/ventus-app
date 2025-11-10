@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { Link } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
-import { Hotel, SearchParams } from "../types/search";
+import { Hotel } from "../types/search";
 import { getHotelDetailsBatch } from "../utils/api";
 import { interestCategories } from "../utils/interestCategories";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
+import SearchBarNew from "../components/shared/SearchBarNew";
 import PageHeader from "../components/shared/PageHeader";
 
 import Membership from "../components/shared/Membership";
@@ -15,35 +16,20 @@ import BannerCTA from "../components/shared/BannerCTA";
 declare const $: any;
 
 const Home: React.FC = () => {
-    const [urlSearchParams] = useSearchParams();
+    const { hotels, loading, error, clearError } = useSearch();
     const [searchParams, setSearchParams] = useState({
         location: "",
         priceRange: "all",
         rating: "all",
         sortBy: "recommended",
     });
-    const [checkInDate, setCheckInDate] = useState("");
-    const [checkOutDate, setCheckOutDate] = useState("");
-    const [guests, setGuests] = useState("2");
-    const selectingCheckInRef = useRef(true);
-    const checkInDateRef = useRef("");
-    const checkOutDateRef = useRef("");
-
-    // Keep refs in sync with state
-    useEffect(() => {
-        checkInDateRef.current = checkInDate;
-    }, [checkInDate]);
-
-    useEffect(() => {
-        checkOutDateRef.current = checkOutDate;
-    }, [checkOutDate]);
-
-    const { hotels, loading, error, searchByQuery, searchAdvanced, clearError } = useSearch();
     const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [sliderReady, setSliderReady] = useState(false);
+    const sliderInitializedRef = useRef(false);
+    const sliderContainerRef = useRef<HTMLDivElement>(null);
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -65,38 +51,6 @@ const Home: React.FC = () => {
         "/assets/img/rooms/7.jpg",
         "/assets/img/rooms/8.jpg",
     ];
-
-    useEffect(() => {
-        // Handle URL parameters from home page
-        const location = urlSearchParams.get("location");
-
-        if (location) {
-            setSearchParams((prev) => ({
-                ...prev,
-                location: location || "",
-            }));
-
-            // Auto-search for the location
-            searchByQuery(location, 20);
-        }
-    }, [urlSearchParams, searchByQuery]);
-
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const searchQuery = searchParams.location || "hotels";
-
-        const searchParamsForAPI: SearchParams = {
-            query: searchQuery,
-            limit: 20,
-            location: searchParams.location || undefined,
-            priceRange: searchParams.priceRange !== "all" ? searchParams.priceRange : undefined,
-            rating: searchParams.rating !== "all" ? searchParams.rating : undefined,
-            sortBy: searchParams.sortBy !== "recommended" ? searchParams.sortBy : undefined,
-        };
-
-        await searchAdvanced(searchParamsForAPI);
-    };
 
     // Function to fetch detailed hotel information
     const fetchHotelDetails = async (hotelIds: number[]) => {
@@ -178,13 +132,6 @@ const Home: React.FC = () => {
         }
     }, [hotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
 
-    const handleInputChange = (field: string, value: string) => {
-        setSearchParams((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
-    };
-
     // Interest category filter handlers
     const toggleCategory = (category: string) => {
         setSelectedCategories((prev) =>
@@ -215,63 +162,66 @@ const Home: React.FC = () => {
         setFilteredInterests(filtered);
     }, [selectedCategories, selectedLocation]);
 
-    // Datepicker initialization for date range
-    useEffect(() => {
-        if (typeof $ !== "undefined" && $.fn.datepicker) {
-            const $dateRangeInput = $(".date-range-input");
 
-            if ($dateRangeInput.length > 0 && !$dateRangeInput.hasClass("hasDatepicker")) {
-                $dateRangeInput.datepicker({
-                    dateFormat: "mm/dd/yy",
-                    minDate: 0,
-                    beforeShow: function () {
-                        // Reset to check-in selection if both dates are cleared
-                        if (!checkInDateRef.current && !checkOutDateRef.current) {
-                            selectingCheckInRef.current = true;
-                            $(this).datepicker("option", "minDate", 0);
-                        } else if (checkInDateRef.current && !checkOutDateRef.current) {
-                            selectingCheckInRef.current = false;
-                            $(this).datepicker("option", "minDate", checkInDateRef.current);
-                        } else if (checkInDateRef.current && checkOutDateRef.current) {
-                            // Both dates selected, allow reselection
-                            selectingCheckInRef.current = true;
-                            $(this).datepicker("option", "minDate", 0);
+    // Cleanup slider before React updates DOM - use useLayoutEffect for synchronous cleanup
+    useLayoutEffect(() => {
+        return () => {
+            // Destroy slider synchronously before React removes the DOM
+            if (typeof $ !== "undefined" && $.fn.slick && sliderContainerRef.current) {
+                try {
+                    const $hotelHeaderGallery = $(sliderContainerRef.current);
+                    
+                    // Check if element still exists and is initialized
+                    if ($hotelHeaderGallery.length > 0 && $hotelHeaderGallery.hasClass("slick-initialized")) {
+                        // Remove event listener first
+                        $hotelHeaderGallery.off("beforeChange");
+                        
+                        // Get the slick instance and destroy it properly
+                        const slickInstance = $hotelHeaderGallery[0]?.slick;
+                        if (slickInstance) {
+                            // Destroy slider - wrap in try-catch to handle DOM errors
+                            try {
+                                $hotelHeaderGallery.slick("unslick");
+                            } catch (slickError) {
+                                // If unslick fails, try to clean up manually
+                                try {
+                                    // Remove slick classes and restore original structure
+                                    $hotelHeaderGallery.removeClass("slick-initialized slick-slider");
+                                    const $slides = $hotelHeaderGallery.find(".slick-slide");
+                                    $slides.each(function(this: HTMLElement) {
+                                        const $slide = $(this);
+                                        const $content = $slide.contents();
+                                        if ($content.length > 0) {
+                                            $slide.replaceWith($content);
+                                        }
+                                    });
+                                    // Remove slick track and list
+                                    $hotelHeaderGallery.find(".slick-track, .slick-list").remove();
+                                } catch (cleanupError) {
+                                    // Final fallback - just remove classes
+                                    console.warn("Slider cleanup failed, removing classes only");
+                                }
+                            }
                         }
-                    },
-                    onSelect: function (dateText: string, inst: any) {
-                        if (selectingCheckInRef.current) {
-                            setCheckInDate(dateText);
-                            setCheckOutDate("");
-                            selectingCheckInRef.current = false;
-                            // Update minDate for check-out selection
-                            $(this).datepicker("option", "minDate", dateText);
-                            // Reopen datepicker for check-out selection
-                            setTimeout(() => {
-                                $dateRangeInput.datepicker("show");
-                            }, 10);
-                        } else {
-                            setCheckOutDate(dateText);
-                            selectingCheckInRef.current = true;
-                            // Close datepicker after both dates are selected
-                            $dateRangeInput.datepicker("hide");
-                        }
-                    },
-                });
-            }
-
-            return () => {
-                if ($dateRangeInput.hasClass("hasDatepicker")) {
-                    $dateRangeInput.datepicker("destroy");
+                    }
+                } catch (error) {
+                    // Silently handle errors during cleanup - element may already be removed
+                    // This is expected when React unmounts the component
+                } finally {
+                    sliderInitializedRef.current = false;
                 }
-            };
-        }
-    }, []); // Only initialize once
+            } else {
+                sliderInitializedRef.current = false;
+            }
+        };
+    }, []); // Only cleanup on unmount
 
     // Slider initialization
     useEffect(() => {
         const initSlider = () => {
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $hotelHeaderGallery = $(".hotel-header-gallery");
+            if (typeof $ !== "undefined" && $.fn.slick && sliderContainerRef.current) {
+                const $hotelHeaderGallery = $(sliderContainerRef.current);
+                
                 // Check if slider exists and is not already initialized
                 if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
@@ -287,13 +237,15 @@ const Home: React.FC = () => {
                             fade: true,
                             cssEase: "linear",
                             pauseOnHover: true,
+                            adaptiveHeight: false,
+                            useTransform: true,
                         });
 
                         // Add class to page-header-content when slider changes
                         $hotelHeaderGallery.on(
                             "beforeChange",
                             function (event: any, slick: any, currentSlide: number, nextSlide: number) {
-                                const $pageHeaderContent = $(".page-header");
+                                const $pageHeaderContent = $(".page-header").first();
 
                                 // Remove class if transitioning to first slide, otherwise add it
                                 if (nextSlide === 0) {
@@ -305,8 +257,10 @@ const Home: React.FC = () => {
                         );
 
                         setSliderReady(true);
+                        sliderInitializedRef.current = true;
                     } catch (error) {
                         console.error("Error initializing slider:", error);
+                        sliderInitializedRef.current = false;
                     }
                 }
             } else {
@@ -315,29 +269,13 @@ const Home: React.FC = () => {
         };
 
         // Wait for DOM to be ready and images to start loading
-        const timer = setTimeout(initSlider, 300);
+        const timer = setTimeout(initSlider, 500);
 
-        // Cleanup function to destroy slider when component unmounts
+        // Cleanup function to clear timer
         return () => {
             clearTimeout(timer);
-            setSliderReady(false);
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $hotelHeaderGallery = $(".hotel-header-gallery");
-
-                // Remove event listener
-                $hotelHeaderGallery.off("beforeChange");
-
-                if ($hotelHeaderGallery.hasClass("slick-initialized")) {
-                    try {
-                        $hotelHeaderGallery.slick("unslick");
-                        console.log("Slider destroyed");
-                    } catch (error) {
-                        console.error("Error destroying slider:", error);
-                    }
-                }
-            }
         };
-    }, []);
+    }, []); // Only initialize once
 
     const renderStars = (rating: number) => {
         return Array.from({ length: 5 }, (_, i) => (
@@ -354,69 +292,7 @@ const Home: React.FC = () => {
                 backgroundImage="/assets/img/slider/1.jpg"
             /> */}
             {/* Search Form */}
-            <section className="search-form-section">
-                <div className="container">
-                    <div className="booking-inner clearfix">
-                        <form onSubmit={handleSearch} className="form1 clearfix modern-search-form">
-                            <div className="col1 c1 search-field" style={{ width: "30%" }}>
-                                <div className="input1_wrapper">
-                                    <label>Location</label>
-                                    <div className="input1_inner">
-                                        <i className="ti-search search-icon"></i>
-                                        <input
-                                            type="text"
-                                            className="form-control input"
-                                            placeholder="Search a hotel or destination"
-                                            value={searchParams.location}
-                                            onChange={(e) => handleInputChange("location", e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col2 c2 date-field" style={{ width: "30%" }}>
-                                <div className="input1_wrapper">
-                                    <label>Date</label>
-                                    <div className="input1_inner">
-                                        <i className="ti-calendar calendar-icon"></i>
-                                        <input
-                                            type="text"
-                                            className="form-control input date-range-input"
-                                            placeholder="Arrival-Departure"
-                                            value={checkInDate && checkOutDate ? `${checkInDate} - ${checkOutDate}` : checkInDate || checkOutDate || ""}
-                                            readOnly
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col3 c3 guest-field" style={{ width: "20%" }}>
-                                <div className="input1_wrapper">
-                                    <label>Guests</label>
-                                    <div className="input1_inner">
-                                        <i className="ti-user user-icon"></i>
-                                        <select
-                                            className="form-control input guest-select"
-                                            value={guests}
-                                            onChange={(e) => setGuests(e.target.value)}
-                                        >
-                                            <option value="1">1 adult</option>
-                                            <option value="2">2 adults</option>
-                                            <option value="3">3 adults</option>
-                                            <option value="4">4 adults</option>
-                                            <option value="5">5 adults</option>
-                                            <option value="6">6 adults</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col4 c4 search-button" style={{ width: "20%" }}>
-                                <button type="submit" className="btn-form1-submit modern-search-btn">
-                                    {loading ? "Searching..." : "SEARCH"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </section>
+            <SearchBarNew />
             <br />
             <div className="container">
                 <div className="page-header-content">
@@ -427,6 +303,7 @@ const Home: React.FC = () => {
             {/* Hero Slider Section */}
             <section className="page-header" style={{ height: "700px", overflow: "hidden" }}>
                 <div
+                    ref={sliderContainerRef}
                     className="hotel-header-gallery"
                     style={{ opacity: sliderReady ? 1 : 0, transition: "opacity 0.3s ease-in-out" }}
                 >

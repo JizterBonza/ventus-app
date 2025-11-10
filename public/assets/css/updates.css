@@ -1,3 +1,50 @@
+.breadcrumb-nav{
+    display: none;
+}
+.booking-inner{
+    max-width: 680px;
+    border: 0;
+    margin: 0 auto;
+}
+html .modern-search-form{
+    border-radius: 0;
+    box-shadow: none;
+    align-items: center;
+    padding: 10px;
+    height: 52px;
+}
+html .modern-search-form .input1_inner{
+    height: 52px;
+}
+html .modern-search-form .search-field .input1_inner{
+    padding-left: 0;
+}
+html .modern-search-form .search-field, 
+html .modern-search-form .date-field, 
+html .modern-search-form .guest-field, 
+html .modern-search-form .search-button{
+    margin:0;
+}
+html .modern-search-form .guest-field{
+    border:0;
+}
+html .modern-search-form .modern-search-btn{
+    height: 35px;
+    line-height: 1;
+    font-weight: 400;
+    
+}
+html .modern-search-form .search-button{
+    align-items: center;
+}
+html .modern-search-form .input1_inner input, 
+html .modern-search-form .input1_inner select{
+    padding:0 0 0 8px;
+}
+html .search-form-section{
+    padding: 15px 0;
+    box-shadow: none;
+}
 .navbar{
     position: relative;
     background-color: var(--black-200);
@@ -47,7 +94,7 @@
     padding: 100px 0 30px;
 }
 .membership-content_heading{
-    max-width: 450px;
+    max-width: 490px;
     margin: 0 auto 150px;
 }
 .membership-content_heading img{
@@ -218,6 +265,9 @@ textarea.form-control{
 }
 .hotel-detail-page .hotel-content_sidebar .section-membership{
     display: block;
+}
+.hotel-content_sidebar .section-membership .membership-content_heading{
+    max-width: 450px;
 }
 .hotel-content_sidebar{
     flex: 1;
@@ -694,5 +744,11 @@ textarea.form-control{
     .login-page .sidebar h4{
         font-size: 16px;
     }
-    
+    .gallery-modal{
+        padding: 30px;
+    }
+    .close-modal{
+        right: 40px;
+        color: #fff;
+    }
 }
