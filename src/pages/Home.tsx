@@ -28,8 +28,13 @@ const Home: React.FC = () => {
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [sliderReady, setSliderReady] = useState(false);
+<<<<<<< Updated upstream
     const sliderInitializedRef = useRef(false);
     const sliderContainerRef = useRef<HTMLDivElement>(null);
+=======
+    const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
+    const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
+>>>>>>> Stashed changes
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -52,6 +57,60 @@ const Home: React.FC = () => {
         "/assets/img/rooms/8.jpg",
     ];
 
+<<<<<<< Updated upstream
+=======
+    useEffect(() => {
+        // Handle URL parameters from home page
+        const location = urlSearchParams.get("location");
+
+        if (location) {
+            setSearchParams((prev) => ({
+                ...prev,
+                location: location || "",
+            }));
+
+            // Auto-search for the location
+            searchByQuery(location, 20);
+        }
+    }, [urlSearchParams, searchByQuery]);
+
+    // Fetch slider hotels on component mount
+    useEffect(() => {
+        const fetchSliderHotels = async () => {
+            const hotelIds = [8161, 8131, 7190, 10858, 6106, 10506, 89, 10907, 831, 9433, 508, 11063];
+            setLoadingSliderHotels(true);
+            try {
+                const hotels = await getHotelDetailsBatch(hotelIds);
+                setSliderHotels(hotels);
+                console.log("Slider hotels fetched:", hotels);
+            } catch (error) {
+                console.error("Error fetching slider hotels:", error);
+            } finally {
+                setLoadingSliderHotels(false);
+            }
+        };
+
+        fetchSliderHotels();
+    }, []);
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const searchQuery = searchParams.location || "hotels";
+
+        const searchParamsForAPI: SearchParams = {
+            query: searchQuery,
+            limit: 20,
+            location: searchParams.location || undefined,
+            priceRange: searchParams.priceRange !== "all" ? searchParams.priceRange : undefined,
+            rating: searchParams.rating !== "all" ? searchParams.rating : undefined,
+            sortBy: searchParams.sortBy !== "recommended" ? searchParams.sortBy : undefined,
+        };
+
+        await searchAdvanced(searchParamsForAPI);
+    };
+
+>>>>>>> Stashed changes
     // Function to fetch detailed hotel information
     const fetchHotelDetails = async (hotelIds: number[]) => {
         if (hotelIds.length === 0) return;
@@ -216,14 +275,35 @@ const Home: React.FC = () => {
         };
     }, []); // Only cleanup on unmount
 
-    // Slider initialization
+    // Slider initialization - reinitialize when hotels are loaded
     useEffect(() => {
+        // Don't initialize if hotels are still loading
+        if (loadingSliderHotels) {
+            return;
+        }
+
         const initSlider = () => {
+<<<<<<< Updated upstream
             if (typeof $ !== "undefined" && $.fn.slick && sliderContainerRef.current) {
                 const $hotelHeaderGallery = $(sliderContainerRef.current);
                 
                 // Check if slider exists and is not already initialized
                 if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
+=======
+            if (typeof $ !== "undefined" && $.fn.slick) {
+                const $hotelHeaderGallery = $(".hotel-header-gallery");
+                // Destroy existing slider if it exists
+                if ($hotelHeaderGallery.hasClass("slick-initialized")) {
+                    try {
+                        $hotelHeaderGallery.slick("unslick");
+                    } catch (error) {
+                        console.error("Error destroying existing slider:", error);
+                    }
+                }
+                
+                // Check if slider exists and initialize
+                if ($hotelHeaderGallery.length > 0) {
+>>>>>>> Stashed changes
                     try {
                         $hotelHeaderGallery.slick({
                             dots: true,
@@ -271,11 +351,19 @@ const Home: React.FC = () => {
         // Wait for DOM to be ready and images to start loading
         const timer = setTimeout(initSlider, 500);
 
+<<<<<<< Updated upstream
         // Cleanup function to clear timer
+=======
+        // Cleanup function to destroy slider when component unmounts or hotels change
+>>>>>>> Stashed changes
         return () => {
             clearTimeout(timer);
         };
+<<<<<<< Updated upstream
     }, []); // Only initialize once
+=======
+    }, [sliderHotels, loadingSliderHotels]);
+>>>>>>> Stashed changes
 
     const renderStars = (rating: number) => {
         return Array.from({ length: 5 }, (_, i) => (
@@ -307,26 +395,60 @@ const Home: React.FC = () => {
                     className="hotel-header-gallery"
                     style={{ opacity: sliderReady ? 1 : 0, transition: "opacity 0.3s ease-in-out" }}
                 >
-                    {[
-                        "/assets/img/slider/1.jpg",
-                        "/assets/img/slider/2.jpg",
-                        "/assets/img/slider/3.jpg",
-                        "/assets/img/slider/4.jpg",
-                        "/assets/img/slider/5.jpg",
-                        "/assets/img/slider/6.jpg",
-                        "/assets/img/slider/7.jpg",
-                    ].map((image, index) => (
-                        <div key={index} className="hotel-header-gallery-item">
-                            <img
-                                src={image}
-                                alt={`Slider ${index + 1}`}
-                                onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = fallbackImages[index % fallbackImages.length];
-                                }}
-                            />
+                    {loadingSliderHotels ? (
+                        <div className="hotel-header-gallery-item" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                            <div className="spinner-border text-light" role="status">
+                                <span className="sr-only">Loading...</span>
+                            </div>
                         </div>
-                    ))}
+                    ) : sliderHotels.length > 0 ? (
+                        sliderHotels.map((hotel, index) => {
+                            const imageUrl = hotel.images && hotel.images.length > 0 
+                                ? hotel.images[0].url 
+                                : hotel.image || fallbackImages[index % fallbackImages.length];
+                            
+                            return (
+                                <div key={hotel.id || index} className="hotel-header-gallery-item">
+                                    <img
+                                        src={imageUrl}
+                                        alt={hotel.name || `Hotel ${index + 1}`}
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.src = fallbackImages[index % fallbackImages.length];
+                                        }}
+                                    />
+                                    <div className="slider-overlay">
+                                        <div className="slider-content">
+                                            <h2>{hotel.name || "Luxury Hotel"}</h2>
+                                            <p>{hotel.location || "Premium Destination"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        // Fallback to static images if no hotels loaded
+                        [
+                            "/assets/img/slider/1.jpg",
+                            "/assets/img/slider/2.jpg",
+                            "/assets/img/slider/3.jpg",
+                            "/assets/img/slider/4.jpg",
+                            "/assets/img/slider/5.jpg",
+                            "/assets/img/slider/6.jpg",
+                            "/assets/img/slider/7.jpg",
+                        ].map((image, index) => (
+                            <div key={index} className="hotel-header-gallery-item">
+                                <img
+                                    src={image}
+                                    alt={`Slider ${index + 1}`}
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = fallbackImages[index % fallbackImages.length];
+                                    }}
+                                />
+                            </div>
+                        ))
+                    )}
                 </div>
             </section>
 
@@ -605,11 +727,18 @@ const Home: React.FC = () => {
                         )}
                     </div>
 
+
+                    
+                    <div className="col-md-12">
+                        <div className="results-header">
+                            <h3>INSPIRATION</h3>
+                        </div>
+                    </div>
                     {/* Interest Cards */}
                     <div className="row">
                         {filteredInterests.map((interest) => (
                             <div key={interest.id} className="col-md-4 mb-4">
-                                <Link to={`/contact-us`} className="card interest-card">
+                                <div className="card interest-card">
                                 {/* 
                                     <div className="card-overlay">Find out more</div>
                                     <div className="card-categories">
@@ -624,14 +753,35 @@ const Home: React.FC = () => {
                                         <img src={interest.image} alt={interest.title} />
                                     </div>
                                     <div className="card-content">
-                                        <h4>Interested in {interest.title}?</h4>
+                                        <h4>{interest.title}</h4>
                                         <div className="card-description">{interest.description}</div>
-                                        <a>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                        <a
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                const query = interest.query;
+                                                if (query) {
+                                                    setSearchParams((prev) => ({
+                                                        ...prev,
+                                                        location: query,
+                                                    }));
+                                                    searchByQuery(query, 20);
+                                                    // Scroll to results section
+                                                    const resultsSection = document.querySelector('.results-section');
+                                                    if (resultsSection) {
+                                                        resultsSection.scrollIntoView({ behavior: 'smooth' });
+                                                    }
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
 <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
 </svg></a>
                                     </div>
                                     
-                                </Link>
+                                </div>
                             </div>
                         ))}
                     </div>

@@ -5,5 +5,6 @@ export interface InterestCategory {
     image: string;
     categories: string[];
     location: string;
+    query?: string;
 }
 
