@@ -1,12 +1,8 @@
 # Backend Environment Variables for Render
 # Copy these to your Render backend service environment variables
-# 
-# IMPORTANT: Use the INTERNAL Database URL (not external) for the backend service
 
-DATABASE_URL=postgresql://ventus_database_user:GA2Fi8db98gIW0GmZ6f7U6lIkORDnNzs@dpg-d46q1t8gjchc73ekv27g-a/ventus_database
-JWT_SECRET=your-secret-key-12345
+DATABASE_URL=<your-render-postgresql-internal-url>
+JWT_SECRET=<generate-a-secure-random-string>
 NODE_ENV=production
 PORT=10000
-
-# Note: PORT is optional - Render will auto-configure it
 

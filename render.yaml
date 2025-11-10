@@ -1,5 +1,4 @@
 services:
-  # Frontend Service
   - type: web
     name: ventus-app
     buildCommand: npm install && npm run build
@@ -8,6 +7,7 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+<<<<<<< HEAD
 
   # Backend Service
   - type: web
@@ -23,3 +23,5 @@ services:
         value: postgresql://ventus_database_user:GA2Fi8db98gIW0GmZ6f7U6lIkORDnNzs@dpg-d46q1t8gjchc73ekv27g-a/ventus_database
       - key: JWT_SECRET
         value: e45c0de4aab06e3b36199fe196217bbe
+=======
+>>>>>>> parent of 4d8e258 (backend)
