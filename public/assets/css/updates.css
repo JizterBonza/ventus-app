@@ -846,15 +846,13 @@ body .results-header p{
     .login-page .sidebar h4{
         font-size: 16px;
     }
-<<<<<<< Updated upstream
     .gallery-modal{
         padding: 30px;
     }
     .close-modal{
         right: 40px;
         color: #fff;
-=======
-    
+    }
 }
 
 /* Slider Overlay Styles */
@@ -902,9 +900,5 @@ body .results-header p{
     
     .slider-content p {
         font-size: 18px;
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 }

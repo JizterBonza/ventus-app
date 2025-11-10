@@ -16,7 +16,7 @@ import BannerCTA from "../components/shared/BannerCTA";
 declare const $: any;
 
 const Home: React.FC = () => {
-    const { hotels, loading, error, clearError } = useSearch();
+    const { hotels, loading, error, clearError, searchByQuery } = useSearch();
     const [searchParams, setSearchParams] = useState({
         location: "",
         priceRange: "all",
@@ -28,18 +28,10 @@ const Home: React.FC = () => {
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [sliderReady, setSliderReady] = useState(false);
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     const sliderInitializedRef = useRef(false);
     const sliderContainerRef = useRef<HTMLDivElement>(null);
-=======
     const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
     const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
->>>>>>> Stashed changes
-=======
-    const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
-    const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
->>>>>>> Stashed changes
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -62,23 +54,6 @@ const Home: React.FC = () => {
         "/assets/img/rooms/8.jpg",
     ];
 
-<<<<<<< Updated upstream
-=======
-    useEffect(() => {
-        // Handle URL parameters from home page
-        const location = urlSearchParams.get("location");
-
-        if (location) {
-            setSearchParams((prev) => ({
-                ...prev,
-                location: location || "",
-            }));
-
-            // Auto-search for the location
-            searchByQuery(location, 20);
-        }
-    }, [urlSearchParams, searchByQuery]);
-
     // Fetch slider hotels on component mount
     useEffect(() => {
         const fetchSliderHotels = async () => {
@@ -97,25 +72,6 @@ const Home: React.FC = () => {
 
         fetchSliderHotels();
     }, []);
-
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const searchQuery = searchParams.location || "hotels";
-
-        const searchParamsForAPI: SearchParams = {
-            query: searchQuery,
-            limit: 20,
-            location: searchParams.location || undefined,
-            priceRange: searchParams.priceRange !== "all" ? searchParams.priceRange : undefined,
-            rating: searchParams.rating !== "all" ? searchParams.rating : undefined,
-            sortBy: searchParams.sortBy !== "recommended" ? searchParams.sortBy : undefined,
-        };
-
-        await searchAdvanced(searchParamsForAPI);
-    };
-
->>>>>>> Stashed changes
     // Function to fetch detailed hotel information
     const fetchHotelDetails = async (hotelIds: number[]) => {
         if (hotelIds.length === 0) return;
@@ -288,18 +244,9 @@ const Home: React.FC = () => {
         }
 
         const initSlider = () => {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             if (typeof $ !== "undefined" && $.fn.slick && sliderContainerRef.current) {
                 const $hotelHeaderGallery = $(sliderContainerRef.current);
                 
-                // Check if slider exists and is not already initialized
-                if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
-=======
-=======
->>>>>>> Stashed changes
-            if (typeof $ !== "undefined" && $.fn.slick) {
-                const $hotelHeaderGallery = $(".hotel-header-gallery");
                 // Destroy existing slider if it exists
                 if ($hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
@@ -309,12 +256,8 @@ const Home: React.FC = () => {
                     }
                 }
                 
-                // Check if slider exists and initialize
-                if ($hotelHeaderGallery.length > 0) {
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+                // Check if slider exists and is not already initialized
+                if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
                         $hotelHeaderGallery.slick({
                             dots: true,
@@ -362,27 +305,11 @@ const Home: React.FC = () => {
         // Wait for DOM to be ready and images to start loading
         const timer = setTimeout(initSlider, 500);
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        // Cleanup function to clear timer
-=======
         // Cleanup function to destroy slider when component unmounts or hotels change
->>>>>>> Stashed changes
-=======
-        // Cleanup function to destroy slider when component unmounts or hotels change
->>>>>>> Stashed changes
         return () => {
             clearTimeout(timer);
         };
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    }, []); // Only initialize once
-=======
     }, [sliderHotels, loadingSliderHotels]);
->>>>>>> Stashed changes
-=======
-    }, [sliderHotels, loadingSliderHotels]);
->>>>>>> Stashed changes
 
     const renderStars = (rating: number) => {
         return Array.from({ length: 5 }, (_, i) => (
