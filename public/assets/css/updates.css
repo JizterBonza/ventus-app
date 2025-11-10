@@ -634,6 +634,18 @@ body .results-header p{
     color: #000;
     line-height: 1;
 }
+.page-header-content h2{
+    font-size: 40px;
+    font-weight: 300;
+}
+.results-header h3{
+    font-size: 32px;
+    font-weight: 300;
+}
+.interests-filters,
+.page-header:before, .page-header:after{
+    display: none;
+}
 @media screen and (max-width:1200px){
     .footer-left{
         padding-right: 100px;
@@ -880,23 +892,22 @@ body .results-header p{
     text-align: center;
     color: #fff;
     padding: 20px;
+    background: #222224;
 }
 
 .slider-content h2 {
-    font-size: 48px;
-    font-weight: 300;
+    font-size: 32px;
+    font-weight: 400;
     margin-bottom: 15px;
     color: #fff;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .slider-content p {
-    font-size: 24px;
-    font-weight: 300;
+    font-size: 18px;
+    font-weight: 500;
     margin: 0;
     color: #fff;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-    letter-spacing: 2px;
+    text-align: left;
     text-transform: uppercase;
 }
 

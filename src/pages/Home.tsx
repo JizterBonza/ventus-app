@@ -261,20 +261,67 @@ const Home: React.FC = () => {
                 if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
                         $hotelHeaderGallery.slick({
-                            dots: true,
-                            infinite: true,
+                            dots: false,
+                            infinite: false,
                             speed: 1000,
-                            slidesToShow: 1,
+                            slidesToShow: 2,
                             slidesToScroll: 1,
-                            autoplay: true,
+                            autoplay: false,
                             autoplaySpeed: 5000,
-                            arrows: false,
-                            fade: true,
+                            arrows: true,
+                            fade: false,
                             cssEase: "linear",
                             pauseOnHover: true,
                             adaptiveHeight: false,
                             useTransform: true,
+                            variableWidth: true,
+                            centerMode: false,
                         });
+
+                        // Add custom CSS to show only 1/4 of the right slide
+                        const updateSlideWidths = () => {
+                            const containerWidth = $hotelHeaderGallery.width() || 0;
+                            const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
+                            
+                            if (slickSlides.length > 0 && containerWidth > 0) {
+                                // First slide takes 75% of container width
+                                const firstSlideWidth = containerWidth * 0.75;
+                                // Second slide takes 25% of container width (showing 1/4)
+                                const secondSlideWidth = containerWidth * 0.25;
+                                
+                                slickSlides.each(function(this: HTMLElement, index: number) {
+                                    const $slide = $(this);
+                                    if (index === 0) {
+                                        $slide.css({
+                                            width: `${firstSlideWidth}px`,
+                                            paddingRight: "0"
+                                        });
+                                    } else if (index === 1) {
+                                        $slide.css({
+                                            width: `${secondSlideWidth}px`,
+                                            paddingRight: "0"
+                                        });
+                                    } else {
+                                        // Hide other slides initially
+                                        $slide.css({
+                                            width: "0px",
+                                            paddingRight: "0"
+                                        });
+                                    }
+                                });
+                            }
+                        };
+
+                        // Update widths after initialization
+                        setTimeout(updateSlideWidths, 100);
+                        
+                        // Update widths on window resize
+                        $(window).on("resize.sliderWidths", updateSlideWidths);
+
+                        // Update widths on slide change
+                        $hotelHeaderGallery.on("setPosition", updateSlideWidths);
+                        $hotelHeaderGallery.on("afterChange", updateSlideWidths);
+                        $hotelHeaderGallery.on("reInit", updateSlideWidths);
 
                         // Add class to page-header-content when slider changes
                         $hotelHeaderGallery.on(
@@ -309,6 +356,10 @@ const Home: React.FC = () => {
         // Cleanup function to destroy slider when component unmounts or hotels change
         return () => {
             clearTimeout(timer);
+            // Remove resize event listener
+            if (typeof $ !== "undefined") {
+                $(window).off("resize.sliderWidths");
+            }
         };
     }, [sliderHotels, loadingSliderHotels]);
 
