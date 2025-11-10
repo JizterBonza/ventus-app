@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
 import { getHotelDetailsBatch } from "../utils/api";
@@ -16,6 +16,7 @@ import BannerCTA from "../components/shared/BannerCTA";
 declare const $: any;
 
 const Home: React.FC = () => {
+    const navigate = useNavigate();
     const { hotels, loading, error, clearError, searchByQuery } = useSearch();
     const [searchParams, setSearchParams] = useState({
         location: "",
@@ -708,16 +709,11 @@ const Home: React.FC = () => {
                                                 e.stopPropagation();
                                                 const query = interest.query;
                                                 if (query) {
-                                                    setSearchParams((prev) => ({
-                                                        ...prev,
-                                                        location: query,
-                                                    }));
-                                                    searchByQuery(query, 20);
-                                                    // Scroll to results section
-                                                    const resultsSection = document.querySelector('.results-section');
-                                                    if (resultsSection) {
-                                                        resultsSection.scrollIntoView({ behavior: 'smooth' });
-                                                    }
+                                                    // Navigate to search results page with the query, just like the Search Button does
+                                                    const urlParams = new URLSearchParams();
+                                                    urlParams.set("location", query);
+                                                    const searchUrl = `/search-results?${urlParams.toString()}`;
+                                                    navigate(searchUrl);
                                                 }
                                             }}
                                             style={{ cursor: 'pointer' }}

@@ -6,6 +6,7 @@ import About from "./pages/About";
 import Rooms from "./pages/Rooms";
 import Destinations from "./pages/Destinations";
 import HotelDetail from "./pages/HotelDetail";
+import SearchResults from "./pages/SearchResults";
 import Booking from "./pages/Booking";
 import BookingTest from "./pages/BookingTest";
 import Magazine from "./pages/Magazine";
@@ -54,6 +55,7 @@ function App() {
                         <Route path="/contact-us" element={<Contact />} />
                         <Route path="/rooms" element={<Rooms />} />
                         <Route path="/destinations" element={<Destinations />} />
+                        <Route path="/search-results" element={<SearchResults />} />
                         <Route path="/hotel/:id" element={<HotelDetail />} />
                         
                         {/* Authentication Routes */}
