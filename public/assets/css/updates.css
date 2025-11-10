@@ -6,42 +6,42 @@
     border: 0;
     margin: 0 auto;
 }
-html .modern-search-form{
+body .modern-search-form{
     border-radius: 0;
     box-shadow: none;
     align-items: center;
     padding: 10px;
     height: 52px;
 }
-html .modern-search-form .input1_inner{
+body .modern-search-form .input1_inner{
     height: 52px;
 }
-html .modern-search-form .search-field .input1_inner{
+body .modern-search-form .search-field .input1_inner{
     padding-left: 0;
 }
-html .modern-search-form .search-field, 
-html .modern-search-form .date-field, 
-html .modern-search-form .guest-field, 
-html .modern-search-form .search-button{
+body .modern-search-form .search-field, 
+body .modern-search-form .date-field, 
+body .modern-search-form .guest-field, 
+body .modern-search-form .search-button{
     margin:0;
 }
-html .modern-search-form .guest-field{
+body .modern-search-form .guest-field{
     border:0;
 }
-html .modern-search-form .modern-search-btn{
+body .modern-search-form .modern-search-btn{
     height: 35px;
     line-height: 1;
     font-weight: 400;
     
 }
-html .modern-search-form .search-button{
+body .modern-search-form .search-button{
     align-items: center;
 }
-html .modern-search-form .input1_inner input, 
-html .modern-search-form .input1_inner select{
+body .modern-search-form .input1_inner input, 
+body .modern-search-form .input1_inner select{
     padding:0 0 0 8px;
 }
-html .search-form-section{
+body .search-form-section{
     padding: 15px 0;
     box-shadow: none;
 }
@@ -568,6 +568,64 @@ textarea.form-control{
 .form-check-input[type="checkbox"]{
    border-radius: 0;
 }
+.card-image:before,
+.card_content .btn:after{
+    display: none;
+}
+.card_content .btn{
+    text-transform: uppercase;
+    font-size: 14.07px;
+}
+.card_content h4{
+    font-size: 24px;
+    margin-bottom: 0;
+}
+.card_content h6{
+    text-transform: none;
+}
+.card_content p{
+    font-size: 14px;
+}
+.card-description .text-link{
+    color: #000;
+    font-weight: 700;
+}
+.hotel-result-row{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+.hotel-result-row:not(:last-child){
+    border-bottom: 1px solid #0000001A;
+    padding-bottom: 40px;
+    margin-bottom: 40px;
+}
+.hotel-card{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+.hotel-card img{
+    max-height: 279px;
+}
+.hotel-result-row .card-description{
+    margin-bottom: 0;
+}
+.hotel-card .card-image{
+    width: 40%;
+}
+.card_content{
+    padding: 0 100px 0 40px;
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+body .results-header p{
+    font-size: 14px;
+    color: #000;
+    line-height: 1;
+}
 @media screen and (max-width:1200px){
     .footer-left{
         padding-right: 100px;
@@ -581,6 +639,9 @@ textarea.form-control{
     }
     .login-page .col-lg-6:last-child{
         padding-left: 100px;
+    }
+    .card_content{
+        padding-right: 0;
     }
   
 }
@@ -685,6 +746,26 @@ textarea.form-control{
     .login-page h2{
         text-align: center;
     }
+    .hotel-card{
+        flex-direction: column;
+    }
+    .hotel-card .card-image,
+    .card_content {
+        width: 100%;
+    }
+    .card_content{
+        padding: 20px 0 0;
+    }
+    .results-section{
+        padding-top: 0;
+    }
+    .booking-inner{
+        max-width: 100%;
+    }
+    .hotel-result-row:not(:last-child){
+        padding-bottom: 25px;
+    margin-bottom: 25px;
+    }
    
 }
 @media screen and (max-width:640px) {
@@ -703,7 +784,27 @@ textarea.form-control{
     .header-image-container img{
         height: 370px !important;
     }
-    
+    body .modern-search-form{
+        height: auto;
+        flex-wrap: wrap;
+    }
+    body .modern-search-form .search-field,
+    body .modern-search-form .search-button{
+        width: 100% !important;
+    }
+    body .modern-search-form .date-field{
+        width: 60% !important;
+    }
+    body .modern-search-form .guest-field{
+        width: 40% !important;
+    }
+    body .modern-search-form .search-field{
+        border: 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .modern-search-form .date-field .input1_inner{
+        padding-left: 0;
+    }
 }
 @media screen and (max-width:480px){
     .cta-content_buttons{

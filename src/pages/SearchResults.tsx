@@ -6,6 +6,9 @@ import { getHotelDetailsBatch } from "../utils/api";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SearchBarNew from "../components/shared/SearchBarNew";
+import Membership from "../components/shared/Membership";
+import QuoteForm from "../components/shared/QuoteForm";
+import BannerCTA from "../components/shared/BannerCTA";
 
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
@@ -153,32 +156,8 @@ const SearchResults: React.FC = () => {
                         {/* Results */}
                         <div className="col-md-12">
                             <div className="results-header">
-                                <h3>Found {filteredHotels.length} hotels</h3>
-                                {searchParams.location && (
-                                    <p>
-                                        Searching for hotels in: <strong>{searchParams.location}</strong>
-                                    </p>
-                                )}
+                               <p>{filteredHotels.length} results found</p>
                             </div>
-                            {loadingDetails && (
-                                <div className="alert alert-info alert-loading " role="alert">
-                                    <div className="spinner-border" role="status">
-                                        <span className="sr-only">Loading...</span>
-                                    </div>{" "}
-                                    Loading detailed hotel information...
-                                </div>
-                            )}
-                            {error && (
-                                <div className="alert alert-danger" role="alert">
-                                    <strong>Search Error:</strong> {error}
-                                    <button
-                                        type="button"
-                                        className="btn-close float-end"
-                                        onClick={clearError}
-                                        aria-label="Close"
-                                    ></button>
-                                </div>
-                            )}
 
                             {loading ? (
                                 <div className="text-center">
@@ -188,7 +167,7 @@ const SearchResults: React.FC = () => {
                                     <p className="mt-2">Searching for hotels...</p>
                                 </div>
                             ) : (
-                                <div className={`hotels-container ${viewMode === "grid" ? "row" : ""}`}>
+                                <div className="hotels-container">
                                     {filteredHotels.map((hotel) => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
@@ -197,14 +176,12 @@ const SearchResults: React.FC = () => {
                                         return (
                                             <div
                                                 key={hotel.id}
-                                                className={viewMode === "grid" ? "col-md-4 mb-4" : "mb-5"}
-                                            >
-                                                <Link
-                                                    to={`/hotel/${hotel.id}`}
-                                                    title="Explore {room.name}"
-                                                    className="card hotel-card"
-                                                >
-                                                    <div className="card-image">
+                                                className="hotel-result-row">
+                                                <div
+                                                    className="hotel-card">
+                                                    <Link
+                                                        to={`/hotel/${hotel.id}`}
+                                                        className="card-image">
                                                         <img
                                                             src={
                                                                 displayHotel.images && displayHotel.images.length > 0
@@ -213,6 +190,12 @@ const SearchResults: React.FC = () => {
                                                                       fallbackImages[hotel.id % fallbackImages.length]
                                                             }
                                                             alt={displayHotel.name}
+                                                            style={{
+                                                                width: "100%",
+                                                                height: "100%",
+                                                                objectFit: "cover",
+                                                                minHeight: "200px",
+                                                            }}
                                                             onError={(e) => {
                                                                 const target = e.target as HTMLImageElement;
                                                                 target.src =
@@ -229,16 +212,50 @@ const SearchResults: React.FC = () => {
                                                                 </div>
                                                             </div>
                                                         )}
-                                                    </div>
-                                                    <div className="card-content">
-                                                        <h4>{displayHotel.name}</h4>
-                                                        <div className="card-description">
-                                                            <a>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
-<path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
-</svg></a>
+                                                    </Link>
+                                                    <div 
+                                                        className="card_content">
+                                                        <div>
+                                                            <h4>
+                                                                {displayHotel.name}
+                                                            </h4>
+                                                            {displayHotel.location && (
+                                                                <h6>{displayHotel.location}
+                                                                </h6>
+                                                            )}
+                                                            {displayHotel.description && (
+                                                                <p>{displayHotel.description.length > 450
+                                                                        ? `${displayHotel.description.substring(0, 450)}...`
+                                                                        : displayHotel.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div 
+                                                            className="card-description" 
+                                                            style={{ 
+                                                                marginTop: "auto",
+                                                                display: "flex",
+                                                                gap: "20px",
+                                                                alignItems: "center",
+                                                            }}
+                                                        >
+                                                            <Link 
+                                                            className="btn btn-primary"
+                                                                to={`/hotel/${hotel.id}`}
+                                                                style={{ color: "#fff", textDecoration: "none" }}
+                                                            >
+                                                                View Hotel{" "}
+                                                               
+                                                            </Link>
+                                                            <Link 
+                                                            className="text-link"
+                                                                to="/login" >
+                                                                Login to view benefits{" "}
+                                                              
+                                                            </Link>
                                                         </div>
                                                     </div>
-                                                </Link>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -255,6 +272,9 @@ const SearchResults: React.FC = () => {
                     </div>
                 </div>
             </section>
+            <Membership />
+            <QuoteForm />
+            <BannerCTA />
             <Footer />
         </div>
     );
