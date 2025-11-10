@@ -29,8 +29,13 @@ const Home: React.FC = () => {
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [sliderReady, setSliderReady] = useState(false);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     const sliderInitializedRef = useRef(false);
     const sliderContainerRef = useRef<HTMLDivElement>(null);
+=======
+    const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
+    const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
+>>>>>>> Stashed changes
 =======
     const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
     const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
@@ -284,12 +289,15 @@ const Home: React.FC = () => {
 
         const initSlider = () => {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             if (typeof $ !== "undefined" && $.fn.slick && sliderContainerRef.current) {
                 const $hotelHeaderGallery = $(sliderContainerRef.current);
                 
                 // Check if slider exists and is not already initialized
                 if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
 =======
+=======
+>>>>>>> Stashed changes
             if (typeof $ !== "undefined" && $.fn.slick) {
                 const $hotelHeaderGallery = $(".hotel-header-gallery");
                 // Destroy existing slider if it exists
@@ -303,6 +311,9 @@ const Home: React.FC = () => {
                 
                 // Check if slider exists and initialize
                 if ($hotelHeaderGallery.length > 0) {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     try {
                         $hotelHeaderGallery.slick({
@@ -352,7 +363,11 @@ const Home: React.FC = () => {
         const timer = setTimeout(initSlider, 500);
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         // Cleanup function to clear timer
+=======
+        // Cleanup function to destroy slider when component unmounts or hotels change
+>>>>>>> Stashed changes
 =======
         // Cleanup function to destroy slider when component unmounts or hotels change
 >>>>>>> Stashed changes
@@ -360,7 +375,11 @@ const Home: React.FC = () => {
             clearTimeout(timer);
         };
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     }, []); // Only initialize once
+=======
+    }, [sliderHotels, loadingSliderHotels]);
+>>>>>>> Stashed changes
 =======
     }, [sliderHotels, loadingSliderHotels]);
 >>>>>>> Stashed changes
