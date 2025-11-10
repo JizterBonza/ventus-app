@@ -634,6 +634,9 @@ body .results-header p{
     color: #000;
     line-height: 1;
 }
+.page-header{
+    background: none;
+}
 .page-header-content h2{
     font-size: 40px;
     font-weight: 300;
@@ -645,6 +648,9 @@ body .results-header p{
 .interests-filters,
 .page-header:before, .page-header:after{
     display: none;
+}
+.hotel-header-gallery .slick-track{
+    gap:30px;
 }
 @media screen and (max-width:1200px){
     .footer-left{
@@ -877,29 +883,35 @@ body .results-header p{
 /* Slider Overlay Styles */
 .slider-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
+    bottom: 30px;
+    left: 60px;
     width: 100%;
     height: 100%;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5));
+    align-items: flex-end;
+    justify-content: flex-start;
     z-index: 2;
+}
+.hotel-header-gallery .hotel-header-gallery-item img{
+    height: 100%;
 }
 
 .slider-content {
-    text-align: center;
     color: #fff;
     padding: 20px;
     background: #222224;
+    max-width: 445px;
 }
 
 .slider-content h2 {
     font-size: 32px;
     font-weight: 400;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     color: #fff;
+    text-align: left;
+    border-bottom: 1px solid #FFFFFF33;
+    padding-bottom: 10px;
+    line-height: 1.1;
 }
 
 .slider-content p {
@@ -909,14 +921,34 @@ body .results-header p{
     color: #fff;
     text-align: left;
     text-transform: uppercase;
+    line-height: 1.1;
 }
-
+@media screen and (max-width: 1200px) {
+    .slider-overlay{
+        left:40px;
+    }
+}
 @media screen and (max-width: 768px) {
     .slider-content h2 {
-        font-size: 32px;
+        font-size: 20px;
     }
     
     .slider-content p {
-        font-size: 18px;
+        font-size: 15px;
+    }
+    .page-header-content h2{
+        font-size: 28px;
+    }
+    .slider-overlay{
+        left:15px;
+    }
+    .hotel-header-gallery .slick-slide {
+        height: 457px !important;
+    }
+    .hotel-header-gallery .slick-track {
+        gap: 20px;
+    }
+    .slider-content{
+        max-width: 300px;
     }
 }

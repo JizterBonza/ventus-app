@@ -33,6 +33,8 @@ const Home: React.FC = () => {
     const sliderContainerRef = useRef<HTMLDivElement>(null);
     const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
     const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const [isNavigating, setIsNavigating] = useState(false);
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -263,65 +265,173 @@ const Home: React.FC = () => {
                         $hotelHeaderGallery.slick({
                             dots: false,
                             infinite: false,
-                            speed: 1000,
                             slidesToShow: 2,
                             slidesToScroll: 1,
                             autoplay: false,
-                            autoplaySpeed: 5000,
-                            arrows: true,
-                            fade: false,
-                            cssEase: "linear",
-                            pauseOnHover: true,
+                            arrows: false, // Hide default arrows, using custom ones
                             adaptiveHeight: false,
-                            useTransform: true,
                             variableWidth: true,
-                            centerMode: false,
+                            speed: 600, // Smooth transition speed
+                            cssEase: "linear", // Smooth easing
+                            useCSS: true, // Use CSS transitions
+                            useTransform: true, // Use CSS transforms for better performance
                         });
+                        
+                        // Hide default Slick arrows if they exist
+                        $hotelHeaderGallery.siblings(".slick-arrow").hide();
+                        $hotelHeaderGallery.find(".slick-arrow").hide();
 
-                        // Add custom CSS to show only 1/4 of the right slide
+                        // Add custom CSS to show only 1/4 of the right slide (1/8 on mobile)
+                        let isUpdating = false;
                         const updateSlideWidths = () => {
+                            if (isUpdating) return;
+                            isUpdating = true;
+                            
                             const containerWidth = $hotelHeaderGallery.width() || 0;
                             const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
                             
                             if (slickSlides.length > 0 && containerWidth > 0) {
-                                // First slide takes 75% of container width
-                                const firstSlideWidth = containerWidth * 0.75;
-                                // Second slide takes 25% of container width (showing 1/4)
-                                const secondSlideWidth = containerWidth * 0.25;
+                                const slickInstance = $hotelHeaderGallery[0]?.slick;
+                                if (!slickInstance) {
+                                    isUpdating = false;
+                                    return;
+                                }
+                                
+                                const currentSlideIndex = slickInstance.currentSlide || 0;
+                                const totalSlides = slickSlides.length;
+                                
+                                // Calculate real slide index for infinite mode
+                                const realCurrentSlide = currentSlideIndex % totalSlides;
+                                const nextSlideIndex = (realCurrentSlide + 1) % totalSlides;
+                                
+                                // Check if mobile (768px and below)
+                                const isMobile = window.innerWidth <= 768;
+                                
+                                // Calculate widths - 1/8 preview on mobile, 1/4 on desktop
+                                const previewRatio = isMobile ? 0.125 : 0.25; // 1/8 or 1/4
+                                const fullSlideWidth = containerWidth * (1 - previewRatio);
+                                const previewSlideWidth = containerWidth * previewRatio;
                                 
                                 slickSlides.each(function(this: HTMLElement, index: number) {
                                     const $slide = $(this);
-                                    if (index === 0) {
+                                    // Add smooth transitions for width changes
+                                    $slide.css({
+                                        transition: "width 0.6s ease-in-out, opacity 0.6s ease-in-out, visibility 0.6s ease-in-out"
+                                    });
+                                    
+                                    if (index === realCurrentSlide) {
+                                        // Current slide: full width
                                         $slide.css({
-                                            width: `${firstSlideWidth}px`,
-                                            paddingRight: "0"
+                                            width: `${fullSlideWidth}px`,
+                                            paddingRight: "0",
+                                            visibility: "visible",
+                                            opacity: "1"
                                         });
-                                    } else if (index === 1) {
+                                    } else if (index === nextSlideIndex) {
+                                        // Next slide: preview width (handles wrap-around for infinite mode)
                                         $slide.css({
-                                            width: `${secondSlideWidth}px`,
-                                            paddingRight: "0"
+                                            width: `${previewSlideWidth}px`,
+                                            paddingRight: "0",
+                                            visibility: "visible",
+                                            opacity: "1"
                                         });
                                     } else {
-                                        // Hide other slides initially
+                                        // Hide other slides but keep minimal width for Slick navigation
                                         $slide.css({
-                                            width: "0px",
-                                            paddingRight: "0"
+                                            width: "1px",
+                                            paddingRight: "0",
+                                            visibility: "hidden",
+                                            opacity: "0"
                                         });
                                     }
                                 });
                             }
+                            
+                            setTimeout(() => {
+                                isUpdating = false;
+                            }, 50);
                         };
 
                         // Update widths after initialization
-                        setTimeout(updateSlideWidths, 100);
+                        setTimeout(() => {
+                            updateSlideWidths();
+                        }, 200);
                         
-                        // Update widths on window resize
-                        $(window).on("resize.sliderWidths", updateSlideWidths);
+                        // Update widths on window resize (debounced)
+                        let resizeTimer: NodeJS.Timeout;
+                        $(window).on("resize.sliderWidths", () => {
+                            clearTimeout(resizeTimer);
+                            resizeTimer = setTimeout(updateSlideWidths, 150);
+                        });
 
-                        // Update widths on slide change
-                        $hotelHeaderGallery.on("setPosition", updateSlideWidths);
-                        $hotelHeaderGallery.on("afterChange", updateSlideWidths);
-                        $hotelHeaderGallery.on("reInit", updateSlideWidths);
+                        // Update widths before transition starts - set instantly without transitions
+                        $hotelHeaderGallery.on("beforeChange", function(event: any, slick: any, currentSlide: number, nextSlide: number) {
+                            const containerWidth = $hotelHeaderGallery.width() || 0;
+                            const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
+                            
+                            if (slickSlides.length > 0 && containerWidth > 0) {
+                                const totalSlides = slickSlides.length;
+                                const realNextSlide = nextSlide % totalSlides;
+                                const realNextNextSlide = (realNextSlide + 1) % totalSlides;
+                                
+                                const isMobile = window.innerWidth <= 768;
+                                const previewRatio = isMobile ? 0.125 : 0.25;
+                                const fullSlideWidth = containerWidth * (1 - previewRatio);
+                                const previewSlideWidth = containerWidth * previewRatio;
+                                
+                                // Temporarily disable all transitions to set widths instantly
+                                slickSlides.each(function(this: HTMLElement, index: number) {
+                                    const $slide = $(this);
+                                    $slide.css({ transition: "none" });
+                                    
+                                    if (index === realNextSlide) {
+                                        $slide.css({
+                                            width: `${fullSlideWidth}px`,
+                                            paddingRight: "0",
+                                            visibility: "visible",
+                                            opacity: "1"
+                                        });
+                                    } else if (index === realNextNextSlide) {
+                                        $slide.css({
+                                            width: `${previewSlideWidth}px`,
+                                            paddingRight: "0",
+                                            visibility: "visible",
+                                            opacity: "1"
+                                        });
+                                    } else {
+                                        $slide.css({
+                                            width: "1px",
+                                            paddingRight: "0",
+                                            visibility: "hidden",
+                                            opacity: "0"
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                        
+                        // Re-enable transitions after Slick's animation completes
+                        $hotelHeaderGallery.on("afterChange", function(event: any, slick: any, currentSlideIndex: number) {
+                            const totalSlides = sliderHotels.length || 12;
+                            const realSlideIndex = currentSlideIndex % totalSlides;
+                            setCurrentSlide(realSlideIndex);
+                            
+                            // Re-enable transitions and ensure correct widths
+                            const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
+                            setTimeout(() => {
+                                slickSlides.each(function(this: HTMLElement) {
+                                    $(this).css({
+                                        transition: "width 0.6s ease-in-out, opacity 0.6s ease-in-out, visibility 0.6s ease-in-out"
+                                    });
+                                });
+                                updateSlideWidths();
+                            }, 50);
+                        });
+                        
+                        // Update on reInit
+                        $hotelHeaderGallery.on("reInit", () => {
+                            setTimeout(updateSlideWidths, 100);
+                        });
 
                         // Add class to page-header-content when slider changes
                         $hotelHeaderGallery.on(
@@ -381,17 +491,97 @@ const Home: React.FC = () => {
             <SearchBarNew />
             <br />
             <div className="container">
-                <div className="page-header-content">
+                <div className="page-header-content" style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <h2 style={{ color: "#000" }}>VENTUS' PICKS</h2>
+                    <div className="slider-controls" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <button 
+                            className="slick-prev-custom" 
+                            onClick={() => {
+                                if (isNavigating || !sliderContainerRef.current || typeof $ === "undefined") return;
+                                setIsNavigating(true);
+                                try {
+                                    $(sliderContainerRef.current).slick("slickPrev");
+                                } catch (error) {
+                                    console.error("Error navigating:", error);
+                                }
+                                setTimeout(() => setIsNavigating(false), 300);
+                            }}
+                            disabled={currentSlide === 0 || isNavigating}
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: (currentSlide === 0 || isNavigating) ? "not-allowed" : "pointer",
+                                padding: "5px",
+                                fontSize: "20px",
+                                color: (currentSlide === 0 || isNavigating) ? "#ccc" : "#000",
+                                opacity: (currentSlide === 0 || isNavigating) ? 0.5 : 1
+                            }}
+                        >
+                            ‹
+                        </button>
+                        <span className="slider-counter" style={{ fontSize: "14px", color: "#000", minWidth: "40px", textAlign: "center" }}>
+                            {sliderHotels.length > 0 ? `${currentSlide + 1}/${sliderHotels.length}` : "1/12"}
+                        </span>
+                        <button 
+                            className="slick-next-custom" 
+                            onClick={() => {
+                                if (isNavigating || !sliderContainerRef.current || typeof $ === "undefined") return;
+                                setIsNavigating(true);
+                                try {
+                                    $(sliderContainerRef.current).slick("slickNext");
+                                } catch (error) {
+                                    console.error("Error navigating:", error);
+                                }
+                                setTimeout(() => setIsNavigating(false), 300);
+                            }}
+                            disabled={currentSlide >= (sliderHotels.length > 0 ? sliderHotels.length - 1 : 11) || isNavigating}
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: (currentSlide >= (sliderHotels.length > 0 ? sliderHotels.length - 1 : 11) || isNavigating) ? "not-allowed" : "pointer",
+                                padding: "5px",
+                                fontSize: "20px",
+                                color: (currentSlide >= (sliderHotels.length > 0 ? sliderHotels.length - 1 : 11) || isNavigating) ? "#ccc" : "#000",
+                                opacity: (currentSlide >= (sliderHotels.length > 0 ? sliderHotels.length - 1 : 11) || isNavigating) ? 0.5 : 1
+                            }}
+                        >
+                            ›
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Hero Slider Section */}
-            <section className="page-header" style={{ height: "700px", overflow: "hidden" }}>
+            <section className="page-header" style={{ height: "700px", overflow: "hidden", position: "relative" }}>
+                {(!sliderReady || loadingSliderHotels) && (
+                    <div style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#f5f5f5",
+                        zIndex: 10
+                    }}>
+                        <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                            <span className="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                )}
                 <div
                     ref={sliderContainerRef}
                     className="hotel-header-gallery"
-                    style={{ opacity: sliderReady ? 1 : 0, transition: "opacity 0.3s ease-in-out" }}
+                    style={{ 
+                        opacity: sliderReady ? 1 : 0, 
+                        transition: "opacity 0.3s ease-in-out", 
+                        position: "relative", 
+                        overflow: "hidden",
+                        width: "100%",
+                        height: "100%"
+                    }}
                 >
                     {loadingSliderHotels ? (
                         <div className="hotel-header-gallery-item" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
@@ -406,10 +596,16 @@ const Home: React.FC = () => {
                                 : hotel.image || fallbackImages[index % fallbackImages.length];
                             
                             return (
-                                <div key={hotel.id || index} className="hotel-header-gallery-item">
+                                <div key={hotel.id || index} className="hotel-header-gallery-item" style={{ width: "100%", height: "100%", overflow: "hidden" }}>
                                     <img
                                         src={imageUrl}
                                         alt={hotel.name || `Hotel ${index + 1}`}
+                                        style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                            display: "block"
+                                        }}
                                         onError={(e) => {
                                             const target = e.target as HTMLImageElement;
                                             target.src = fallbackImages[index % fallbackImages.length];
@@ -435,10 +631,16 @@ const Home: React.FC = () => {
                             "/assets/img/slider/6.jpg",
                             "/assets/img/slider/7.jpg",
                         ].map((image, index) => (
-                            <div key={index} className="hotel-header-gallery-item">
+                            <div key={index} className="hotel-header-gallery-item" style={{ width: "100%", height: "100%", overflow: "hidden" }}>
                                 <img
                                     src={image}
                                     alt={`Slider ${index + 1}`}
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        display: "block"
+                                    }}
                                     onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.src = fallbackImages[index % fallbackImages.length];
