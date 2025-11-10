@@ -262,16 +262,31 @@ const Home: React.FC = () => {
                 // Check if slider exists and is not already initialized
                 if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
+                        // Set margin immediately when Slick initializes - register BEFORE .slick() call
+                        $hotelHeaderGallery.on("init", function(event: any, slick: any) {
+                            const containerWidth = $hotelHeaderGallery.width() || 0;
+                            if (containerWidth > 0) {
+                                const track = $hotelHeaderGallery.find(".slick-track");
+                                if (track.length > 0) {
+                                    const isMobile = window.innerWidth <= 768;
+                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16);
+                                    track.css({
+                                        marginLeft: `${negativeMargin}px`
+                                    });
+                                }
+                            }
+                        });
+                        
                         $hotelHeaderGallery.slick({
                             dots: false,
                             infinite: true,
-                            slidesToShow: 2,
+                            slidesToShow: 1,
                             slidesToScroll: 1,
                             autoplay: false,
                             arrows: false,
                             adaptiveHeight: false,
                             centerMode: true,
-                            centerPadding: "0px",
+                            centerPadding: "0",
                             variableWidth: true,
                             speed: 600,
                             cssEase: "ease-in-out",
@@ -288,8 +303,8 @@ const Home: React.FC = () => {
                                 const isMobile = window.innerWidth <= 768;
                                 // Current slide: 70% (or 87.5% on mobile to show 1/8 of next)
                                 // Next slide will show 30% (or 12.5% on mobile)
-                                // Add gap between slides (20px)
-                                const gap = 20;
+                                // Add gap between slides (30px to match CSS)
+                                const gap = 30;
                                 const availableWidth = containerWidth - gap;
                                 const currentSlideRatio = isMobile ? 0.875 : 0.70; // 70% desktop, 87.5% mobile
                                 const slideWidth = availableWidth * currentSlideRatio;
@@ -321,14 +336,20 @@ const Home: React.FC = () => {
                                     });
                                 });
                                 
-                                // Add negative margin-left to track to ensure only 2 images show
+                                // Add negative margin-left to track immediately on first load
                                 const track = $hotelHeaderGallery.find(".slick-track");
                                 if (track.length > 0) {
-                                    const negativeMargin = -(containerWidth * 0.2); // Adjust as needed
+                                    const isMobile = window.innerWidth <= 768;
+                                    const negativeMargin = isMobile ? -43 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
                                     track.css({
                                         marginLeft: `${negativeMargin}px`
                                     });
                                 }
+                                
+                                // Ensure overflow is hidden
+                                $hotelHeaderGallery.css({
+                                    overflow: "hidden"
+                                });
                                 
                                 // Force Slick to recalculate
                                 const slickInstance = $hotelHeaderGallery[0]?.slick;
@@ -338,6 +359,21 @@ const Home: React.FC = () => {
                             }
                         }, 100);
                         
+                        // Also set margin immediately after Slick initializes (backup to ensure it's applied)
+                        setTimeout(() => {
+                            const containerWidth = $hotelHeaderGallery.width() || 0;
+                            if (containerWidth > 0) {
+                                const track = $hotelHeaderGallery.find(".slick-track");
+                                if (track.length > 0) {
+                                    const isMobile = window.innerWidth <= 768;
+                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16);
+                                    track.css({
+                                        marginLeft: `${negativeMargin}px`
+                                    });
+                                }
+                            }
+                        }, 50);
+                        
                         // Update on resize
                         let resizeTimer: NodeJS.Timeout;
                         $(window).on("resize.sliderWidths", () => {
@@ -346,7 +382,7 @@ const Home: React.FC = () => {
                                 const containerWidth = $hotelHeaderGallery.width() || 0;
                                 if (containerWidth > 0) {
                                     const isMobile = window.innerWidth <= 768;
-                                    const gap = 20;
+                                    const gap = 30; // Match CSS gap
                                     const availableWidth = containerWidth - gap;
                                     const currentSlideRatio = isMobile ? 0.875 : 0.70; // 70% desktop
                                     const slideWidth = availableWidth * currentSlideRatio;
@@ -380,11 +416,17 @@ const Home: React.FC = () => {
                                     // Add negative margin-left to track to ensure only 2 images show
                                     const track = $hotelHeaderGallery.find(".slick-track");
                                     if (track.length > 0) {
-                                        const negativeMargin = -(containerWidth * 0.2); // Adjust as needed
+                                        const isMobile = window.innerWidth <= 768;
+                                        const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
                                         track.css({
                                             marginLeft: `${negativeMargin}px`
                                         });
                                     }
+                                    
+                                    // Ensure overflow is hidden
+                                    $hotelHeaderGallery.css({
+                                        overflow: "hidden"
+                                    });
                                     
                                     const slickInstance = $hotelHeaderGallery[0]?.slick;
                                     if (slickInstance && slickInstance.setPosition) {
@@ -400,16 +442,47 @@ const Home: React.FC = () => {
                             const realSlideIndex = currentSlideIndex % totalSlides;
                             setCurrentSlide(realSlideIndex);
                             
-                            // Update track margin on slide change to ensure only 2 images show
+                            // Update track margin on slide change to ensure only 2 images show and prevent left edge from showing
                             const containerWidth = $hotelHeaderGallery.width() || 0;
                             if (containerWidth > 0) {
                                 const track = $hotelHeaderGallery.find(".slick-track");
                                 if (track.length > 0) {
-                                    const negativeMargin = -(containerWidth * 0.2);
+                                    // Use -16% desktop, -52px mobile
+                                    const isMobile = window.innerWidth <= 768;
+                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
+                                    setTimeout(() => {
+                                        track.css({
+                                            marginLeft: `${negativeMargin}px`
+                                        });
+                                    }, 50);
+                                    
+                                    // Also ensure overflow is hidden on the container
+                                    $hotelHeaderGallery.css({
+                                        overflow: "hidden"
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // Also update on beforeChange to prevent flicker and left edge showing
+                        $hotelHeaderGallery.on("beforeChange", function(event: any, slick: any, currentSlide: number, nextSlide: number) {
+                            const containerWidth = $hotelHeaderGallery.width() || 0;
+                            if (containerWidth > 0) {
+                                const track = $hotelHeaderGallery.find(".slick-track");
+                                if (track.length > 0) {
+                                    // Set margin immediately before transition to prevent left edge from showing
+                                    const isMobile = window.innerWidth <= 768;
+                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
+                                    // Apply immediately to prevent left edge from showing
                                     track.css({
                                         marginLeft: `${negativeMargin}px`
                                     });
                                 }
+                                
+                                // Ensure overflow is hidden
+                                $hotelHeaderGallery.css({
+                                    overflow: "hidden"
+                                });
                             }
                         });
 

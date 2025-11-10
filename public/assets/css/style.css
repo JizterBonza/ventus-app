@@ -6387,14 +6387,8 @@ select {
 
 .hotel-header-gallery .slick-track {
     display: flex !important;
-    margin-left: 0 !important; /* Will be set dynamically via JS */
 }
 
-.hotel-header-gallery .slick-slide {
-    height: inherit !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
 
 .hotel-header-gallery .slick-slide > div {
     height: 100%;
