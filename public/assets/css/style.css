@@ -6689,6 +6689,7 @@ select {
     height: 48px;
     margin: 0;
     padding-inline: 20px;
+    font-size: 16px;
 }
 
 .form input[type="email"],
@@ -7114,11 +7115,11 @@ select {
 
 @media (max-width: 1640px) {
     .slick-arrow.slick-prev {
-        left: 40px;
+        left: -40px;
     }
 
     .slick-arrow.slick-next {
-        right: 40px;
+        right: -40px;
     }
 }
 
@@ -7242,11 +7243,11 @@ select {
     }
 
     .slick-arrow.slick-next {
-        right: 30px;
+        right: -30px;
     }
 
     .slick-arrow.slick-prev {
-        left: 30px;
+        left: -30px;
     }
 
     .slick-arrow {
