@@ -49,7 +49,7 @@ export const interestCategories: InterestCategory[] = [
         image: "/assets/img/interests/8.webp",
         categories: ["Culture", "Popular"],
         location: "Europe",
-        query: "train journeys",
+        query: "train",
     },
     {
         id: "6",
@@ -69,7 +69,7 @@ export const interestCategories: InterestCategory[] = [
         image: "/assets/img/interests/7.webp",
         categories: ["Adventure", "Culture"],
         location: "North Africa",
-        query: "families",
+        query: "family",
     },
     {
         id: "8",
