@@ -927,7 +927,7 @@ const Home: React.FC = () => {
                 </div>
             </section>
 
-            <section className="interests-section">
+            <section id="destinations" className="interests-section">
                 <div className="container">
                     {/* Filters */}
                     <div className="interests-filters">

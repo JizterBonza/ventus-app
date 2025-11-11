@@ -11,7 +11,7 @@ const BannerCTA: React.FC = () => {
                     </div>
                     <div className="cta-content_buttons">
                         <a href="https://www.ventustravel.co.uk/contact-us" target="_blank" className="btn btn-primary btn-lg">Contact</a>
-                        <a href="https://www.ventustravel.co.uk/destinations" target="_blank" className="btn btn-secondary btn-lg">Explore</a>
+                        <a href="/#destinations"  className="btn btn-secondary btn-lg">Explore</a>
                     </div>
                 </div>
             </div>

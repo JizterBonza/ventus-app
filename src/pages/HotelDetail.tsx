@@ -230,25 +230,58 @@ const HotelDetail: React.FC = () => {
     const [showGallery, setShowGallery] = useState(false);
 
     useEffect(() => {
-    if (showGallery) {
-        // init slick only when modal becomes visible
-        if (typeof $ !== 'undefined' && $.fn.slick) {
-        const $el = $('.modal-hotel-gallery');
-        if ($el.length && !$el.hasClass('slick-initialized')) {
-            $el.slick({
-            dots: false,
-            infinite: true,
-            speed: 1000,
-            slidesToShow: 1,
-            slidesToScroll: 1,
-            autoplay: false,
-            arrows: true,
-            cssEase: "linear",
-            pauseOnHover: true
-            });
+        if (showGallery) {
+            // init slick only when modal becomes visible
+            if (typeof $ !== 'undefined' && $.fn.slick) {
+                const $el = $('.modal-hotel-gallery');
+                if ($el.length && !$el.hasClass('slick-initialized')) {
+                    // Check if mobile (640px and below)
+                    const isMobile = window.innerWidth <= 640;
+                    
+                    $el.slick({
+                        dots: false,
+                        infinite: true,
+                        speed: 300,
+                        slidesToShow: 1,
+                        slidesToScroll: 1,
+                        autoplay: false,
+                        arrows: !isMobile, // Hide arrows on mobile
+                        swipe: true, // Enable swipe on mobile
+                        touchMove: true, // Enable touch move
+                        draggable: true, // Enable dragging
+                        cssEase: "linear",
+                        pauseOnHover: true,
+                        prevArrow: '<button type="button" class="slick-prev"><svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 8.07107L8.07107 15.1421L8.77817 14.435L2.41421 8.07107L8.77817 1.70711L8.07107 1L1 8.07107Z" fill="#191919"></path></svg></button>',
+                        nextArrow: '<button type="button" class="slick-next"><svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.77817 8.07107L1.70711 1L1 1.70711L7.36396 8.07107L1 14.435L1.70711 15.1421L8.77817 8.07107Z" fill="#191919"></path></svg></button>',
+                        responsive: [
+                            {
+                                breakpoint: 640,
+                                settings: {
+                                    arrows: false, // Hide arrows at 640px and below
+                                    swipe: true,
+                                    touchMove: true,
+                                    draggable: true
+                                }
+                            }
+                        ]
+                    });
+
+                    // Handle window resize to update arrows
+                    const handleResize = () => {
+                        const isMobileNow = window.innerWidth <= 640;
+                        if ($el.hasClass('slick-initialized')) {
+                            $el.slick('slickSetOption', 'arrows', !isMobileNow, true);
+                        }
+                    };
+
+                    window.addEventListener('resize', handleResize);
+
+                    return () => {
+                        window.removeEventListener('resize', handleResize);
+                    };
+                }
+            }
         }
-        }
-    }
     }, [showGallery]);
 
 
@@ -660,9 +693,14 @@ const HotelDetail: React.FC = () => {
                                         <div className="info-card_cont">
                                             <h5>{info.title}</h5>
                                             <ul className="list-unstyled">
-                                                {info.description.map((item, itemIndex) => (
-                                                    <li key={itemIndex}>{item}</li>
-                                                ))}
+                                                {info.description.map((item, itemIndex) => {
+                                                    const truncatedItem = item.length > 60 
+                                                        ? `${item.substring(0, 60)}...` 
+                                                        : item;
+                                                    return (
+                                                        <li key={itemIndex}>{truncatedItem}</li>
+                                                    );
+                                                })}
                                             </ul>
                                         </div>
                                     </div>

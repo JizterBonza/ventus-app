@@ -37,7 +37,7 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/destinations">
+                        <Link className="nav-link" to="/#destinations">
                             Destinations
                         </Link>
                     </li>

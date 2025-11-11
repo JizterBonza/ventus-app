@@ -270,6 +270,9 @@ textarea.form-control{
 .hotel-detail-page .section-membership{
     display: none;
 }
+.hotel-info-list .info-card li:not(:last-child){
+    padding-bottom: 5px;
+}
 .hotel-detail-page .hotel-content_sidebar .section-membership{
     display: block;
 }
@@ -361,6 +364,29 @@ textarea.form-control{
     font-size: 50px;
     line-height: 1;
 }
+.modal-hotel-gallery .slick-slide img{
+    height: auto;
+    width: auto;
+    max-height: calc(-50px + 85vh);
+    max-width: 80vw;
+    object-fit: cover;
+    margin: 0 auto;
+}
+.modal-hotel-gallery .slick-arrow:before{
+    display: none;
+}
+.modal-hotel-gallery .slick-arrow {
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-hotel-gallery .slick-arrow svg{
+    display: block;
+    width: 40px;
+    height: 40px;
+}
+
 .header-image-container{
     cursor: pointer;
     position: relative;
@@ -447,8 +473,19 @@ textarea.form-control{
     padding: 30px;
     max-width: 170px;
 }
+.modal-hotel-gallery,
+.modal-hotel-gallery .slick-list,
+.modal-hotel-gallery .slick-track{
+    height: 100%;
+}
+.modal-hotel-gallery .slick-track{
+
+    align-items: center;
+}
 .modal-hotel-gallery .thumbnail-image{
     max-height: calc(-50px + 85vh);
+    display: flex;
+    align-items: center;
 }
 .signup-page{
     background: #DBE2D6;
@@ -854,6 +891,12 @@ body .results-header p{
     .modern-search-form .date-field .input1_inner{
         padding-left: 0;
     }
+    .hotel-details div strong{
+        min-width: 120px;
+    }
+    .view-btn{
+        right: 15px;
+    }
 }
 @media screen and (max-width:480px){
     .cta-content_buttons{
@@ -899,8 +942,6 @@ body .results-header p{
         padding: 30px;
     }
     .close-modal{
-        right: 40px;
-        color: #fff;
         z-index: 999;
     }
 }
