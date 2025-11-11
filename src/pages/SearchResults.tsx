@@ -10,6 +10,52 @@ import Membership from "../components/shared/Membership";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
 
+// Component to handle hotel image with fallback
+const HotelImage: React.FC<{ hotel: Hotel; displayHotel: Hotel }> = ({ hotel, displayHotel }) => {
+    const [imageError, setImageError] = useState(false);
+    
+    // Get image URL - prioritize images array, then image property
+    const imageUrl = displayHotel.images && displayHotel.images.length > 0
+        ? displayHotel.images[0].url
+        : displayHotel.image || null;
+    
+    // Only show fallback if no image URL or if image failed to load
+    if (!imageUrl || imageError) {
+        return (
+            <div
+                style={{
+                    width: "100%",
+                    height: "100%",
+                    minHeight: "200px",
+                    backgroundColor: "#28a745",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <div className="spinner-border text-white" role="status" style={{ width: "3rem", height: "3rem" }}>
+                    <span className="sr-only">Loading...</span>
+                </div>
+            </div>
+        );
+    }
+    
+    // Always try to render the image if we have a URL
+    return (
+        <img
+            src={imageUrl}
+            alt={displayHotel.name}
+            style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                minHeight: "200px",
+            }}
+            onError={() => setImageError(true)}
+        />
+    );
+};
+
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const { hotels, loading, error, searchAdvanced, clearError } = useSearch();
@@ -24,18 +70,6 @@ const SearchResults: React.FC = () => {
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-    // Fallback hotel images for when API doesn't provide images
-    const fallbackImages = [
-        "/assets/img/rooms/1.jpg",
-        "/assets/img/rooms/2.jpg",
-        "/assets/img/rooms/3.jpg",
-        "/assets/img/rooms/4.jpg",
-        "/assets/img/rooms/5.jpg",
-        "/assets/img/rooms/6.jpg",
-        "/assets/img/rooms/7.jpg",
-        "/assets/img/rooms/8.jpg",
-    ];
 
     // Handle URL parameters and perform search
     useEffect(() => {
@@ -182,28 +216,9 @@ const SearchResults: React.FC = () => {
                                                     <Link
                                                         to={`/hotel/${hotel.id}`}
                                                         className="card-image">
-                                                        <img
-                                                            src={
-                                                                displayHotel.images && displayHotel.images.length > 0
-                                                                    ? displayHotel.images[0].url
-                                                                    : displayHotel.image ||
-                                                                      fallbackImages[hotel.id % fallbackImages.length]
-                                                            }
-                                                            alt={displayHotel.name}
-                                                            style={{
-                                                                width: "100%",
-                                                                height: "100%",
-                                                                objectFit: "cover",
-                                                                minHeight: "200px",
-                                                            }}
-                                                            onError={(e) => {
-                                                                const target = e.target as HTMLImageElement;
-                                                                target.src =
-                                                                    fallbackImages[hotel.id % fallbackImages.length];
-                                                            }}
-                                                        />
+                                                        <HotelImage hotel={hotel} displayHotel={displayHotel} />
                                                         {loadingDetails && !detailedHotel && (
-                                                            <div className="loading-overlay">
+                                                            <div className="loading-overlay" style={{ backgroundColor: "rgba(219, 226, 214, 1)" }}>
                                                                 <div
                                                                     className="spinner-border spinner-border-sm"
                                                                     role="status"
@@ -217,7 +232,16 @@ const SearchResults: React.FC = () => {
                                                         className="card_content">
                                                         <div>
                                                             <h4>
-                                                                {displayHotel.name}
+                                                                <Link 
+                                                                    to={`/hotel/${hotel.id}`}
+                                                                    style={{ 
+                                                                        color: "inherit", 
+                                                                        textDecoration: "none",
+                                                                        cursor: "pointer"
+                                                                    }}
+                                                                >
+                                                                    {displayHotel.name}
+                                                                </Link>
                                                             </h4>
                                                             {displayHotel.location && (
                                                                 <h6>{displayHotel.location}

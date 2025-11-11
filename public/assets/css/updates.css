@@ -628,6 +628,9 @@ textarea.form-control{
     font-size: 24px;
     margin-bottom: 0;
 }
+.card_content h4 a:hover{
+    color: var(--gold) !important;
+}
 .card_content h6{
     text-transform: none;
 }
@@ -873,6 +876,7 @@ body .results-header p{
     body .modern-search-form{
         height: auto;
         flex-wrap: wrap;
+        padding-top: 0;
     }
     body .modern-search-form .search-field,
     body .modern-search-form .search-button{
@@ -896,6 +900,16 @@ body .results-header p{
     }
     .view-btn{
         right: 15px;
+    }
+    body .modern-search-form .search-button{
+        align-items: flex-end;
+    }
+    body .modern-search-form .input1_inner,
+    body .modern-search-form .search-field, body .modern-search-form .date-field, body .modern-search-form .guest-field, body .modern-search-form .search-button{
+        height: 45px;
+    }
+    body .modern-search-form .search-field{
+        margin-bottom: 10px;
     }
 }
 @media screen and (max-width:480px){

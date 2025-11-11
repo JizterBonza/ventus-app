@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getHotelDetails, searchHotelsByQuery } from "../utils/api";
+import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch } from "../utils/api";
 import { Hotel, HotelImage } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
@@ -359,8 +359,15 @@ const HotelDetail: React.FC = () => {
                     .filter(h => h.id !== hotel.id)
                     .slice(0, 3);
                 
-                setRelatedHotels(filteredHotels);
-                console.log('Related hotels fetched:', filteredHotels);
+                // Fetch detailed information for related hotels to get full image data
+                if (filteredHotels.length > 0) {
+                    const hotelIds = filteredHotels.map(h => h.id);
+                    const detailedHotels = await getHotelDetailsBatch(hotelIds);
+                    setRelatedHotels(detailedHotels);
+                    console.log('Related hotels with details fetched:', detailedHotels);
+                } else {
+                    setRelatedHotels([]);
+                }
             } catch (error) {
                 console.error('Error fetching related hotels:', error);
                 // Keep empty array on error
@@ -716,19 +723,31 @@ const HotelDetail: React.FC = () => {
                     <div className="container">
                         <h3>Other Hotels in {hotel.location}</h3>
                         <div className="hotels-grid row">
-                            {relatedHotels.map((relatedHotel) => (
-                                <div key={relatedHotel.id} className="col-md-4 mb-4">
-                                    <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
-                                        <div className="card-image">
-                                            <img 
-                                                src={relatedHotel.image || relatedHotel.images?.[0]?.url || fallbackImages[0]} 
-                                                alt={relatedHotel.name}
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    target.src = fallbackImages[0];
-                                                }}
-                                            />
-                                        </div>
+                            {relatedHotels.map((relatedHotel) => {
+                                // Get image from hotel data - prioritize images array, then image property, then fallback
+                                const getRelatedHotelImage = () => {
+                                    if (relatedHotel.images && relatedHotel.images.length > 0) {
+                                        return relatedHotel.images[0].url;
+                                    }
+                                    if (relatedHotel.image) {
+                                        return relatedHotel.image;
+                                    }
+                                    return fallbackImages[0];
+                                };
+
+                                return (
+                                    <div key={relatedHotel.id} className="col-md-4 mb-4">
+                                        <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
+                                            <div className="card-image">
+                                                <img 
+                                                    src={getRelatedHotelImage()} 
+                                                    alt={relatedHotel.name}
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.src = fallbackImages[0];
+                                                    }}
+                                                />
+                                            </div>
                                         <div className="card-content">
                                             <h4>{relatedHotel.name}</h4>
                                             <div className="card-description">
@@ -744,7 +763,8 @@ const HotelDetail: React.FC = () => {
                                         </div>
                                     </Link>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </section>
