@@ -9,12 +9,33 @@ const app = express();
 
 // CORS configuration - Allow frontend origins
 const corsOptions = {
-  origin: [
-    'http://localhost:3000',  // Local development
-    'https://ventus-app.onrender.com',  // Production frontend
-    'https://ventus-travel-staging.onrender.com',  // Staging frontend
-    /\.onrender\.com$/  // Allow all Render subdomains
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',  // Local development
+      'https://ventus-app.onrender.com',  // Production frontend
+      'https://ventus-travel-staging.onrender.com',  // Staging frontend
+    ];
+    
+    // Check if origin matches allowed list
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    }
+    // Check if origin is a Render subdomain
+    else if (/\.onrender\.com$/.test(origin)) {
+      callback(null, true);
+    }
+    // In development, allow all origins
+    else if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    }
+    else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -99,12 +120,28 @@ const authenticateToken = (req, res, next) => {
 // ============= AUTH ROUTES =============
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    database: 'connected'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test database connection
+    const dbTest = await pool.query('SELECT NOW()');
+    const dbConnected = !!dbTest.rows[0];
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      database: dbConnected ? 'connected' : 'disconnected',
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 5000
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: 'error',
+      error: error.message
+    });
+  }
 });
 
 // Signup - Create new user

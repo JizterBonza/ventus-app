@@ -5,10 +5,28 @@ const AUTH_TOKEN_KEY = 'ventus_auth_token';
 const AUTH_USER_KEY = 'ventus_auth_user';
 
 // API configuration
-const AUTH_API_URL = process.env.REACT_APP_AUTH_API_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? 'https://ventus-backend.onrender.com/api/auth'  // Update with your Render backend URL
-    : '/api/auth');  // Use proxy in development (configured in package.json)
+// Priority: 1. Environment variable, 2. Production URL, 3. Development proxy
+const getApiUrl = () => {
+  // Check for explicit environment variable first
+  if (process.env.REACT_APP_AUTH_API_URL) {
+    return process.env.REACT_APP_AUTH_API_URL;
+  }
+  
+  // In production, use the backend URL
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://ventus-backend.onrender.com/api/auth';
+  }
+  
+  // In development, use proxy
+  return '/api/auth';
+};
+
+const AUTH_API_URL = getApiUrl();
+
+// Log API URL in development for debugging
+if (process.env.NODE_ENV === 'development') {
+  console.log('Auth API URL:', AUTH_API_URL);
+}
 
 /**
  * Login user with email and password
@@ -30,9 +48,18 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
     } catch (fetchError) {
       // Network error - backend might not be running or CORS issue
       console.error('Network error during login:', fetchError);
+      console.error('Attempted URL:', `${AUTH_API_URL}/login`);
+      console.error('Error details:', fetchError instanceof Error ? fetchError.message : String(fetchError));
+      
+      // Provide more specific error message
+      let errorMessage = 'Unable to connect to the server. Please ensure the backend server is running.';
+      if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+        errorMessage = `Cannot reach backend server at ${AUTH_API_URL}. Please check if the backend is running and the URL is correct.`;
+      }
+      
       return {
         success: false,
-        error: 'Unable to connect to the server. Please ensure the backend server is running.'
+        error: errorMessage
       };
     }
 
@@ -120,9 +147,18 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
     } catch (fetchError) {
       // Network error - backend might not be running or CORS issue
       console.error('Network error during signup:', fetchError);
+      console.error('Attempted URL:', `${AUTH_API_URL}/signup`);
+      console.error('Error details:', fetchError instanceof Error ? fetchError.message : String(fetchError));
+      
+      // Provide more specific error message
+      let errorMessage = 'Unable to connect to the server. Please ensure the backend server is running.';
+      if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+        errorMessage = `Cannot reach backend server at ${AUTH_API_URL}. Please check if the backend is running and the URL is correct.`;
+      }
+      
       return {
         success: false,
-        error: 'Unable to connect to the server. Please ensure the backend server is running.'
+        error: errorMessage
       };
     }
 
