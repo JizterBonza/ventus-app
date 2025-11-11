@@ -105,7 +105,6 @@ const Signup: React.FC = () => {
 
     try {
       await signup(formData);
-      // Navigation will be handled by useEffect when isAuthenticated becomes true
     } catch (err) {
       console.error('Signup error:', err);
     }

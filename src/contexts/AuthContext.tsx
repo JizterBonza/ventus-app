@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthState, LoginCredentials, SignupData, AuthContextType } from '../types/auth';
 import { loginUser, signupUser, logoutUser, getCurrentUser } from '../utils/authService';
 
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       const response = await loginUser(credentials);
@@ -73,9 +73,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: error instanceof Error ? error.message : 'Login failed'
       }));
     }
-  }, []);
+  };
 
-  const signup = useCallback(async (data: SignupData) => {
+  const signup = async (data: SignupData) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       const response = await signupUser(data);
@@ -101,9 +101,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: error instanceof Error ? error.message : 'Signup failed'
       }));
     }
-  }, []);
+  };
 
-  const logout = useCallback(() => {
+  const logout = () => {
     logoutUser();
     setAuthState({
       user: null,
@@ -111,13 +111,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isLoading: false,
       error: null
     });
-  }, []);
+  };
 
-  const clearError = useCallback(() => {
+  const clearError = () => {
     setAuthState(prev => ({ ...prev, error: null }));
-  }, []);
+  };
 
-  const value: AuthContextType = useMemo(() => ({
+  const value: AuthContextType = {
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     clearError
-  }), [authState.user, authState.isAuthenticated, authState.isLoading, authState.error, login, signup, logout, clearError]);
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
