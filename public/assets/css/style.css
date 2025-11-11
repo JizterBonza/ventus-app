@@ -7291,7 +7291,7 @@ select {
 
 /* Interest Categories Styling */
 .interests-section {
-    padding-block: 30px var(--padding-block);
+    padding-block: 30px;
 }
 
 .card-categories {
