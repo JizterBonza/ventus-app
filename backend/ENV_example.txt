@@ -1,8 +1,29 @@
-# Backend Environment Variables for Render
-# Copy these to your Render backend service environment variables
+# Backend Environment Variables
+# Copy this file to .env and update with your actual values
 
-DATABASE_URL=<your-render-postgresql-internal-url>
-JWT_SECRET=<generate-a-secure-random-string>
-NODE_ENV=production
-PORT=10000
+# Option 1: Local PostgreSQL Database (Recommended for Development)
+# Format: postgresql://username:password@localhost:5432/database_name
+# Example: postgresql://postgres:mypassword@localhost:5432/ventus_db
+DATABASE_URL=postgresql://user:password@localhost:5432/ventus_db
+
+# Option 2: Render Production Database (External URL for Local Testing)
+# Get this from: Render Dashboard → Your Database → External Database URL
+# Format: postgresql://user:password@host:port/database
+# Note: Make sure to use the EXTERNAL URL, not the internal one
+# DATABASE_URL=postgresql://user:password@host:port/database
+
+# Database SSL Configuration (Optional)
+# SSL is automatically disabled for localhost connections
+# For remote databases, SSL is enabled in production by default
+# You can override this behavior by setting DATABASE_SSL=true or DATABASE_SSL=false
+# DATABASE_SSL=false
+
+# JWT Secret for token signing (generate a secure random string)
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Environment
+NODE_ENV=development
+
+# Port
+PORT=5000
 

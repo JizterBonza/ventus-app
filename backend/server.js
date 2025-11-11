@@ -25,9 +25,43 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // PostgreSQL connection pool
+// Determine SSL configuration based on database host and environment
+const getSSLConfig = () => {
+  // If DATABASE_SSL is explicitly set, use it
+  if (process.env.DATABASE_SSL !== undefined) {
+    if (process.env.DATABASE_SSL === 'false' || process.env.DATABASE_SSL === '0') {
+      return false;
+    }
+    if (process.env.DATABASE_SSL === 'true' || process.env.DATABASE_SSL === '1') {
+      return { rejectUnauthorized: false };
+    }
+  }
+  
+  // Check if connecting to localhost (local database doesn't support SSL)
+  const dbUrl = process.env.DATABASE_URL || '';
+  if (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) {
+    return false;
+  }
+  
+  // Only enable SSL for known cloud providers that require it
+  // For other databases, default to no SSL unless explicitly enabled
+  const requiresSSL = dbUrl.includes('render.com') || 
+                      dbUrl.includes('heroku.com') || 
+                      dbUrl.includes('amazonaws.com') ||
+                      dbUrl.includes('azure.com') ||
+                      dbUrl.includes('digitalocean.com');
+  
+  if (requiresSSL && process.env.NODE_ENV === 'production') {
+    return { rejectUnauthorized: false };
+  }
+  
+  // Default: no SSL (most databases don't require it)
+  return false;
+};
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: getSSLConfig()
 });
 
 // Test database connection

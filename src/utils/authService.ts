@@ -8,7 +8,7 @@ const AUTH_USER_KEY = 'ventus_auth_user';
 const AUTH_API_URL = process.env.REACT_APP_AUTH_API_URL || 
   (process.env.NODE_ENV === 'production' 
     ? 'https://ventus-backend.onrender.com/api/auth'  // Update with your Render backend URL
-    : 'http://localhost:5000/api/auth');
+    : '/api/auth');  // Use proxy in development (configured in package.json)
 
 /**
  * Login user with email and password
@@ -18,22 +18,41 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
     console.log('Login attempt:', credentials.email);
 
     // Call actual backend API
-    const response = await fetch(`${AUTH_API_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(credentials)
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
+    let response;
+    try {
+      response = await fetch(`${AUTH_API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(credentials)
+      });
+    } catch (fetchError) {
+      // Network error - backend might not be running or CORS issue
+      console.error('Network error during login:', fetchError);
       return {
         success: false,
-        error: data.error || 'Login failed'
+        error: 'Unable to connect to the server. Please ensure the backend server is running.'
       };
     }
+
+    // Check if response is ok before parsing JSON
+    if (!response.ok) {
+      let errorMessage = 'Login failed';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (parseError) {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || `Server error (${response.status})`;
+      }
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+
+    const data = await response.json();
 
     // Store auth token and user data
     if (data.token) {
@@ -64,6 +83,8 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
 export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
   try {
     console.log('Signup attempt:', data.email);
+    console.log('API URL:', AUTH_API_URL);
+    console.log('Full signup URL:', `${AUTH_API_URL}/signup`);
 
     // Client-side validation
     if (data.password !== data.confirmPassword) {
@@ -81,26 +102,83 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
     }
 
     // Call actual backend API
-    const response = await fetch(`${AUTH_API_URL}/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        email: data.email,
-        password: data.password,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone
-      })
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
+    let response;
+    try {
+      response = await fetch(`${AUTH_API_URL}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone
+        })
+      });
+    } catch (fetchError) {
+      // Network error - backend might not be running or CORS issue
+      console.error('Network error during signup:', fetchError);
       return {
         success: false,
-        error: result.error || 'Signup failed'
+        error: 'Unable to connect to the server. Please ensure the backend server is running.'
+      };
+    }
+
+    // Check if response is ok before parsing JSON
+    if (!response.ok) {
+      let errorMessage = 'Signup failed';
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
+      try {
+        if (isJson) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          // If response is not JSON, provide more helpful error messages
+          if (response.status === 404) {
+            errorMessage = 'API endpoint not found. Please ensure the backend server is running on port 5000 and the API URL is correct.';
+          } else if (response.status === 500) {
+            errorMessage = 'Server error. Please try again later.';
+          } else {
+            errorMessage = response.statusText || `Server error (${response.status})`;
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use status-based messages
+        if (response.status === 404) {
+          errorMessage = 'API endpoint not found. Please ensure the backend server is running on port 5000.';
+        } else if (response.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        } else {
+          errorMessage = response.statusText || `Server error (${response.status})`;
+        }
+      }
+      
+      console.error('Signup API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: `${AUTH_API_URL}/signup`,
+        contentType,
+        errorMessage
+      });
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+
+    let result;
+    try {
+      result = await response.json();
+    } catch (jsonError) {
+      console.error('Error parsing JSON response:', jsonError);
+      return {
+        success: false,
+        error: 'Invalid response from server'
       };
     }
 
@@ -149,12 +227,19 @@ export const getCurrentUser = async (): Promise<User | null> => {
     }
 
     // Verify token with backend
-    const response = await fetch(`${AUTH_API_URL}/verify`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    let response;
+    try {
+      response = await fetch(`${AUTH_API_URL}/verify`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (fetchError) {
+      // Network error - backend might not be running
+      console.error('Network error during token verification:', fetchError);
+      return null;
+    }
 
     if (!response.ok) {
       logoutUser();
