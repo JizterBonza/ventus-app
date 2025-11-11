@@ -3,26 +3,6 @@ import { InterestCategory } from "../types/interests";
 export const interestCategories: InterestCategory[] = [
     {
         id: "1",
-        title: "The Capetown Road Trip",
-        description:
-            "Exploring the south-west coast of South Africa.",
-        image: "/assets/img/interests/1.webp",
-        categories: ["Adventure", "Culture"],
-        location: "South Africa",
-        query: "capetown",
-    },
-    {
-        id: "2",
-        title: "Medical Wellness",
-        description:
-            "Recovery that feels like retreat.",
-        image: "/assets/img/interests/2.webp",
-        categories: ["Adventure", "Culture"],
-        location: "Europe",
-        query: "wellness",
-    },
-    {
-        id: "3",
         title: "Ski Season",
         description:
             "These resorts are peak perfection.",
@@ -32,7 +12,7 @@ export const interestCategories: InterestCategory[] = [
         query: "ski",
     },
     {
-        id: "4",
+        id: "2",
         title: "New Openings",
         description:
             "Keep up to date with the hottest hotel openings.",
@@ -42,17 +22,7 @@ export const interestCategories: InterestCategory[] = [
         query: "new openings",
     },
     {
-        id: "5",
-        title: "Festive Cities",
-        description:
-            "Lights, mulled wine and Christmas markets.",
-        image: "/assets/img/interests/5.webp",
-        categories: ["Adventure", "Tradition"],
-        location: "Europe",
-        query: "festive",
-    },
-    {
-        id: "6",
+        id: "3",
         title: "Safari",
         description:
             "Take a walk on the wild side.",
@@ -60,6 +30,36 @@ export const interestCategories: InterestCategory[] = [
         categories: ["Adventure", "Popular"],
         location: "Middle East",
         query: "safari",
+    },
+    {
+        id: "4",
+        title: "Medical Wellness",
+        description:
+            "Recovery that feels like retreat.",
+        image: "/assets/img/interests/2.webp",
+        categories: ["Adventure", "Culture"],
+        location: "Europe",
+        query: "wellness",
+    },
+    {
+        id: "5",
+        title: "Luxury Train Journeys",
+        description:
+            "Travel to exciting destinations in style.",
+        image: "/assets/img/interests/8.webp",
+        categories: ["Culture", "Popular"],
+        location: "Europe",
+        query: "train journeys",
+    },
+    {
+        id: "6",
+        title: "Countryside Favourites",
+        description:
+            "Explore the beautiful English countryside.",
+        image: "/assets/img/interests/12.webp",
+        categories: ["Adventure", "Tradition"],
+        location: "Europe",
+        query: "countryside",
     },
     {
         id: "7",
@@ -73,16 +73,26 @@ export const interestCategories: InterestCategory[] = [
     },
     {
         id: "8",
-        title: "Luxury Train Journeys",
+        title: "The Capetown Road Trip",
         description:
-            "Travel to exciting destinations in style.",
-        image: "/assets/img/interests/8.webp",
-        categories: ["Culture", "Popular"],
-        location: "Europe",
-        query: "train journeys",
+            "Exploring the south-west coast of South Africa.",
+        image: "/assets/img/interests/1.webp",
+        categories: ["Adventure", "Culture"],
+        location: "South Africa",
+        query: "capetown",
     },
     {
         id: "9",
+        title: "Festive Cities",
+        description:
+            "Lights, mulled wine and Christmas markets.",
+        image: "/assets/img/interests/5.webp",
+        categories: ["Adventure", "Tradition"],
+        location: "Europe",
+        query: "festive",
+    },
+    {
+        id: "10",
         title: "Villas",
         description:
             "Unique luxury homes, villas and chalets.",
@@ -92,7 +102,7 @@ export const interestCategories: InterestCategory[] = [
         query: "villa",
     },
     {
-        id: "10",
+        id: "11",
         title: "Spotlight on Morocco",
         description:
             "From desert camps to city palaces.",
@@ -102,7 +112,7 @@ export const interestCategories: InterestCategory[] = [
         query: "morocco",
     },
     {
-        id: "11",
+        id: "12",
         title: "Caribbean",
         description:
             "Paradise found, island by island.",
@@ -111,14 +121,5 @@ export const interestCategories: InterestCategory[] = [
         location: "Europe",
         query: "caribbean",
     },
-    {
-        id: "12",
-        title: "Countryside Favourites",
-        description:
-            "Explore the beautiful English countryside.",
-        image: "/assets/img/interests/12.webp",
-        categories: ["Adventure", "Tradition"],
-        location: "Europe",
-        query: "countryside",
-    },
+    
 ];
