@@ -522,7 +522,8 @@ textarea.form-control{
 .form-check{
     display: flex;
     gap: 10px;
-    align-items: center;
+    flex-direction: column;
+    position: relative;
 }
 .form-check-label{
     font-size: 16px;
@@ -575,6 +576,8 @@ textarea.form-control{
 }
 .form-check-input[type="checkbox"]{
    border-radius: 0;
+   position: absolute;
+   top: -5px;
 }
 .card-image:before,
 .card_content .btn:after{
@@ -881,6 +884,7 @@ body .results-header p{
     .login-page form .justify-content-between{
         flex-direction: column;
         gap: 10px;
+        align-items: flex-start !important;
     }
     .login-page .auth-card form button[type="submit"]{
         width: 100%;
