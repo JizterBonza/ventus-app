@@ -19,7 +19,7 @@ const Navigation: React.FC = () => {
                 aria-label="Toggle navigation"
             >
                 <span className="navbar-toggler-icon">
-                    <i className="ti-menu"></i>
+                    <i className={isMobileMenuOpen ? "ti-close" : "ti-menu"}></i>
                 </span>
             </button>
 

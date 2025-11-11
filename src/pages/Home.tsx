@@ -998,6 +998,8 @@ const Home: React.FC = () => {
                                     urlParams.set("location", query);
                                     const searchUrl = `/search-results?${urlParams.toString()}`;
                                     navigate(searchUrl);
+                                    // Scroll to top when navigating
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }
                             };
 

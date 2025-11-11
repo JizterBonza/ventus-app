@@ -1393,6 +1393,7 @@ blockquote cite:before {
         background: transparent;
         margin-top: 10px;
         border: none;
+        padding-right: 0;
     }
 
     .navbar button:hover {
@@ -1414,10 +1415,6 @@ blockquote cite:before {
 
     .navbar .nav-link {
         margin: 0px auto !important;
-    }
-
-    .navbar .navbar-nav .nav-link {
-        color: #222;
     }
 
     .nav-scroll .navbar-collapse .nav-link {
@@ -1474,22 +1471,16 @@ blockquote cite:before {
         padding-left: 0px;
     }
 
-    .dropdown .nav-link i {
-        color: #222;
-    }
-
-    .nav-scroll .dropdown .nav-link i {
-        color: #222;
-    }
 
     .nav-scroll .dropdown .nav-link.active i {
         color: var(--gold);
     }
 
     .navbar .navbar-collapse {
-        max-height: 450px;
         overflow: auto;
-        background: #fff;
+        background-color: var(--black-200);
+        max-height: 100vh;
+        height: 100vh;
         text-align: left;
         padding: 20px;
         position: absolute;
