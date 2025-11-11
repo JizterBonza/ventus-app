@@ -9,6 +9,33 @@ interface SearchBarNewProps {
     onSearch?: () => void; // Optional callback after search completes
 }
 
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 30) => {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = `expires=${date.toUTCString()}`;
+    document.cookie = `${name}=${encodeURIComponent(value)};${expires};path=/`;
+};
+
+const getCookie = (name: string): string | null => {
+    const nameEQ = `${name}=`;
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+            return decodeURIComponent(c.substring(nameEQ.length, c.length));
+        }
+    }
+    return null;
+};
+
+const COOKIE_KEYS = {
+    CHECK_IN: 'ventus_check_in',
+    CHECK_OUT: 'ventus_check_out',
+    GUESTS: 'ventus_guests'
+};
+
 const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
     const [urlSearchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -20,9 +47,10 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         rating: "all",
         sortBy: "recommended",
     });
-    const [checkInDate, setCheckInDate] = useState("");
-    const [checkOutDate, setCheckOutDate] = useState("");
-    const [guests, setGuests] = useState("2");
+    // Load values from cookies on mount
+    const [checkInDate, setCheckInDate] = useState(() => getCookie(COOKIE_KEYS.CHECK_IN) || "");
+    const [checkOutDate, setCheckOutDate] = useState(() => getCookie(COOKIE_KEYS.CHECK_OUT) || "");
+    const [guests, setGuests] = useState(() => getCookie(COOKIE_KEYS.GUESTS) || "2");
     const selectingCheckInRef = useRef(true);
     const checkInDateRef = useRef("");
     const checkOutDateRef = useRef("");
@@ -36,9 +64,31 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         checkOutDateRef.current = checkOutDate;
     }, [checkOutDate]);
 
-    // Handle URL parameters from home page
+    // Save to cookies when values change
+    useEffect(() => {
+        if (checkInDate) {
+            setCookie(COOKIE_KEYS.CHECK_IN, checkInDate, 30);
+        }
+    }, [checkInDate]);
+
+    useEffect(() => {
+        if (checkOutDate) {
+            setCookie(COOKIE_KEYS.CHECK_OUT, checkOutDate, 30);
+        }
+    }, [checkOutDate]);
+
+    useEffect(() => {
+        if (guests) {
+            setCookie(COOKIE_KEYS.GUESTS, guests, 30);
+        }
+    }, [guests]);
+
+    // Handle URL parameters from home page and load from cookies
     useEffect(() => {
         const location = urlSearchParams.get("location");
+        const urlCheckIn = urlSearchParams.get("checkIn");
+        const urlCheckOut = urlSearchParams.get("checkOut");
+        const urlGuests = urlSearchParams.get("guests");
 
         if (location) {
             setSearchParams((prev) => ({
@@ -48,6 +98,34 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
 
             // Auto-search for the location
             searchByQuery(location, 20);
+        }
+
+        // Load dates and guests from URL params if available, otherwise use cookies
+        if (urlCheckIn) {
+            setCheckInDate(urlCheckIn);
+        } else {
+            const cookieCheckIn = getCookie(COOKIE_KEYS.CHECK_IN);
+            if (cookieCheckIn) {
+                setCheckInDate(cookieCheckIn);
+            }
+        }
+
+        if (urlCheckOut) {
+            setCheckOutDate(urlCheckOut);
+        } else {
+            const cookieCheckOut = getCookie(COOKIE_KEYS.CHECK_OUT);
+            if (cookieCheckOut) {
+                setCheckOutDate(cookieCheckOut);
+            }
+        }
+
+        if (urlGuests) {
+            setGuests(urlGuests);
+        } else {
+            const cookieGuests = getCookie(COOKIE_KEYS.GUESTS);
+            if (cookieGuests) {
+                setGuests(cookieGuests);
+            }
         }
     }, [urlSearchParams, searchByQuery]);
 
@@ -136,6 +214,8 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                             setCheckInDate(dateText);
                             setCheckOutDate("");
                             selectingCheckInRef.current = false;
+                            // Save to cookie
+                            setCookie(COOKIE_KEYS.CHECK_IN, dateText, 30);
                             // Update minDate for check-out selection
                             $(this).datepicker("option", "minDate", dateText);
                             // Reopen datepicker for check-out selection
@@ -145,6 +225,8 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                         } else {
                             setCheckOutDate(dateText);
                             selectingCheckInRef.current = true;
+                            // Save to cookie
+                            setCookie(COOKIE_KEYS.CHECK_OUT, dateText, 30);
                             // Close datepicker after both dates are selected
                             $dateRangeInput.datepicker("hide");
                         }
@@ -209,7 +291,11 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                                     <select
                                         className="form-control input guest-select"
                                         value={guests}
-                                        onChange={(e) => setGuests(e.target.value)}
+                                        onChange={(e) => {
+                                            const newValue = e.target.value;
+                                            setGuests(newValue);
+                                            setCookie(COOKIE_KEYS.GUESTS, newValue, 30);
+                                        }}
                                     >
                                         <option value="1">1 adult</option>
                                         <option value="2">2 adults</option>
