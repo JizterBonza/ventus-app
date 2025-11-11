@@ -607,7 +607,7 @@ const Home: React.FC = () => {
                         justifyContent: "center",
                         zIndex: 10
                     }}>
-                        <div className="spinner-border text-primary" role="status" style={{ width: "2rem", height: "2rem" }}>
+                        <div className="spinner-border" role="status" style={{ width: "2rem", height: "2rem" }}>
                             <span className="sr-only">Loading...</span>
                         </div>
                     </div>
@@ -637,7 +637,19 @@ const Home: React.FC = () => {
                                 : hotel.image || fallbackImages[index % fallbackImages.length];
                             
                             return (
-                                <div key={hotel.id || index} className="hotel-header-gallery-item" style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+                                <Link
+                                    key={hotel.id || index}
+                                    to={`/hotel/${hotel.id}`}
+                                    className="hotel-header-gallery-item"
+                                    style={{ 
+                                        width: "100%", 
+                                        height: "100%", 
+                                        overflow: "hidden",
+                                        display: "block",
+                                        textDecoration: "none",
+                                        cursor: "pointer"
+                                    }}
+                                >
                                     <img
                                         src={imageUrl}
                                         alt={hotel.name || `Hotel ${index + 1}`}
@@ -658,7 +670,7 @@ const Home: React.FC = () => {
                                             <p>{hotel.location || "Premium Destination"}</p>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })
                     ) : (
@@ -977,49 +989,64 @@ const Home: React.FC = () => {
                     </div>
                     {/* Interest Cards */}
                     <div className="row">
-                        {filteredInterests.map((interest) => (
-                            <div key={interest.id} className="col-md-4 mb-4">
-                                <div className="card interest-card">
-                                {/* 
-                                    <div className="card-overlay">Find out more</div>
-                                    <div className="card-categories">
-                                        {interest.categories.map((category, index) => (
-                                            <span key={index} className="category-tag">
-                                                {category}
-                                            </span>
-                                        ))}
-                                    </div>
-                                    */}
-                                    <div className="card-image">
-                                        <img src={interest.image} alt={interest.title} />
-                                    </div>
-                                    <div className="card-content">
-                                        <h4>{interest.title}</h4>
-                                        <div className="card-description">{interest.description}</div>
-                                        <a
-                                            href="#"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                const query = interest.query;
-                                                if (query) {
-                                                    // Navigate to search results page with the query, just like the Search Button does
-                                                    const urlParams = new URLSearchParams();
-                                                    urlParams.set("location", query);
-                                                    const searchUrl = `/search-results?${urlParams.toString()}`;
-                                                    navigate(searchUrl);
-                                                }
-                                            }}
+                        {filteredInterests.map((interest) => {
+                            const handleInterestClick = () => {
+                                const query = interest.query;
+                                if (query) {
+                                    // Navigate to search results page with the query, just like the Search Button does
+                                    const urlParams = new URLSearchParams();
+                                    urlParams.set("location", query);
+                                    const searchUrl = `/search-results?${urlParams.toString()}`;
+                                    navigate(searchUrl);
+                                }
+                            };
+
+                            return (
+                                <div key={interest.id} className="col-md-4 mb-4">
+                                    <div className="card interest-card">
+                                    {/* 
+                                        <div className="card-overlay">Find out more</div>
+                                        <div className="card-categories">
+                                            {interest.categories.map((category, index) => (
+                                                <span key={index} className="category-tag">
+                                                    {category}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        */}
+                                        <div 
+                                            className="card-image"
+                                            onClick={handleInterestClick}
                                             style={{ cursor: 'pointer' }}
                                         >
-                                            View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                            <img src={interest.image} alt={interest.title} />
+                                        </div>
+                                        <div className="card-content">
+                                            <h4 
+                                                onClick={handleInterestClick}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                {interest.title}
+                                            </h4>
+                                            <div className="card-description">{interest.description}</div>
+                                            <a
+                                                href="#"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleInterestClick();
+                                                }}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
 <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
 </svg></a>
+                                        </div>
+                                        
                                     </div>
-                                    
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* No results message */}
