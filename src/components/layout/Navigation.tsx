@@ -15,6 +15,19 @@ const Navigation: React.FC = () => {
                 alignItems: 'center',
                 gap: '10px'
             }}>
+                
+
+                {/* Mobile Auth - Shows beside toggler on mobile ONLY when logged in */}
+                {!isLoading && isAuthenticated && (
+                    <div className="mobile-auth" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }}>
+                        <UserMenu />
+                    </div>
+                )}
+
                 {/* Button */}
                 <button
                     className="navbar-toggler"
@@ -28,31 +41,6 @@ const Navigation: React.FC = () => {
                         <i className={isMobileMenuOpen ? "ti-close" : "ti-menu"}></i>
                     </span>
                 </button>
-
-                {/* Mobile Auth - Shows beside toggler on mobile */}
-                {!isLoading && (
-                    <div className="mobile-auth" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px'
-                    }}>
-                        {isAuthenticated ? (
-                            <UserMenu />
-                        ) : (
-                            <>
-                                <Link className="nav-link" to="/login" style={{
-                                    padding: '8px 12px',
-                                    borderRadius: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '5px'
-                                }}>
-                                    <i className="ti-user"></i>
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Menu */}
@@ -89,7 +77,7 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     
-                    {/* Authentication Links - Desktop only */}
+                    {/* Authentication Links */}
                     {!isLoading && (
                         <>
                             {isAuthenticated ? (
@@ -98,12 +86,12 @@ const Navigation: React.FC = () => {
                                 </li>
                             ) : (
                                 <>
-                                    <li className="nav-item login-btn desktop-auth">
+                                    <li className="nav-item login-btn mobile-nav-auth desktop-auth">
                                         <Link className="nav-link" to="/login">
                                             <i className="ti-user"></i> Login
                                         </Link>
                                     </li>
-                                    <li className="nav-item signup-btn desktop-auth">
+                                    <li className="nav-item signup-btn mobile-nav-auth desktop-auth">
                                         <Link className="nav-link" to="/signup" style={{
                                             background: '#aa8453',
                                             color: '#fff',
@@ -123,7 +111,7 @@ const Navigation: React.FC = () => {
 
             {/* Responsive Styles */}
             <style>{`
-                /* Mobile: Show mobile-auth, hide desktop-auth */
+                /* Mobile: Show mobile-auth (only when logged in), show mobile-nav-auth (only when logged out), hide desktop-auth */
                 @media screen and (max-width: 991px) {
                     .mobile-nav-controls {
                         display: flex !important;
@@ -131,17 +119,23 @@ const Navigation: React.FC = () => {
                     .mobile-auth {
                         display: flex !important;
                     }
-                    .desktop-auth {
+                    .desktop-auth:not(.mobile-nav-auth) {
                         display: none !important;
+                    }
+                    .mobile-nav-auth {
+                        display: list-item !important;
                     }
                 }
 
-                /* Desktop: Hide mobile-auth, show desktop-auth */
+                /* Desktop: Hide mobile-auth and mobile-nav-auth, show desktop-auth */
                 @media screen and (min-width: 992px) {
                     .mobile-nav-controls {
                         display: none !important;
                     }
                     .mobile-auth {
+                        display: none !important;
+                    }
+                    .mobile-nav-auth {
                         display: none !important;
                     }
                     .desktop-auth {

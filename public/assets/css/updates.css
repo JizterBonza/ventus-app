@@ -868,6 +868,11 @@ body .results-header p{
         text-align: center;
 
     }
+    .navbar button.user-menu-button{
+        font-size: 14px;
+        margin: 0;
+        color: #fff !important;
+    } 
    
 }
 
@@ -1023,6 +1028,9 @@ body .results-header p{
     }
     .close-modal{
         z-index: 999;
+    }
+    .logo-img{
+        max-width: 180px;
     }
 }
 
