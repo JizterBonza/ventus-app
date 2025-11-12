@@ -66,12 +66,12 @@ const Navigation: React.FC = () => {
                                 </li>
                             ) : (
                                 <>
-                                    <li className="nav-item">
+                                    <li className="nav-item login-btn">
                                         <Link className="nav-link" to="/login">
                                             <i className="ti-user"></i> Login
                                         </Link>
                                     </li>
-                                    <li className="nav-item">
+                                    <li className="nav-item signup-btn">
                                         <Link className="nav-link" to="/signup" style={{
                                             background: '#aa8453',
                                             color: '#fff',
