@@ -739,7 +739,10 @@ body .results-header p{
 .user-menu-dropdown ul{
     font-size: 16px;
 }
-.user-menu-dropdown ul li:not(:last-child) a{
+.user-menu-dropdown > div div{
+    line-height: 1.1;
+}
+.user-menu-dropdown ul li a{
     border-bottom: 1px solid #0000001A;
     padding-top: 5px !important;
     padding-bottom: 5px !important;

@@ -9,19 +9,51 @@ const Navigation: React.FC = () => {
 
     return (
         <>
-            {/* Button */}
-            <button
-                className="navbar-toggler"
-                type="button"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                aria-controls="navbar"
-                aria-expanded={isMobileMenuOpen}
-                aria-label="Toggle navigation"
-            >
-                <span className="navbar-toggler-icon">
-                    <i className={isMobileMenuOpen ? "ti-close" : "ti-menu"}></i>
-                </span>
-            </button>
+            {/* Mobile Controls Wrapper - Shows on screens below 991px */}
+            <div className="mobile-nav-controls" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+            }}>
+                {/* Button */}
+                <button
+                    className="navbar-toggler"
+                    type="button"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    aria-controls="navbar"
+                    aria-expanded={isMobileMenuOpen}
+                    aria-label="Toggle navigation"
+                >
+                    <span className="navbar-toggler-icon">
+                        <i className={isMobileMenuOpen ? "ti-close" : "ti-menu"}></i>
+                    </span>
+                </button>
+
+                {/* Mobile Auth - Shows beside toggler on mobile */}
+                {!isLoading && (
+                    <div className="mobile-auth" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }}>
+                        {isAuthenticated ? (
+                            <UserMenu />
+                        ) : (
+                            <>
+                                <Link className="nav-link" to="/login" style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}>
+                                    <i className="ti-user"></i>
+                                </Link>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Menu */}
             <div className={`collapse navbar-collapse ${isMobileMenuOpen ? "show" : ""}`} id="navbar">
@@ -57,21 +89,21 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     
-                    {/* Authentication Links */}
+                    {/* Authentication Links - Desktop only */}
                     {!isLoading && (
                         <>
                             {isAuthenticated ? (
-                                <li className="nav-item" style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
+                                <li className="nav-item desktop-auth" style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
                                     <UserMenu />
                                 </li>
                             ) : (
                                 <>
-                                    <li className="nav-item login-btn">
+                                    <li className="nav-item login-btn desktop-auth">
                                         <Link className="nav-link" to="/login">
                                             <i className="ti-user"></i> Login
                                         </Link>
                                     </li>
-                                    <li className="nav-item signup-btn">
+                                    <li className="nav-item signup-btn desktop-auth">
                                         <Link className="nav-link" to="/signup" style={{
                                             background: '#aa8453',
                                             color: '#fff',
@@ -88,6 +120,35 @@ const Navigation: React.FC = () => {
                     )}
                 </ul>
             </div>
+
+            {/* Responsive Styles */}
+            <style>{`
+                /* Mobile: Show mobile-auth, hide desktop-auth */
+                @media screen and (max-width: 991px) {
+                    .mobile-nav-controls {
+                        display: flex !important;
+                    }
+                    .mobile-auth {
+                        display: flex !important;
+                    }
+                    .desktop-auth {
+                        display: none !important;
+                    }
+                }
+
+                /* Desktop: Hide mobile-auth, show desktop-auth */
+                @media screen and (min-width: 992px) {
+                    .mobile-nav-controls {
+                        display: none !important;
+                    }
+                    .mobile-auth {
+                        display: none !important;
+                    }
+                    .desktop-auth {
+                        display: revert !important;
+                    }
+                }
+            `}</style>
         </>
     );
 };
