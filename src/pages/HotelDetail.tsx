@@ -627,7 +627,7 @@ const HotelDetail: React.FC = () => {
                                                 ))}
                                             </div>
                                         )}
-                                        <a href="" className="btn btn-primary">Get a trip quote</a>
+                                        <a href="#quote" className="btn btn-primary">Get a trip quote</a>
                                     </div>
                                 </div>
                             ) : null

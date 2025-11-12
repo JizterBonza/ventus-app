@@ -750,6 +750,7 @@ body .results-header p{
 .user-menu-dropdown button{
     font-size: 16px;
     text-transform: uppercase;
+    background: rgb(34 34 36) !important;
 }
 @media screen and (min-width:1024px) {
     .hotel-content_sidebar{

@@ -30,7 +30,7 @@ const QuoteForm: React.FC = () => {
 
     return (
         
-            <section className="section-quote section-padding section-text-center">
+            <section id="quote" className="section-quote section-padding section-text-center">
                 <div className="container">
                     <div className="global-form">
                         <div className="text-center">
