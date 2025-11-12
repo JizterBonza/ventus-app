@@ -530,12 +530,13 @@ textarea.form-control{
     background: none;
     position: absolute;
     right: 20px;
-    top: 38%;
+    top: 27px;
     transform: translateY(-50%);
     color: #000;
     height: 53px;
     border: 0;
     padding: 0;
+    box-shadow: none;
 }
 .auth-card form button[type="submit"]{
   height: 53px;
@@ -752,6 +753,36 @@ body .results-header p{
     text-transform: uppercase;
     background: rgb(34 34 36) !important;
 }
+.invalid-feedback{
+    line-height: 1.1;
+    font-size: 14px;
+}
+/* Remove autofill blue background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+input:-internal-autofill-selected,
+input:-internal-autofill-selected:hover,
+input:-internal-autofill-selected:focus,
+input:-internal-autofill-selected:active {
+    background-color: #fff !important;
+    background: #fff !important;
+    -webkit-box-shadow: 0 0 0 30px #fff inset !important;
+    box-shadow: 0 0 0 30px #fff inset !important;
+    -webkit-text-fill-color: inherit !important;
+    color: inherit !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+.form-control:focus,
+.form-check-input:focus{
+    border-color: var(--gold);
+    box-shadow: none;
+}
+.form-check-input:checked{
+    background: var(--gold);
+    border:0;
+}
 @media screen and (min-width:1024px) {
     .hotel-content_sidebar{
         margin-bottom: 50px;
@@ -774,6 +805,9 @@ body .results-header p{
     .card_content{
         padding-right: 0;
     }
+    .login-page .sidebar{
+        padding: 60px 30px;
+    }
   
 }
 @media screen and (max-width:1023px){
@@ -781,14 +815,15 @@ body .results-header p{
         flex-direction: column;
         gap: 10px;
     }
-    .login-page .col-lg-6:first-child{
-        padding-right: 0;
-        padding-left: 0;
-        border-right: 0;
+    .login-page .row{
+        flex-direction: column;
     }
-    .login-page .col-lg-6:last-child{
-        padding-left: 0;
-        padding-right: 0;
+    .login-page .col-lg-6{
+        padding-right: calc(var(--bs-gutter-x) * .5) !important;
+        padding-left: calc(var(--bs-gutter-x) * .5) !important;
+        border-right: 0 !important;
+
+        width: 100%;
     }
   
 }
@@ -920,11 +955,7 @@ body .results-header p{
     .signup-page{
         padding: 50px 0;
     }
-    .login-page .col-lg-6:first-child,
-    .login-page .col-lg-6:last-child{
-        padding-right:calc(var(--bs-gutter-x) * .5);
-        padding-left: calc(var(--bs-gutter-x) * .5);
-    }
+  
     .login-page h2{
         text-align: center;
     }
@@ -934,7 +965,9 @@ body .results-header p{
     .hotel-card .card-image,
     .card_content {
         width: 100%;
+        max-width: none;
     }
+    
     .card_content{
         padding: 20px 0 0;
     }
@@ -1063,6 +1096,9 @@ body .results-header p{
     }
     .logo-img{
         max-width: 180px;
+    }
+    .auth-card_heading h3 br{
+        display: none;
     }
 }
 
