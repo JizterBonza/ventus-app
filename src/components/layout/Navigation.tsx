@@ -13,7 +13,6 @@ const Navigation: React.FC = () => {
             <div className="mobile-nav-controls" style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px'
             }}>
                 
 
@@ -109,40 +108,7 @@ const Navigation: React.FC = () => {
                 </ul>
             </div>
 
-            {/* Responsive Styles */}
-            <style>{`
-                /* Mobile: Show mobile-auth (only when logged in), show mobile-nav-auth (only when logged out), hide desktop-auth */
-                @media screen and (max-width: 991px) {
-                    .mobile-nav-controls {
-                        display: flex !important;
-                    }
-                    .mobile-auth {
-                        display: flex !important;
-                    }
-                    .desktop-auth:not(.mobile-nav-auth) {
-                        display: none !important;
-                    }
-                    .mobile-nav-auth {
-                        display: list-item !important;
-                    }
-                }
-
-                /* Desktop: Hide mobile-auth and mobile-nav-auth, show desktop-auth */
-                @media screen and (min-width: 992px) {
-                    .mobile-nav-controls {
-                        display: none !important;
-                    }
-                    .mobile-auth {
-                        display: none !important;
-                    }
-                    .mobile-nav-auth {
-                        display: none !important;
-                    }
-                    .desktop-auth {
-                        display: revert !important;
-                    }
-                }
-            `}</style>
+        
         </>
     );
 };
