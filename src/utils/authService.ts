@@ -326,3 +326,105 @@ const generateMockToken = (): string => {
   return 'mock_token_' + Math.random().toString(36).substr(2) + Date.now().toString(36);
 };
 
+/**
+ * Update user email
+ */
+export const updateUserEmail = async (newEmail: string, currentPassword: string): Promise<AuthResponse> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return {
+        success: false,
+        error: 'You must be logged in to update your email'
+      };
+    }
+
+    const response = await fetch(`${AUTH_API_URL}/update-email`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        email: newEmail,
+        currentPassword
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || 'Failed to update email'
+      };
+    }
+
+    const data = await response.json();
+    
+    // Update localStorage with new user data
+    if (data.user) {
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+    }
+
+    return {
+      success: true,
+      user: data.user,
+      message: data.message || 'Email updated successfully'
+    };
+  } catch (error) {
+    console.error('Update email error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update email'
+    };
+  }
+};
+
+/**
+ * Update user password
+ */
+export const updateUserPassword = async (currentPassword: string, newPassword: string): Promise<AuthResponse> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return {
+        success: false,
+        error: 'You must be logged in to update your password'
+      };
+    }
+
+    const response = await fetch(`${AUTH_API_URL}/update-password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || 'Failed to update password'
+      };
+    }
+
+    const data = await response.json();
+
+    return {
+      success: true,
+      message: data.message || 'Password updated successfully'
+    };
+  } catch (error) {
+    console.error('Update password error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update password'
+    };
+  }
+};
+
