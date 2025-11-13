@@ -473,6 +473,7 @@ textarea.form-control{
     padding: 30px;
     max-width: 170px;
 }
+
 .modal-hotel-gallery,
 .modal-hotel-gallery .slick-list,
 .modal-hotel-gallery .slick-track{
@@ -1046,6 +1047,17 @@ input:-internal-autofill-selected:active {
         width: 30px !important;
         height: 30px !important;
         margin-right: -10px;
+    }
+    .hotel-group-logo-item{
+        max-width: 200px;
+        margin: 0 auto 30px;
+    }
+    .hotel-content_heading h1{
+        display: flex;
+        align-items: start;
+    }
+    .hotel-content_heading h1 svg{
+        margin-top: 5px;
     }
 }
 @media screen and (max-width:480px){

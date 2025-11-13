@@ -15,6 +15,7 @@ import BuyOuts from "./pages/Buyouts";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Favourites from "./pages/Favourites";
 import "./App.css";
 
 console.log("App component is loading");
@@ -61,6 +62,10 @@ function App() {
                         {/* Authentication Routes */}
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<Signup />} />
+                        
+                        {/* Favourites Route */}
+                        <Route path="/favorites" element={<Favourites />} />
+                        <Route path="/favourites" element={<Favourites />} />
                         
                         {/* Protected Routes - Require Authentication */}
                         <Route 

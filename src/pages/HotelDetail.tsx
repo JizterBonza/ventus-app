@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch } from "../utils/api";
 import { Hotel, HotelImage } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
@@ -8,6 +8,7 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import SearchBarNew from "../components/shared/SearchBarNew";
+import { isFavourite, toggleFavourite } from "../utils/favouritesService";
 
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
@@ -46,6 +47,7 @@ declare const $: any;
 const HotelDetail: React.FC = () => {
     const [sliderReady, setSliderReady] = useState(false);
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
     const [hotel, setHotel] = useState<Hotel | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
@@ -59,6 +61,7 @@ const HotelDetail: React.FC = () => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isFav, setIsFav] = useState(false);
 
     // Fallback hotel images for when API doesn't provide images
     const fallbackImages = [
@@ -195,6 +198,7 @@ const HotelDetail: React.FC = () => {
 
                 const hotelData = await getHotelDetails(parseInt(id));
                 setHotel(hotelData);
+                setIsFav(isFavourite(hotelData.id));
 
                 console.log("Successfully fetched hotel details:", hotelData);
             } catch (err) {
@@ -531,7 +535,61 @@ const HotelDetail: React.FC = () => {
                 >
 
                             <div className="hotel-content_heading">
-                                <h1>{hotel.name}</h1>
+                                <h1>
+                                    {hotel.name}{' '}
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                if (hotel) {
+                                                    if (isFav) {
+                                                        // Redirect to favourites page if already in favourites
+                                                        navigate('/favorites');
+                                                    } else {
+                                                        // Add to favourites if not already added
+                                                        const newFavState = toggleFavourite(hotel);
+                                                        setIsFav(newFavState);
+                                                    }
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                padding: '0',
+                                                marginLeft: '10px',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                verticalAlign: 'middle'
+                                            }}
+                                            title={isFav ? "View in favourites" : "Add to favourites"}
+                                        >
+                                            <svg 
+                                                xmlns="http://www.w3.org/2000/svg" 
+                                                width="20" 
+                                                height="20" 
+                                                version="1.1" 
+                                                viewBox="300 300 600 600"
+                                                style={{
+                                                    transition: 'all 0.3s ease',
+                                                    overflow: 'visible'
+                                                }}
+                                            >
+                                                {isFav ? (
+                                                    // Filled heart
+                                                    <path 
+                                                        d="m380.26 405.68c-49.625 53.266-49.574 138.98 0 192.3l219.61 236.29c73.289-78.672 146.57-157.34 219.86-236.02 49.625-53.266 49.625-139.04 0-192.3s-129.52-53.27-179.15 0l-40.461 43.434-40.715-43.707c-49.625-53.27-129.52-53.27-179.15 0z"
+                                                        fill="#d4af37"
+                                                        stroke="none"
+                                                    />
+                                                ) : (
+                                                    // Outline heart
+                                                    <path d="m462.07 335.77c-40.383 0-80.762 15.816-111.23 47.703-60.941 63.773-60.863 165.97 0 229.79l232.62 243.95c4.2773 4.4922 10.211 7.0312 16.414 7.0312 6.1992 0 12.133-2.5391 16.41-7.0312 77.598-81.207 155.25-162.51 232.86-243.72 60.938-63.777 60.938-166.01 0-229.79-60.941-63.773-161.52-63.777-222.46 0l-26.688 27.629-26.688-27.867c-30.469-31.887-70.852-47.703-111.23-47.703zm0 44.398c28.188 0 56.57 11.617 78.641 34.715l42.98 45.105c4.2812 4.4922 10.211 7.0312 16.414 7.0312s12.133-2.5391 16.414-7.0312l42.746-44.871c44.145-46.199 112.9-46.199 157.05 0s44.145 121 0 167.2c-72.098 75.453-144.23 150.79-216.32 226.24l-216.32-226.48c-44.121-46.266-44.145-121 0-167.2 22.07-23.098 50.215-34.715 78.406-34.715z"/>
+                                                )}
+                                            </svg>
+                                        </button>
+                                    )}
+                                </h1>
                                 <span className="text">{hotel.location}</span>
                                 <p>{hotel.description || "No description available for this hotel."}</p>
                             </div>
