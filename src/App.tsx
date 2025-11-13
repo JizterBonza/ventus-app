@@ -16,6 +16,7 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Favourites from "./pages/Favourites";
+import Settings from "./pages/Settings";
 import "./App.css";
 
 console.log("App component is loading");
@@ -84,6 +85,7 @@ function App() {
                                 </ProtectedRoute>
                             } 
                         />
+                        <Route path="/settings" element={<Settings />} />
                         
                         {/* 404 Not Found */}
                         <Route

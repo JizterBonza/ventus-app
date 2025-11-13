@@ -741,6 +741,10 @@ body .results-header p{
 .user-menu-dropdown ul{
     font-size: 16px;
 }
+.user-menu-dropdown ul li:nth-child(1),
+.user-menu-dropdown ul li:nth-child(2){
+   display: none !important;
+}
 .user-menu-dropdown > div div{
     line-height: 1.1;
 }
