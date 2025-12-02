@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch } from "../utils/api";
-import { Hotel, HotelImage } from "../types/search";
+import { Hotel, HotelImage, AvailabilityResponse } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
@@ -12,6 +12,7 @@ import { isFavourite, toggleFavourite } from "../utils/favouritesService";
 
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
+import CheckAvailability from "../components/shared/CheckAvailability";
 
 interface Room {
     id: number;
@@ -62,6 +63,7 @@ const HotelDetail: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isFav, setIsFav] = useState(false);
+    const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResponse | null>(null);
 
     // Fallback hotel images for when API doesn't provide images
     const fallbackImages = [
@@ -381,6 +383,18 @@ const HotelDetail: React.FC = () => {
 
         fetchRelatedHotels();
     }, [hotel]);
+
+    const handleAvailabilityResult = (result: AvailabilityResponse) => {
+        console.log('Availability result received:', result);
+        setAvailabilityResult(result);
+        
+        // Warn if session_id is missing
+        if (!result.session_id) {
+            console.warn('Availability check returned no session_id. Booking may fail.');
+        }
+        // Note: Dates are not passed from CheckAvailability, but session_id should contain date info
+        // If dates are needed, they can be entered manually in the booking form
+    };
 
     const handleBookingSuccess = (response: any) => {
         console.log("Booking successful:", response);
@@ -828,7 +842,16 @@ const HotelDetail: React.FC = () => {
                 </section>
             )}
          
-            {/* 
+            <section className="section-padding availability-section">
+                <div className="container">
+                    <CheckAvailability
+                        hotelId={hotel.id}
+                        hotelName={hotel.name}
+                        onAvailabilityResult={handleAvailabilityResult}
+                    />
+                </div>
+            </section>
+
             <section className="section-padding booking-section">
                 <div className="container">
                     <BookingForm
@@ -836,10 +859,12 @@ const HotelDetail: React.FC = () => {
                         hotelName={hotel.name}
                         onBookingSuccess={handleBookingSuccess}
                         onBookingError={handleBookingError}
+                        sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
+                        rateIndex={availabilityResult?.room_types && availabilityResult.room_types.length > 0 ? "0" : undefined}
+                        availabilityResult={availabilityResult}
                     />
                 </div>
             </section>
-            */}
               <BannerCTA />
               <QuoteForm />
             <Footer />

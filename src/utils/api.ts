@@ -1,4 +1,4 @@
-import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse } from '../types/search';
+import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse } from '../types/search';
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
 
 // API Configuration with CORS proxy for production
@@ -11,6 +11,47 @@ const getApiBaseUrl = () => {
     const apiUrl = 'https://api-staging.littleemperors.com/v2';
     return `${corsProxy}${encodeURIComponent(apiUrl)}`;
   }
+};
+
+// Get the actual API URL (without proxy) for logging purposes
+const getActualApiBaseUrl = () => {
+  return 'https://api-staging.littleemperors.com/v2';
+};
+
+// Convert a proxy URL to the actual API URL for logging
+const getActualApiUrl = (url: string): string => {
+  const actualBase = getActualApiBaseUrl();
+  
+  // If it's a relative URL (development proxy), extract the path and construct full URL
+  if (url.startsWith('/')) {
+    return `${actualBase}${url}`;
+  }
+  
+  // If it contains the actual API URL, extract it
+  if (url.includes('api-staging.littleemperors.com')) {
+    // Extract the path and query from the URL
+    const match = url.match(/api-staging\.littleemperors\.com\/v2(\/.*)/);
+    if (match) {
+      return `${actualBase}${match[1]}`;
+    }
+  }
+  
+  // If it's a proxy URL, try to extract the encoded URL
+  const proxyMatch = url.match(/https:\/\/corsproxy\.io\/\?url=(.+)/);
+  if (proxyMatch) {
+    try {
+      return decodeURIComponent(proxyMatch[1]);
+    } catch {
+      // If decoding fails, construct from path
+      const pathMatch = url.match(/\/v2(\/.*)/);
+      if (pathMatch) {
+        return `${actualBase}${pathMatch[1]}`;
+      }
+    }
+  }
+  
+  // Fallback: try to replace the base URL
+  return url.replace(API_BASE_URL, actualBase);
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -29,7 +70,9 @@ const FALLBACK_PROXIES = [
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   // Try the primary URL first
   try {
-    console.log('Attempting API request with primary URL:', url);
+    // Log the actual API URL (without proxy) for clarity
+    const actualUrl = getActualApiUrl(url);
+    console.log('Attempting API request with primary URL:', actualUrl);
     const response = await fetch(url, options);
     
     // If the response is ok, return it
@@ -161,7 +204,9 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
   const searchParams = buildSearchParams(params);
   const url = `${API_BASE_URL}/search?${searchParams.toString()}`;
   
-  console.log('Making API request to:', url);
+  // Log the actual API URL (without proxy) for clarity
+  const actualUrl = getActualApiUrl(url);
+  console.log('Making API request to:', actualUrl);
   console.log('Environment:', process.env.NODE_ENV);
   console.log('API Base URL:', API_BASE_URL);
   
@@ -255,7 +300,9 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
   const url = `${API_BASE_URL}/hotels/${hotelId}`;
   
   console.log('Fetching hotel details for ID:', hotelId);
-  console.log('Hotel details URL:', url);
+  // Log the actual API URL (without proxy) for clarity
+  const actualUrl = getActualApiUrl(url);
+  console.log('Hotel details URL:', actualUrl);
   
   try {
     const response = await makeApiRequest(url, {
@@ -336,7 +383,9 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
 export const testApiConnectivity = async (): Promise<{ success: boolean; message: string; data?: any }> => {
   try {
     const testUrl = `${API_BASE_URL}/search?query=test&limit=1`;
-    console.log('Testing API connectivity with URL:', testUrl);
+    // Log the actual API URL (without proxy) for clarity
+    const actualTestUrl = getActualApiUrl(testUrl);
+    console.log('Testing API connectivity with URL:', actualTestUrl);
     
     const response = await makeApiRequest(testUrl, {
       method: 'GET',
@@ -378,7 +427,9 @@ export const testSampleUrl = async (): Promise<{ success: boolean; message: stri
   try {
     // Test with the correct URL format (using proxy in development)
     const sampleUrl = `${API_BASE_URL}/search?query=Philippines&limit=20`;
-    console.log('Testing with sample URL:', sampleUrl);
+    // Log the actual API URL (without proxy) for clarity
+    const actualSampleUrl = getActualApiUrl(sampleUrl);
+    console.log('Testing with sample URL:', actualSampleUrl);
     console.log('Environment:', process.env.NODE_ENV);
     console.log('API Base URL:', API_BASE_URL);
     
@@ -504,7 +555,9 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
   const searchParams = buildSearchParams(params);
   const url = `${API_BASE_URL}/search?${searchParams.toString()}`;
   
-  console.log('Making enhanced API request to:', url);
+  // Log the actual API URL (without proxy) for clarity
+  const actualUrl = getActualApiUrl(url);
+  console.log('Making enhanced API request to:', actualUrl);
   
   try {
     const response = await makeApiRequest(url, {
@@ -651,6 +704,248 @@ export const submitBookingForm = async (bookingDetails: BookingDetails): Promise
     return {
       success: false,
       message: 'Failed to submit booking request. Please try again or contact us directly.',
+    };
+  }
+};
+
+/**
+ * Check hotel availability
+ */
+export const checkHotelAvailability = async (params: AvailabilityParams): Promise<AvailabilityResponse[]> => {
+  const url = `${API_BASE_URL}/hotels/availability`;
+  
+  console.log('Checking hotel availability with params:', params);
+  
+  try {
+    // Log the actual API URL (without proxy) for clarity
+    const actualApiUrl = `${getActualApiBaseUrl()}/hotels/availability`;
+    console.log('Availability API URL:', actualApiUrl);
+    
+    const response = await makeApiRequest(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${API_TOKEN}`,
+      },
+      body: JSON.stringify(params),
+    });
+    
+    console.log('Availability response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Availability error response:', errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Availability response data:', data);
+    
+    // The API returns an array of availability responses
+    if (Array.isArray(data)) {
+      return data;
+    } else if (data.data && Array.isArray(data.data)) {
+      return data.data;
+    } else {
+      // If it's a single object, wrap it in an array
+      return [data];
+    }
+  } catch (error) {
+    console.error('checkHotelAvailability error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Submit a booking to the API
+ * POST /v2/hotels/bookings
+ */
+export interface BookingRequest {
+  hotelId: number;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  sessionId: string;
+  rateIndex: string;
+  guestName: string;
+  guestEmail: string;
+  creditCard: {
+    number: string;
+    name: string;
+    cvc: string;
+    brand_name: string;
+    exp_month: string;
+    exp_year: string;
+  };
+  rooms: Array<{
+    adults: number;
+    children?: Array<{ age: number }>;
+  }>;
+}
+
+export const submitBooking = async (bookingData: BookingRequest): Promise<BookingResponse> => {
+  const url = `${API_BASE_URL}/hotels/bookings`;
+  
+  console.log('Submitting booking with data:', bookingData);
+  
+  try {
+    // Validate required fields
+    if (!bookingData.sessionId || bookingData.sessionId.trim() === '') {
+      throw new Error('Session ID is required. Please ensure you have completed the availability check.');
+    }
+    
+    if (!bookingData.creditCard.exp_month || bookingData.creditCard.exp_month.trim() === '') {
+      throw new Error('Expiration month is required.');
+    }
+    
+    // Log the actual API URL (without proxy) for clarity
+    const actualApiUrl = `${getActualApiBaseUrl()}/hotels/bookings`;
+    console.log('Booking API URL:', actualApiUrl);
+    
+    // Convert exp_month from string to integer (remove leading zeros)
+    const expMonthInt = parseInt(bookingData.creditCard.exp_month, 10);
+    if (isNaN(expMonthInt) || expMonthInt < 1 || expMonthInt > 12) {
+      throw new Error('Invalid expiration month. Please select a valid month.');
+    }
+    
+    // Validate rateIndex is provided
+    if (!bookingData.rateIndex || bookingData.rateIndex.trim() === '') {
+      throw new Error('Rate index is required. Please select a valid room type from the availability check.');
+    }
+    
+    const trimmedRateIndex = bookingData.rateIndex.trim();
+    
+    // rateIndex can be either a string identifier (e.g., "SODR79-R7O") or a numeric string
+    // Try to parse as number if it's numeric, otherwise keep as string
+    let rateIndexValue: string | number = trimmedRateIndex;
+    const parsedInt = parseInt(trimmedRateIndex, 10);
+    if (!isNaN(parsedInt) && String(parsedInt) === trimmedRateIndex) {
+      // It's a valid integer string, send as number
+      rateIndexValue = parsedInt;
+    }
+    // Otherwise keep as string (for identifiers like "SODR79-R7O")
+    
+    // Prepare JSON body with proper data types
+    const requestBody = {
+      start_date: bookingData.startDate,
+      end_date: bookingData.endDate,
+      session_id: bookingData.sessionId,
+      rate_index: rateIndexValue,
+      hotel_id: bookingData.hotelId,
+      guest_name: bookingData.guestName,
+      guest_email: bookingData.guestEmail,
+      credit_card: {
+        number: bookingData.creditCard.number,
+        name: bookingData.creditCard.name,
+        cvc: bookingData.creditCard.cvc,
+        brand_name: bookingData.creditCard.brand_name,
+        exp_month: expMonthInt, // Convert to integer
+        exp_year: bookingData.creditCard.exp_year,
+      },
+      rooms: bookingData.rooms.map(room => ({
+        adults: room.adults,
+        children: room.children || [],
+      })),
+    };
+    
+    console.log('Booking request body:', JSON.stringify(requestBody, null, 2));
+    
+    const response = await makeApiRequest(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${API_TOKEN}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    console.log('Booking response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Booking error response:', errorText);
+      
+      // Try to parse error response for better error messages
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.errors) {
+          // Check for generic errors (usually in the "_" field)
+          if (errorData.errors._) {
+            const genericError = Array.isArray(errorData.errors._) 
+              ? errorData.errors._[0] 
+              : errorData.errors._;
+            throw new Error(genericError);
+          }
+          // Check for rate_index errors
+          if (errorData.errors.rate_index) {
+            const rateError = Array.isArray(errorData.errors.rate_index) 
+              ? errorData.errors.rate_index[0] 
+              : errorData.errors.rate_index;
+            if (rateError.includes('not found') || rateError.includes('invalid')) {
+              throw new Error('The provided rate_index is not found in this session. Please check availability again to get a valid rate index.');
+            }
+            throw new Error(`Rate index error: ${rateError}. Please check availability again and select a valid rate.`);
+          }
+          // Check for session_id errors
+          if (errorData.errors.session_id) {
+            const sessionError = Array.isArray(errorData.errors.session_id)
+              ? errorData.errors.session_id[0]
+              : errorData.errors.session_id;
+            if (sessionError.includes('invalid') || sessionError.includes('expired')) {
+              throw new Error('The session has expired or is invalid. Please check availability again to get a new session ID.');
+            }
+            throw new Error(`Session error: ${sessionError}. Please check availability again.`);
+          }
+          // Check for other field-specific errors
+          const errorKeys = Object.keys(errorData.errors);
+          if (errorKeys.length > 0) {
+            // Get the first error field and its message
+            const firstErrorKey = errorKeys[0];
+            const firstError = Array.isArray(errorData.errors[firstErrorKey])
+              ? errorData.errors[firstErrorKey][0]
+              : errorData.errors[firstErrorKey];
+            throw new Error(`${firstErrorKey}: ${firstError}`);
+          }
+        }
+        if (errorData.message) {
+          throw new Error(errorData.message);
+        }
+      } catch (parseError) {
+        // If parsing fails, check if it's a rate_index or session-related error in the text
+        if (errorText.includes('rate_index') || errorText.includes('rate index')) {
+          throw new Error('The provided rate_index is not found in this session. Please check availability again to get a valid rate index.');
+        }
+        if (errorText.includes('session_id') && (errorText.includes('invalid') || errorText.includes('expired'))) {
+          throw new Error('The session has expired or is invalid. Please check availability again to get a new session ID.');
+        }
+        // If parsing fails, use the original error text
+      }
+      
+      throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Booking response data:', data);
+    
+    // Handle API error responses
+    if (!data.success && data.success !== undefined) {
+      return {
+        success: false,
+        message: data.message || 'Booking failed',
+      };
+    }
+    
+    return {
+      success: true,
+      message: data.message || 'Booking submitted successfully!',
+      bookingId: data.booking_id || data.id || undefined,
+    };
+  } catch (error) {
+    console.error('submitBooking error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
     };
   }
 };

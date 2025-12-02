@@ -109,3 +109,84 @@ export interface BookingResponse {
   message: string;
   bookingId?: string;
 }
+
+// Availability related types
+export interface AvailabilityParams {
+  hotel_id: number;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  currency: string;
+  rooms: Array<{
+    adults: number;
+    children?: Array<{ age: number }>;
+  }>;
+}
+
+export interface RateInfo {
+  requested_currency_code?: string;
+  rate?: number;
+  rate_in_requested_currency?: number;
+  total_to_book?: number;
+  total_to_book_in_requested_currency?: number;
+  currency_code?: string;
+  is_tax_included?: boolean;
+}
+
+export interface Rate {
+  rate_index: string;
+  title?: string;
+  description?: string;
+  rate?: number;
+  rate_in_requested_currency?: number;
+  total_to_book?: number;
+  total_to_book_in_requested_currency?: number;
+  requested_currency_code?: string;
+  currency_code?: string;
+  additional_benefits?: string[];
+  [key: string]: any; // For any other fields that might be present
+}
+
+export interface RoomType {
+  id?: number;
+  name?: string;
+  description?: string;
+  max_occupancy?: number;
+  rate?: number | RateInfo;
+  currency?: string;
+  rate_index?: number | string; // Legacy field, kept for backward compatibility
+  rates?: Rate[]; // Array of rates, each with its own rate_index
+  lowest_rate?: number | RateInfo;
+  [key: string]: any; // For any other fields that might be present (bed_size, bedrooms, etc.)
+}
+
+export interface AvailabilityResponse {
+  hotel_id: number;
+  hotel_name: string;
+  is_available: boolean;
+  session_id: string | null;
+  default_currency: string | null;
+  opened_at: string;
+  is_under_refurbishment: boolean;
+  refurbishment_ends_at: string | null;
+  is_temporarily_closed: boolean;
+  closed_from: string;
+  closed_until: string;
+  display_order: number | null;
+  hotel_info: any | null;
+  room_types: RoomType[];
+  lowest_rate: number | RateInfo | null;
+  links: {
+    self: {
+      href: string;
+      method: string;
+    };
+    booking: {
+      href: string;
+      method: string;
+    };
+    hotel: {
+      href: string;
+      method: string;
+    };
+  };
+}
