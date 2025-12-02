@@ -42,7 +42,7 @@ body .modern-search-form .input1_inner select{
     padding:0 0 0 8px;
 }
 body .search-form-section{
-    padding: 15px 0;
+    padding: 10px 0;
     box-shadow: none;
 }
 .navbar{
@@ -687,7 +687,7 @@ body .results-header p{
     background: none;
 }
 .page-header-content{
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 .page-header-content h2{
     font-size: 40px;
@@ -1057,11 +1057,8 @@ input:-internal-autofill-selected:active {
         margin: 0 auto 30px;
     }
     .hotel-content_heading h1{
-        display: flex;
-        align-items: start;
-    }
-    .hotel-content_heading h1 svg{
-        margin-top: 5px;
+        font-size: 30px;
+        max-width: 100%;
     }
 }
 @media screen and (max-width:480px){
@@ -1131,7 +1128,7 @@ input:-internal-autofill-selected:active {
     z-index: 2;
 }
 .hotel-header-gallery .hotel-header-gallery-item img{
-    height: 35.063rem !important;
+    height: 27rem !important;
 }
 
 .slider-content {

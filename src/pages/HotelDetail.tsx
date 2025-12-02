@@ -550,7 +550,7 @@ const HotelDetail: React.FC = () => {
 
                             <div className="hotel-content_heading">
                                 <h1>
-                                    {hotel.name}{' '}
+                                    {hotel.name?.replace(/&nbsp;/g, ' ').replace(/\u00A0/g, ' ')}
                                     {isAuthenticated && (
                                         <button
                                             onClick={(e) => {
