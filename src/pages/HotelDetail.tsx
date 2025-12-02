@@ -64,6 +64,12 @@ const HotelDetail: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isFav, setIsFav] = useState(false);
     const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResponse | null>(null);
+    const [availabilityFormData, setAvailabilityFormData] = useState<{
+        start_date: string;
+        end_date: string;
+        adults: number;
+        children: Array<{ age: number }>;
+    } | null>(null);
 
     // Fallback hotel images for when API doesn't provide images
     const fallbackImages = [
@@ -384,16 +390,19 @@ const HotelDetail: React.FC = () => {
         fetchRelatedHotels();
     }, [hotel]);
 
-    const handleAvailabilityResult = (result: AvailabilityResponse) => {
+    const handleAvailabilityResult = (result: any) => {
         console.log('Availability result received:', result);
         setAvailabilityResult(result);
+        
+        // Extract and store form data if available
+        if (result.formData) {
+            setAvailabilityFormData(result.formData);
+        }
         
         // Warn if session_id is missing
         if (!result.session_id) {
             console.warn('Availability check returned no session_id. Booking may fail.');
         }
-        // Note: Dates are not passed from CheckAvailability, but session_id should contain date info
-        // If dates are needed, they can be entered manually in the booking form
     };
 
     const handleBookingSuccess = (response: any) => {
@@ -852,19 +861,44 @@ const HotelDetail: React.FC = () => {
                 </div>
             </section>
 
-            <section className="section-padding booking-section">
-                <div className="container">
-                    <BookingForm
-                        hotelId={hotel.id}
-                        hotelName={hotel.name}
-                        onBookingSuccess={handleBookingSuccess}
-                        onBookingError={handleBookingError}
-                        sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
-                        rateIndex={availabilityResult?.room_types && availabilityResult.room_types.length > 0 ? "0" : undefined}
-                        availabilityResult={availabilityResult}
-                    />
-                </div>
-            </section>
+            {availabilityResult && availabilityResult.is_available && availabilityResult.room_types && availabilityResult.room_types.length > 0 && (
+                <section className="section-padding booking-section">
+                    <div className="container">
+                        <BookingForm
+                            hotelId={hotel.id}
+                            hotelName={hotel.name}
+                            onBookingSuccess={handleBookingSuccess}
+                            onBookingError={handleBookingError}
+                            sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
+                            startDate={availabilityFormData?.start_date || ""}
+                            endDate={availabilityFormData?.end_date || ""}
+                            initialRooms={availabilityFormData ? [{
+                                adults: availabilityFormData.adults,
+                                children: availabilityFormData.children
+                            }] : undefined}
+                            rateIndex={(() => {
+                                // Extract rate_index from the first available rate in the first room type
+                                if (availabilityResult?.room_types && availabilityResult.room_types.length > 0) {
+                                    const firstRoomType = availabilityResult.room_types[0];
+                                    // Check if room type has rates array
+                                    if (firstRoomType.rates && firstRoomType.rates.length > 0) {
+                                        const firstRate = firstRoomType.rates[0];
+                                        if (firstRate.rate_index !== undefined && firstRate.rate_index !== null) {
+                                            return String(firstRate.rate_index);
+                                        }
+                                    }
+                                    // Fallback to legacy rate_index field
+                                    if (firstRoomType.rate_index !== undefined && firstRoomType.rate_index !== null) {
+                                        return String(firstRoomType.rate_index);
+                                    }
+                                }
+                                return undefined;
+                            })()}
+                            availabilityResult={availabilityResult}
+                        />
+                    </div>
+                </section>
+            )}
               <BannerCTA />
               <QuoteForm />
             <Footer />

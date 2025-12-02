@@ -329,6 +329,7 @@ interface BookingFormProps {
     rateIndex?: string;
     startDate?: string;
     endDate?: string;
+    initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     availabilityResult?: AvailabilityResponse | null;
 }
 
@@ -356,6 +357,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     rateIndex = "",
     startDate = "",
     endDate = "",
+    initialRooms,
     availabilityResult = null,
 }) => {
     const [formData, setFormData] = useState({
@@ -373,7 +375,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
             exp_month: "",
             exp_year: "",
         },
-        rooms: [{ adults: 1, children: [{ age: 0 }] }] as RoomData[],
+        rooms: initialRooms && initialRooms.length > 0 
+            ? initialRooms.map(room => ({
+                adults: room.adults,
+                children: room.children && room.children.length > 0 ? room.children : []
+            }))
+            : [{ adults: 1, children: [] }] as RoomData[],
     });
 
     // Update form data when props change (e.g., after availability check)
@@ -427,7 +434,17 @@ const BookingForm: React.FC<BookingFormProps> = ({
         if (endDate) {
             setFormData(prev => ({ ...prev, endDate }));
         }
-    }, [sessionId, rateIndex, startDate, endDate, availabilityResult]);
+        // Update rooms if initialRooms is provided
+        if (initialRooms && initialRooms.length > 0) {
+            setFormData(prev => ({
+                ...prev,
+                rooms: initialRooms.map(room => ({
+                    adults: room.adults,
+                    children: room.children && room.children.length > 0 ? room.children : []
+                }))
+            }));
+        }
+    }, [sessionId, rateIndex, startDate, endDate, initialRooms, availabilityResult]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
@@ -713,209 +730,239 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 <h2>Book Your Stay</h2>
                 <p className="text-muted mb-0">Hotel: {hotelName}</p>
             </div>
-            <form className="form" onSubmit={handleSubmit}>
-                <div className="form-column">
-                    <label htmlFor="startDate" className="form-label">
-                        Check-in Date *
-                    </label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        id="startDate"
-                        name="startDate"
-                        value={formData.startDate}
-                        onChange={handleInputChange}
-                        min={new Date().toISOString().split("T")[0]}
-                        required
-                    />
-                    <label htmlFor="endDate" className="form-label">
-                        Check-out Date *
-                    </label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        id="endDate"
-                        name="endDate"
-                        value={formData.endDate}
-                        onChange={handleInputChange}
-                        min={formData.startDate || new Date().toISOString().split("T")[0]}
-                        required
-                    />
-                    <label htmlFor="sessionId" className="form-label">
-                        Session ID *
-                    </label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        id="sessionId"
-                        name="sessionId"
-                        value={formData.sessionId}
-                        onChange={handleInputChange}
-                        placeholder={formData.sessionId ? "Session ID from availability check" : "Please check availability first to get a session ID"}
-                        required
-                    />
-                    {!formData.sessionId && (
-                        <div className="alert alert-warning mt-2">
-                            <i className="fa fa-exclamation-triangle me-1"></i>
-                            <strong>Session ID required:</strong> Please check availability above first. The session ID will be automatically filled. If your session has expired, please check availability again.
+            <form className="form slim" onSubmit={handleSubmit}>
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                            <label htmlFor="startDate" className="form-label">
+                                Check-in Date *
+                            </label>
+                            <input
+                                type="date"
+                                className="form-control"
+                                id="startDate"
+                                name="startDate"
+                                value={formData.startDate}
+                                onChange={handleInputChange}
+                                min={new Date().toISOString().split("T")[0]}
+                                required
+                            />
                         </div>
-                    )}
-                    <label htmlFor="rateIndex" className="form-label">
-                        Room Type / Rate Index *
-                    </label>
-                    {availabilityResult?.room_types && availabilityResult.room_types.length > 0 ? (
-                        <select
-                            className="form-select"
-                            id="rateIndex"
-                            name="rateIndex"
-                            value={formData.rateIndex}
-                            onChange={handleInputChange}
-                            required
-                        >
-                            <option value="">Select a room type and rate</option>
-                            {availabilityResult.room_types.flatMap((roomType, roomIndex) => {
-                                const roomName = roomType.name || `Room Type ${roomIndex + 1}`;
-                                
-                                // If room type has rates array, show each rate as an option
-                                if (roomType.rates && roomType.rates.length > 0) {
-                                    return roomType.rates
-                                        .filter(rate => {
-                                            // Allow rate_index to be 0 (which is a valid rate_index)
-                                            if (rate.rate_index === undefined || rate.rate_index === null) {
-                                                return false;
-                                            }
-                                            // Allow numbers (including 0) and non-empty strings
-                                            if (typeof rate.rate_index === 'number') {
-                                                return true; // 0 is valid
-                                            }
-                                            if (typeof rate.rate_index === 'string') {
-                                                return rate.rate_index.trim() !== '';
-                                            }
-                                            return false;
-                                        })
-                                        .map((rate, rateIndex) => {
-                                            const rateValue = rate.rate_in_requested_currency ?? rate.rate ?? rate.total_to_book_in_requested_currency ?? rate.total_to_book;
-                                            const currency = rate.requested_currency_code ?? rate.currency_code ?? availabilityResult.default_currency ?? '';
-                                            const rateDisplay = rateValue !== undefined && rateValue !== null 
-                                                ? `${currency} ${typeof rateValue === 'number' ? rateValue.toLocaleString() : rateValue}` 
-                                                : 'Price not available';
-                                            const rateTitle = rate.title || 'Standard Rate';
-                                            const optionLabel = `${roomName} - ${rateTitle} (${rateDisplay})`;
-                                            
-                                            return (
-                                                <option key={`${roomIndex}-${rateIndex}`} value={String(rate.rate_index)}>
-                                                    {optionLabel}
-                                                </option>
-                                            );
-                                        });
-                                }
-                                
-                                // Fallback: if no rates array, use legacy rate field or rate_index
-                                // Only include if rate_index is valid (including 0)
-                                if (roomType.rate_index === undefined || roomType.rate_index === null) {
-                                    return []; // Don't show invalid options
-                                }
-                                // Allow 0 as a valid rate_index
-                                if (typeof roomType.rate_index === 'string' && roomType.rate_index.trim() === '') {
-                                    return []; // Don't show empty string options
-                                }
-                                
-                                const rateValue = typeof roomType.rate === 'object' 
-                                    ? roomType.rate?.rate_in_requested_currency ?? roomType.rate?.rate ?? roomType.rate?.total_to_book_in_requested_currency ?? roomType.rate?.total_to_book
-                                    : roomType.rate;
-                                const currency = typeof roomType.rate === 'object'
-                                    ? roomType.rate?.requested_currency_code ?? roomType.rate?.currency_code ?? roomType.currency
-                                    : roomType.currency ?? availabilityResult.default_currency ?? '';
-                                const rateDisplay = rateValue ? `${currency} ${rateValue}` : 'Price not available';
-                                
-                                // Use rate_index from roomType (already validated above)
-                                const rateIndexValue = String(roomType.rate_index);
-                                
-                                return (
-                                    <option key={roomIndex} value={rateIndexValue}>
-                                        {roomName} - {rateDisplay}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    ) : (
-                        <input
-                            type="text"
-                            className="form-control"
-                            id="rateIndex"
-                            name="rateIndex"
-                            value={formData.rateIndex}
-                            onChange={handleInputChange}
-                            placeholder="Enter rate index (check availability first)"
-                            required
-                        />
-                    )}
-                    {!availabilityResult && (
-                        <div className="alert alert-warning mt-2">
-                            <i className="fa fa-exclamation-triangle me-1"></i>
-                            <strong>Rate Index required:</strong> Please check availability above first to see available room types and rates.
+                        <div className="form-column-inner">
+                            <label htmlFor="endDate" className="form-label">
+                                Check-out Date *
+                            </label>
+                            <input
+                                type="date"
+                                className="form-control"
+                                id="endDate"
+                                name="endDate"
+                                value={formData.endDate}
+                                onChange={handleInputChange}
+                                min={formData.startDate || new Date().toISOString().split("T")[0]}
+                                required
+                            />
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                <div className="form-column">
-                    <label htmlFor="guestName" className="form-label">
-                        Guest Name *
-                    </label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        id="guestName"
-                        name="guestName"
-                        value={formData.guestName}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <label htmlFor="guestEmail" className="form-label">
-                        Guest Email *
-                    </label>
-                    <input
-                        type="email"
-                        className="form-control"
-                        id="guestEmail"
-                        name="guestEmail"
-                        value={formData.guestEmail}
-                        onChange={handleInputChange}
-                        required
-                    />
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                            <label htmlFor="sessionId" className="form-label">
+                                Session ID *
+                            </label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                id="sessionId"
+                                name="sessionId"
+                                value={formData.sessionId}
+                                onChange={handleInputChange}
+                                placeholder={formData.sessionId ? "Session ID from availability check" : "Please check availability first to get a session ID"}
+                                required
+                            />
+                            {!formData.sessionId && (
+                                <div className="alert alert-warning mt-2">
+                                    <i className="fa fa-exclamation-triangle me-1"></i>
+                                    <strong>Session ID required:</strong> Please check availability above first. The session ID will be automatically filled. If your session has expired, please check availability again.
+                                </div>
+                            )}
+                        </div>
+                        <div className="form-column-inner">
+                            <label htmlFor="rateIndex" className="form-label">
+                                Room Type / Rate Index *
+                            </label>
+                            {availabilityResult?.room_types && availabilityResult.room_types.length > 0 ? (
+                                <select
+                                    className="form-select"
+                                    id="rateIndex"
+                                    name="rateIndex"
+                                    value={formData.rateIndex}
+                                    onChange={handleInputChange}
+                                    required
+                                >
+                                    <option value="">Select a room type and rate</option>
+                                    {availabilityResult.room_types.flatMap((roomType, roomIndex) => {
+                                        const roomName = roomType.name || `Room Type ${roomIndex + 1}`;
+                                        
+                                        // If room type has rates array, show each rate as an option
+                                        if (roomType.rates && roomType.rates.length > 0) {
+                                            return roomType.rates
+                                                .filter(rate => {
+                                                    // Allow rate_index to be 0 (which is a valid rate_index)
+                                                    if (rate.rate_index === undefined || rate.rate_index === null) {
+                                                        return false;
+                                                    }
+                                                    // Allow numbers (including 0) and non-empty strings
+                                                    if (typeof rate.rate_index === 'number') {
+                                                        return true; // 0 is valid
+                                                    }
+                                                    if (typeof rate.rate_index === 'string') {
+                                                        return rate.rate_index.trim() !== '';
+                                                    }
+                                                    return false;
+                                                })
+                                                .map((rate, rateIndex) => {
+                                                    const rateValue = rate.rate_in_requested_currency ?? rate.rate ?? rate.total_to_book_in_requested_currency ?? rate.total_to_book;
+                                                    const currency = rate.requested_currency_code ?? rate.currency_code ?? availabilityResult.default_currency ?? '';
+                                                    const rateDisplay = rateValue !== undefined && rateValue !== null 
+                                                        ? `${currency} ${typeof rateValue === 'number' ? rateValue.toLocaleString() : rateValue}` 
+                                                        : 'Price not available';
+                                                    const rateTitle = rate.title || 'Standard Rate';
+                                                    const optionLabel = `${roomName} - ${rateTitle} (${rateDisplay})`;
+                                                    
+                                                    return (
+                                                        <option key={`${roomIndex}-${rateIndex}`} value={String(rate.rate_index)}>
+                                                            {optionLabel}
+                                                        </option>
+                                                    );
+                                                });
+                                        }
+                                        
+                                        // Fallback: if no rates array, use legacy rate field or rate_index
+                                        // Only include if rate_index is valid (including 0)
+                                        if (roomType.rate_index === undefined || roomType.rate_index === null) {
+                                            return []; // Don't show invalid options
+                                        }
+                                        // Allow 0 as a valid rate_index
+                                        if (typeof roomType.rate_index === 'string' && roomType.rate_index.trim() === '') {
+                                            return []; // Don't show empty string options
+                                        }
+                                        
+                                        const rateValue = typeof roomType.rate === 'object' 
+                                            ? roomType.rate?.rate_in_requested_currency ?? roomType.rate?.rate ?? roomType.rate?.total_to_book_in_requested_currency ?? roomType.rate?.total_to_book
+                                            : roomType.rate;
+                                        const currency = typeof roomType.rate === 'object'
+                                            ? roomType.rate?.requested_currency_code ?? roomType.rate?.currency_code ?? roomType.currency
+                                            : roomType.currency ?? availabilityResult.default_currency ?? '';
+                                        const rateDisplay = rateValue ? `${currency} ${rateValue}` : 'Price not available';
+                                        
+                                        // Use rate_index from roomType (already validated above)
+                                        const rateIndexValue = String(roomType.rate_index);
+                                        
+                                        return (
+                                            <option key={roomIndex} value={rateIndexValue}>
+                                                {roomName} - {rateDisplay}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    id="rateIndex"
+                                    name="rateIndex"
+                                    value={formData.rateIndex}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter rate index (check availability first)"
+                                    required
+                                />
+                            )}
+                            {!availabilityResult && (
+                                <div className="alert alert-warning mt-2">
+                                    <i className="fa fa-exclamation-triangle me-1"></i>
+                                    <strong>Rate Index required:</strong> Please check availability above first to see available room types and rates.
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="form-column">
-                    <h5 className="mt-3 mb-3">Credit Card Information *</h5>
-                    <label htmlFor="creditCard.number" className="form-label">
-                        Card Number *
-                    </label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        id="creditCard.number"
-                        name="creditCard.number"
-                        value={formData.creditCard.number}
-                        onChange={handleInputChange}
-                        placeholder="1234 1234 1234 1234"
-                        maxLength={19}
-                        required
-                    />
-                    <label htmlFor="creditCard.name" className="form-label">
-                        Cardholder Name *
-                    </label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        id="creditCard.name"
-                        name="creditCard.name"
-                        value={formData.creditCard.name}
-                        onChange={handleInputChange}
-                        placeholder="John Doe"
-                        required
-                    />
-                    <div className="row">
-                        <div className="col-md-4">
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                            <label htmlFor="guestName" className="form-label">
+                                Guest Name *
+                            </label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                id="guestName"
+                                name="guestName"
+                                value={formData.guestName}
+                                onChange={handleInputChange}
+                                required
+                            />
+                        </div>
+                        <div className="form-column-inner">
+                            <label htmlFor="guestEmail" className="form-label">
+                                Guest Email *
+                            </label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                id="guestEmail"
+                                name="guestEmail"
+                                value={formData.guestEmail}
+                                onChange={handleInputChange}
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+                <h5 className="mt-5">Credit Card Information *</h5>       
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                          
+                            <label htmlFor="creditCard.number" className="form-label">
+                                Card Number *
+                            </label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                id="creditCard.number"
+                                name="creditCard.number"
+                                value={formData.creditCard.number}
+                                onChange={handleInputChange}
+                                placeholder="1234 1234 1234 1234"
+                                maxLength={19}
+                                required
+                            />
+                        </div>
+                        <div className="form-column-inner">
+                            <label htmlFor="creditCard.name" className="form-label">
+                                Cardholder Name *
+                            </label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                id="creditCard.name"
+                                name="creditCard.name"
+                                value={formData.creditCard.name}
+                                onChange={handleInputChange}
+                                placeholder="John Doe"
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
                             <label htmlFor="creditCard.cvc" className="form-label">
                                 CVC *
                             </label>
@@ -931,7 +978,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 required
                             />
                         </div>
-                        <div className="col-md-4">
+                        <div className="form-column-inner">
                             <label htmlFor="creditCard.brand_name" className="form-label">
                                 Card Brand *
                             </label>
@@ -949,9 +996,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 <option value="DISCOVER">DISCOVER</option>
                             </select>
                         </div>
-                        <div className="col-md-2">
+                        <div className="form-column-inner">
                             <label htmlFor="creditCard.exp_month" className="form-label">
-                                Month *
+                                Expiration Month *
                             </label>
                             <select
                                 className="form-select"
@@ -969,9 +1016,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-2">
+                        <div className="form-column-inner">
                             <label htmlFor="creditCard.exp_year" className="form-label">
-                                Year *
+                                Expiration Year *
                             </label>
                             <input
                                 type="text"
@@ -988,84 +1035,88 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     </div>
                 </div>
 
-                <div className="form-column" style={{ gridColumn: 'span 2' }}>
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h5 className="mt-3 mb-0">Rooms *</h5>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={addRoom}
-                        >
-                            + Add Room
-                        </button>
-                    </div>
-                    {formData.rooms.map((room, roomIndex) => (
-                        <div key={roomIndex} style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid rgba(0, 0, 0, 0.1)', backgroundColor: '#fff' }}>
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
                             <div className="d-flex justify-content-between align-items-center mb-3">
-                                {roomIndex === 0 ? (
-                                    <h6 className="mb-0" style={{ fontSize: '18px', fontWeight: '500' }}>Room {roomIndex + 1}</h6>
-                                ) : (
-                                    <h6 className="mb-0" style={{ fontSize: '18px', fontWeight: '500', color: '#666' }}>ROOM {roomIndex + 1}</h6>
-                                )}
-                                {formData.rooms.length > 1 && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-secondary"
-                                        onClick={() => removeRoom(roomIndex)}
-                                        style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
-                                    >
-                                        Remove
-                                    </button>
-                                )}
-                            </div>
-                            <label className="form-label" style={{ marginTop: '0' }}>Adults *</label>
-                            <input
-                                type="number"
-                                className="form-control mb-3"
-                                value={room.adults}
-                                onChange={(e) =>
-                                    handleRoomChange(roomIndex, "adults", parseInt(e.target.value) || 1)
-                                }
-                                min="1"
-                                required
-                            />
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                <label className="form-label mb-0">Children</label>
+                                <h5 className="mt-3 mb-0">Rooms *</h5>
                                 <button
                                     type="button"
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => addChild(roomIndex)}
-                                    style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={addRoom}
                                 >
-                                    + Add Child
+                                    + Add Room
                                 </button>
                             </div>
-                            {room.children.map((child, childIndex) => (
-                                <div key={childIndex} className="d-flex align-items-center mb-2">
+                            {formData.rooms.map((room, roomIndex) => (
+                                <div key={roomIndex} style={{ marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid rgba(0, 0, 0, 0.1)', backgroundColor: '#fff' }}>
+                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                        {roomIndex === 0 ? (
+                                            <h6 className="mb-0" style={{ fontSize: '18px', fontWeight: '500' }}>Room {roomIndex + 1}</h6>
+                                        ) : (
+                                            <h6 className="mb-0" style={{ fontSize: '18px', fontWeight: '500', color: '#666' }}>ROOM {roomIndex + 1}</h6>
+                                        )}
+                                        {formData.rooms.length > 1 && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-secondary"
+                                                onClick={() => removeRoom(roomIndex)}
+                                                style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                    <label className="form-label" style={{ marginTop: '0' }}>Adults *</label>
                                     <input
                                         type="number"
-                                        className="form-control"
-                                        placeholder="Age"
-                                        value={child.age || ""}
+                                        className="form-control mb-3"
+                                        value={room.adults}
                                         onChange={(e) =>
-                                            updateChildAge(roomIndex, childIndex, parseInt(e.target.value) || 0)
+                                            handleRoomChange(roomIndex, "adults", parseInt(e.target.value) || 1)
                                         }
-                                        min="0"
-                                        max="17"
-                                        style={{ marginRight: '0.5rem' }}
+                                        min="1"
+                                        required
                                     />
-                                    <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-danger"
-                                        onClick={() => removeChild(roomIndex, childIndex)}
-                                        style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
-                                    >
-                                        Remove
-                                    </button>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <label className="form-label mb-0">Children (Age)</label>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={() => addChild(roomIndex)}
+                                            style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
+                                        >
+                                            + Add Child
+                                        </button>
+                                    </div>
+                                    {room.children.map((child, childIndex) => (
+                                        <div key={childIndex} className="d-flex align-items-center mb-2">
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                placeholder="Age"
+                                                value={child.age || ""}
+                                                onChange={(e) =>
+                                                    updateChildAge(roomIndex, childIndex, parseInt(e.target.value) || 0)
+                                                }
+                                                min="0"
+                                                max="17"
+                                                style={{ marginRight: '0.5rem' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-danger"
+                                                onClick={() => removeChild(roomIndex, childIndex)}
+                                                style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             ))}
                         </div>
-                    ))}
+                    </div>
                 </div>
 
                 <div className="d-grid" style={{ marginTop: '2rem' }}>

@@ -2,11 +2,20 @@ import React, { useState } from "react";
 import { AvailabilityParams, AvailabilityResponse, RateInfo } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 
+interface AvailabilityResultWithFormData extends AvailabilityResponse {
+    formData?: {
+        start_date: string;
+        end_date: string;
+        adults: number;
+        children: Array<{ age: number }>;
+    };
+}
+
 interface CheckAvailabilityProps {
     hotelId: number;
     hotelName: string;
     className?: string;
-    onAvailabilityResult?: (result: AvailabilityResponse) => void;
+    onAvailabilityResult?: (result: AvailabilityResultWithFormData) => void;
 }
 
 interface ChildAge {
@@ -118,8 +127,17 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             if (results && results.length > 0) {
                 const result = results[0];
                 setAvailabilityResult(result);
-                // Pass the result to parent component
-                onAvailabilityResult?.(result);
+                // Pass the result with form data to parent component
+                const resultWithFormData: AvailabilityResultWithFormData = {
+                    ...result,
+                    formData: {
+                        start_date: formData.start_date,
+                        end_date: formData.end_date,
+                        adults: formData.adults,
+                        children: formData.children,
+                    },
+                };
+                onAvailabilityResult?.(resultWithFormData);
             } else {
                 setError("No availability data returned");
             }
@@ -162,107 +180,129 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                 <h2>Check Availability</h2>
                 <p className="text-muted mb-0">Hotel: {hotelName}</p>
             </div>
-            <form className="form" onSubmit={handleSubmit}>
-                <div className="form-column">
-                    <label htmlFor="start_date" className="form-label">
-                        Check-in Date *
-                    </label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        id="start_date"
-                        name="start_date"
-                        value={formData.start_date}
-                        onChange={handleInputChange}
-                        min={getMinDate()}
-                        required
-                    />
-                    <label htmlFor="end_date" className="form-label">
-                        Check-out Date *
-                    </label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        id="end_date"
-                        name="end_date"
-                        value={formData.end_date}
-                        onChange={handleInputChange}
-                        min={getMinEndDate()}
-                        required
-                    />
-                    <label htmlFor="currency" className="form-label">
-                        Currency *
-                    </label>
-                    <select
-                        className="form-select"
-                        id="currency"
-                        name="currency"
-                        value={formData.currency}
-                        onChange={handleInputChange}
-                        required
-                    >
-                        <option value="PHP">PHP (Philippine Peso)</option>
-                        <option value="USD">USD (US Dollar)</option>
-                        <option value="EUR">EUR (Euro)</option>
-                        <option value="GBP">GBP (British Pound)</option>
-                        <option value="JPY">JPY (Japanese Yen)</option>
-                        <option value="AUD">AUD (Australian Dollar)</option>
-                        <option value="SGD">SGD (Singapore Dollar)</option>
-                    </select>
-                </div>
+            <form className="form slim" onSubmit={handleSubmit}>
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                            <label htmlFor="start_date" className="form-label">
+                                Check-in Date *
+                            </label>
+                            <input
+                                type="date"
+                                className="form-control"
+                                id="start_date"
+                                name="start_date"
+                                value={formData.start_date}
+                                onChange={handleInputChange}
+                                min={getMinDate()}
+                                required
+                            />
+                        </div>
+                        <div className="form-column-inner">
+                             <label htmlFor="end_date" className="form-label">
+                            Check-out Date *
+                            </label>
+                            <input
+                                type="date"
+                                className="form-control"
+                                id="end_date"
+                                name="end_date"
+                                value={formData.end_date}
+                                onChange={handleInputChange}
+                                min={getMinEndDate()}
+                                required
+                            />
+                        </div>
+                    </div>
 
-                <div className="form-column">
-                    <label htmlFor="adults" className="form-label">
-                        Number of Adults *
-                    </label>
-                    <input
-                        type="number"
-                        className="form-control"
-                        id="adults"
-                        name="adults"
-                        value={formData.adults}
-                        onChange={handleInputChange}
-                        min="1"
-                        max="20"
-                        required
-                    />
-                    <label className="form-label">
-                        Children (Optional)
-                    </label>
-                    <div className="children-inputs">
-                        {formData.children.map((child, index) => (
-                            <div key={index} className="d-flex align-items-center mb-2">
-                                <label className="me-2" style={{ minWidth: "80px" }}>
-                                    Child {index + 1} Age:
+                </div>
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                       
+                    
+
+                    <div className="form-column-inner">
+                        <label htmlFor="adults" className="form-label">
+                            Number of Adults *
+                        </label>
+                        <input
+                            type="number"
+                            className="form-control"
+                            id="adults"
+                            name="adults"
+                            value={formData.adults}
+                            onChange={handleInputChange}
+                            min="1"
+                            max="20"
+                            required
+                        />
+                        </div>
+                        <div className="form-column-inner">
+                        <label className="form-label">
+                            Children (Optional)
+                        </label>
+                        <div className="children-inputs">
+                            {formData.children.map((child, index) => (
+                                <div key={index} className="d-flex align-items-center mb-2">
+                                    <label className="me-2" style={{ minWidth: "80px" }}>
+                                        Child {index + 1} Age:
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="form-control me-2"
+                                        value={child.age}
+                                        onChange={(e) => handleChildAgeChange(index, parseInt(e.target.value) || 0)}
+                                        min="0"
+                                        max="17"
+                                        style={{ maxWidth: "100px" }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger"
+                                        onClick={() => removeChild(index)}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={addChild}
+                            >
+                                + Add Child
+                            </button>
+                        </div>
+                        </div>
+                   
+                </div>
+                    
+                </div>
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                                    <label htmlFor="currency" className="form-label">
+                                    Currency *
                                 </label>
-                                <input
-                                    type="number"
-                                    className="form-control me-2"
-                                    value={child.age}
-                                    onChange={(e) => handleChildAgeChange(index, parseInt(e.target.value) || 0)}
-                                    min="0"
-                                    max="17"
-                                    style={{ maxWidth: "100px" }}
-                                />
-                                <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-danger"
-                                    onClick={() => removeChild(index)}
+                                <select
+                                    className="form-select"
+                                    id="currency"
+                                    name="currency"
+                                    value={formData.currency}
+                                    onChange={handleInputChange}
+                                    required
                                 >
-                                    Remove
-                                </button>
+                                    <option value="PHP">PHP (Philippine Peso)</option>
+                                    <option value="USD">USD (US Dollar)</option>
+                                    <option value="EUR">EUR (Euro)</option>
+                                    <option value="GBP">GBP (British Pound)</option>
+                                    <option value="JPY">JPY (Japanese Yen)</option>
+                                    <option value="AUD">AUD (Australian Dollar)</option>
+                                    <option value="SGD">SGD (Singapore Dollar)</option>
+                                </select>
                             </div>
-                        ))}
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={addChild}
-                        >
-                            + Add Child
-                        </button>
                     </div>
                 </div>
-
                 <div className="d-grid">
                     {error && (
                         <div className="alert alert-danger mb-3">
