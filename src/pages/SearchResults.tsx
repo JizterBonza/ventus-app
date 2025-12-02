@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
 import { getHotelDetailsBatch } from "../utils/api";
+import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SearchBarNew from "../components/shared/SearchBarNew";
@@ -59,6 +60,7 @@ const HotelImage: React.FC<{ hotel: Hotel; displayHotel: Hotel }> = ({ hotel, di
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const { hotels, loading, error, searchAdvanced, clearError } = useSearch();
+    const { isAuthenticated } = useAuth();
     
     const [searchParams, setSearchParams] = useState({
         location: "",
@@ -271,12 +273,14 @@ const SearchResults: React.FC = () => {
                                                                 View Hotel{" "}
                                                                
                                                             </Link>
-                                                            <Link 
-                                                            className="text-link"
-                                                                to="/login" >
-                                                                Login to view benefits{" "}
-                                                              
-                                                            </Link>
+                                                            {!isAuthenticated && (
+                                                                <Link 
+                                                                className="text-link"
+                                                                    to="/login" >
+                                                                    Login to view benefits{" "}
+                                                                  
+                                                                </Link>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>

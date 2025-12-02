@@ -1057,11 +1057,8 @@ input:-internal-autofill-selected:active {
         margin: 0 auto 30px;
     }
     .hotel-content_heading h1{
-        display: flex;
-        align-items: start;
-    }
-    .hotel-content_heading h1 svg{
-        margin-top: 5px;
+        font-size: 30px;
+        max-width: 100%;
     }
 }
 @media screen and (max-width:480px){
