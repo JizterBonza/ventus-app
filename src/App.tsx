@@ -17,6 +17,9 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Favourites from "./pages/Favourites";
 import Settings from "./pages/Settings";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookieSettings from "./pages/CookieSettings";
 import "./App.css";
 
 console.log("App component is loading");
@@ -86,6 +89,11 @@ function App() {
                             } 
                         />
                         <Route path="/settings" element={<Settings />} />
+                        
+                        {/* Legal Pages */}
+                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                        <Route path="/terms-of-service" element={<TermsOfService />} />
+                        <Route path="/cookie-settings" element={<CookieSettings />} />
                         
                         {/* 404 Not Found */}
                         <Route

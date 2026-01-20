@@ -249,6 +249,16 @@ const SearchResults: React.FC = () => {
                                                                 <h6>{displayHotel.location}
                                                                 </h6>
                                                             )}
+                                                            {displayHotel.price && (
+                                                                <p className="hotel-price" style={{ 
+                                                                    fontWeight: "600", 
+                                                                    fontSize: "1.1rem",
+                                                                    color: "#28a745",
+                                                                    marginBottom: "10px"
+                                                                }}>
+                                                                    Starting from ${displayHotel.price}/night
+                                                                </p>
+                                                            )}
                                                             {displayHotel.description && (
                                                                 <p>{displayHotel.description.length > 450
                                                                         ? `${displayHotel.description.substring(0, 450)}...`
