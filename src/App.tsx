@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookieSettings from "./pages/CookieSettings";
+import Subscription from "./pages/Subscription";
 import "./App.css";
 
 console.log("App component is loading");
@@ -89,6 +90,9 @@ function App() {
                             } 
                         />
                         <Route path="/settings" element={<Settings />} />
+                        
+                        {/* Subscription */}
+                        <Route path="/subscription" element={<Subscription />} />
                         
                         {/* Legal Pages */}
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

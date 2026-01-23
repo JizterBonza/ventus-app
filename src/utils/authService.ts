@@ -312,20 +312,6 @@ export const isAuthenticated = (): boolean => {
   return !!(token && user);
 };
 
-// Helper functions
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const generateUserId = (): string => {
-  return 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-};
-
-const generateMockToken = (): string => {
-  return 'mock_token_' + Math.random().toString(36).substr(2) + Date.now().toString(36);
-};
-
 /**
  * Update user email
  */
@@ -428,3 +414,65 @@ export const updateUserPassword = async (currentPassword: string, newPassword: s
   }
 };
 
+/**
+ * Subscribe user to a plan with optional coupon code
+ */
+export const subscribeUser = async (
+  planId: string, 
+  couponCode?: string,
+  paymentDetails?: {
+    cardNumber: string;
+    cardName: string;
+    expiryMonth: string;
+    expiryYear: string;
+    cvv: string;
+  }
+): Promise<{ success: boolean; subscriptionId?: string; message?: string; error?: string }> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return {
+        success: false,
+        error: 'You must be logged in to subscribe'
+      };
+    }
+
+    // Build subscription API URL
+    const subscriptionApiUrl = AUTH_API_URL.replace('/auth', '/subscriptions');
+
+    const response = await fetch(`${subscriptionApiUrl}/subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        planId,
+        couponCode,
+        paymentDetails
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || 'Failed to process subscription'
+      };
+    }
+
+    const data = await response.json();
+
+    return {
+      success: true,
+      subscriptionId: data.subscriptionId,
+      message: data.message || 'Subscription successful!'
+    };
+  } catch (error) {
+    console.error('Subscription error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to process subscription'
+    };
+  }
+};

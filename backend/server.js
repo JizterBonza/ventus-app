@@ -386,6 +386,93 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
   });
 });
 
+// ============= SUBSCRIPTION ROUTES =============
+
+// Valid coupon codes (matching frontend)
+const VALID_COUPONS = {
+  'VENTUS': { discountPercent: 100, description: 'Full access - 100% discount!' },
+  'WELCOME50': { discountPercent: 50, description: '50% off your first subscription' },
+  'SAVE20': { discountPercent: 20, description: '20% discount applied' }
+};
+
+// Subscribe user to a plan
+app.post('/api/subscriptions/subscribe', authenticateToken, async (req, res) => {
+  try {
+    const { planId, couponCode, paymentDetails } = req.body;
+    const userId = req.user.id;
+
+    // Validate plan ID
+    if (!planId || planId !== 'travel-yearly') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription plan'
+      });
+    }
+
+    // Validate coupon if provided
+    let discountPercent = 0;
+    if (couponCode) {
+      const upperCode = couponCode.toUpperCase().trim();
+      const coupon = VALID_COUPONS[upperCode];
+      if (coupon) {
+        discountPercent = coupon.discountPercent;
+      }
+    }
+
+    // Calculate final price (base price is 299 GBP)
+    const basePrice = 299;
+    const finalPrice = Math.max(0, basePrice - (basePrice * discountPercent / 100));
+
+    // If price > 0, payment details would normally be required
+    // For now, we'll simulate successful payment
+    if (finalPrice > 0 && !paymentDetails) {
+      // In a real app, you'd integrate with a payment provider like Stripe
+      // For demo purposes, we'll allow subscription without payment details
+      console.log(`Subscription without payment details - user ${userId}, price: £${finalPrice}`);
+    }
+
+    // Generate a subscription ID
+    const subscriptionId = `sub_${Date.now()}_${userId}`;
+
+    // In a real app, you'd store the subscription in the database
+    // For now, we'll just return success
+    console.log(`New subscription: ${subscriptionId}, user: ${userId}, plan: ${planId}, discount: ${discountPercent}%`);
+
+    res.status(201).json({
+      success: true,
+      subscriptionId,
+      message: finalPrice === 0 
+        ? 'Welcome to the club! Your free membership has been activated.'
+        : `Welcome to the club! Your membership has been activated. Amount charged: £${finalPrice}`
+    });
+  } catch (error) {
+    console.error('Subscription error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process subscription'
+    });
+  }
+});
+
+// Get user's subscription status
+app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
+  try {
+    // In a real app, you'd query the database for the user's subscription
+    // For now, return a placeholder response
+    res.json({
+      success: true,
+      hasActiveSubscription: false,
+      subscription: null
+    });
+  } catch (error) {
+    console.error('Get subscription status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get subscription status'
+    });
+  }
+});
+
 // ============= ERROR HANDLING =============
 
 // 404 handler
