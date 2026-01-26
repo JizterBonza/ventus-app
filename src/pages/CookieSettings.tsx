@@ -1,28 +1,24 @@
 import React from "react";
 import Layout from "../components/layout/Layout";
-import PageHeader from "../components/shared/PageHeader";
 
 const CookieSettings: React.FC = () => {
     return (
         <Layout>
-            <PageHeader 
-                title="Cookie Policy" 
-                backgroundImage="/assets/img/page/contact.webp" 
-            />
-
             <section className="section-text-center">
                 <div className="container">
                     <div className="row justify-content-center">
                         <div className="col-lg-10">
+                            <div className="subtitle">Legal</div>
+                            <div className="hotel-content_heading">
+                                <h1>Cookie Policy</h1>
+                                <span>Ventus Travel Ltd</span>
+                                <p className="text-muted mb-5"><strong>Last Updated:</strong> January 2026</p>
+                            </div>
+                            
                             <div className="text-start policy-content">
-                                <div className="text-center mb-5">
-                                    <h2>COOKIE POLICY</h2>
-                                    <p className="lead">Ventus Travel Ltd</p>
-                                    <p className="text-muted">Last Updated: January 2026</p>
-                                </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>1. Introduction</h4>
+                                    <h3>1. Introduction</h3>
                                     <p>
                                         This Cookie Policy explains how Ventus Travel Ltd ("we", "us", or "our") uses cookies and similar technologies when you visit our website at www.ventustravel.co.uk (the "Website"). It explains what these technologies are and why we use them, as well as your rights to control our use of them.
                                     </p>
@@ -32,7 +28,7 @@ const CookieSettings: React.FC = () => {
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>2. What Are Cookies?</h4>
+                                    <h3>2. What Are Cookies?</h3>
                                     <p>
                                         Cookies are small text files that are stored on your computer or mobile device when you visit a website. They are widely used to make websites work more efficiently and to provide information to the owners of the site.
                                     </p>
@@ -45,7 +41,7 @@ const CookieSettings: React.FC = () => {
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>3. Why We Use Cookies</h4>
+                                    <h3>3. Why We Use Cookies</h3>
                                     <p>We use cookies for several reasons:</p>
                                     <ul>
                                         <li><strong>Essential Website Function:</strong> Some cookies are required for our Website to operate. Without these cookies, services you have asked for cannot be provided.</li>
@@ -56,7 +52,7 @@ const CookieSettings: React.FC = () => {
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>4. Types of Cookies We Use</h4>
+                                    <h3>4. Types of Cookies We Use</h3>
                                     <p>The following table provides more information about the cookies we use and why:</p>
                                     <div className="table-responsive">
                                         <table className="table table-bordered">
@@ -94,7 +90,7 @@ const CookieSettings: React.FC = () => {
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>5. Third-Party Cookies</h4>
+                                    <h3>5. Third-Party Cookies</h3>
                                     <p>
                                         In addition to our own cookies, we may also use various third-party cookies to report usage statistics of the Website and deliver advertisements on and through the Website.
                                     </p>
@@ -128,14 +124,14 @@ const CookieSettings: React.FC = () => {
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>7. Do Not Track Signals</h4>
+                                    <h3>7. Do Not Track Signals</h3>
                                     <p>
                                         Some browsers include a "Do Not Track" (DNT) feature that signals to websites that you do not want to have your online activity tracked. Currently, our Website does not respond to DNT signals. If a standard for responding to DNT signals is established, we may revisit our DNT policy.
                                     </p>
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>8. Changes to This Cookie Policy</h4>
+                                    <h3>8. Changes to This Cookie Policy</h3>
                                     <p>
                                         We may update this Cookie Policy from time to time to reflect changes in technology, legislation, our business operations, or any other reason we determine is necessary or appropriate.
                                     </p>
@@ -145,7 +141,7 @@ const CookieSettings: React.FC = () => {
                                 </div>
 
                                 <div className="policy-section mb-5">
-                                    <h4>9. Contact Us</h4>
+                                    <h3>9. Contact Us</h3>
                                     <p>If you have any questions about our use of cookies or this Cookie Policy, please contact us via:</p>
                                     <ul>
                                         <li><strong>Website:</strong> <a href="https://www.ventustravel.co.uk" target="_blank" rel="noopener noreferrer">www.ventustravel.co.uk</a></li>
@@ -153,9 +149,12 @@ const CookieSettings: React.FC = () => {
                                     </ul>
                                 </div>
 
-                                <div className="text-center mt-5 pt-4 border-top">
-                                    <p className="text-muted mb-0">© 2026 Ventus Travel Ltd. All rights reserved.</p>
-                                </div>
+                            </div>
+
+                            <div className="mt-5 p-4 bg-light rounded">
+                                <p className="mb-0 text-muted">
+                                    © 2026 Ventus Travel Ltd. All rights reserved.
+                                </p>
                             </div>
                         </div>
                     </div>

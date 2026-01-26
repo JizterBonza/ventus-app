@@ -13,6 +13,7 @@ import { isFavourite, toggleFavourite } from "../utils/favouritesService";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
 import CheckAvailability from "../components/shared/CheckAvailability";
+import SubscriptionModal from "../components/shared/SubscriptionModal";
 
 interface Room {
     id: number;
@@ -70,6 +71,7 @@ const HotelDetail: React.FC = () => {
         adults: number;
         children: Array<{ age: number }>;
     } | null>(null);
+    const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
     // Fallback hotel images for when API doesn't provide images
     const fallbackImages = [
@@ -719,7 +721,12 @@ const HotelDetail: React.FC = () => {
                                     <div className="membership-content_heading">
                                         <img src="/assets/img/ventus-logo.png" />
                                         <h3>Join now to unlock exclusive member benefits</h3>
-                                        <Link to="/signup" className="btn btn-primary btn-lg">Join Now</Link>
+                                        <button 
+                                            onClick={() => setIsSubscriptionModalOpen(true)}
+                                            className="btn btn-primary btn-lg"
+                                        >
+                                            Join Now
+                                        </button>
                                     </div>
                                     <div className="membership-content_foot">
                                         <p>Already have an account? Sign in <Link to="/login">here</Link></p>
@@ -902,6 +909,10 @@ const HotelDetail: React.FC = () => {
               <BannerCTA />
               <QuoteForm />
             <Footer />
+            <SubscriptionModal 
+                isOpen={isSubscriptionModalOpen} 
+                onClose={() => setIsSubscriptionModalOpen(false)} 
+            />
         </div>
     );
 };

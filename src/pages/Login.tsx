@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import BannerCTA from "../components/shared/BannerCTA";
+import SubscriptionModal from "../components/shared/SubscriptionModal";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const Login: React.FC = () => {
   });
 
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -211,13 +213,22 @@ const Login: React.FC = () => {
                 <img src="/assets/img/ventus-logo.png" alt="Login Sidebar" />
                 <h4>Don't have an account?</h4>
                 <h3>Join now to unlock exclusive member benefits</h3>
-                <a href="/signup" className="btn btn-primary btn-lg">Join Now</a>
+                <button 
+                  onClick={() => setIsSubscriptionModalOpen(true)}
+                  className="btn btn-primary btn-lg"
+                >
+                  Join Now
+                </button>
               </div>
             </div>
           </div>
         </div>
       </section>
       <BannerCTA />
+      <SubscriptionModal 
+        isOpen={isSubscriptionModalOpen} 
+        onClose={() => setIsSubscriptionModalOpen(false)} 
+      />
     </Layout>
   );
 };
