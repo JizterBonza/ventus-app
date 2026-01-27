@@ -28,11 +28,9 @@ const COUNTRY_CODES = [
   { code: '+81', country: 'Japan' },
 ];
 
-// Order plans: Travel, Black, Dynasty
+// Order plans: Travel
 const ORDERED_PLANS = [
   SUBSCRIPTION_PLANS.find(p => p.id === 'travel-yearly')!,
-  SUBSCRIPTION_PLANS.find(p => p.id === 'black-yearly')!,
-  SUBSCRIPTION_PLANS.find(p => p.id === 'dynasty-yearly')!,
 ];
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
@@ -247,15 +245,17 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
     fontSize: '16px',
     outline: 'none',
     transition: 'border-color 0.2s',
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    fontFamily: "'Lato', sans-serif"
   };
 
   const labelStyle: React.CSSProperties = {
     display: 'block',
     marginBottom: '8px',
     fontSize: '14px',
-    fontWeight: 500,
-    color: '#333'
+    fontWeight: 300,
+    color: '#333',
+    fontFamily: "'Lato', sans-serif"
   };
 
   if (!isOpen) return null;
@@ -294,6 +294,35 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
         }}
       >
+        {/* Currency Selector - Upper Right */}
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          right: '60px',
+          zIndex: 10
+        }}>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            style={{
+              padding: '4px 8px',
+              border: '1px solid #e0e0e0',
+              borderRadius: '4px',
+              background: '#fff',
+              fontSize: '12px',
+              cursor: 'pointer',
+              color: '#333',
+              fontFamily: "'Lato', sans-serif",
+              width: '70px',
+              height: '40px',
+            }}
+          >
+            <option value="USD">USD</option>
+            <option value="GBP">GBP</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -313,7 +342,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: '50%',
-            transition: 'background-color 0.2s'
+            transition: 'background-color 0.2s',
+            fontFamily: "'Lato', sans-serif"
           }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -323,50 +353,65 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
 
         {/* Plans Selection View */}
         {!showForm && (
-          <div style={{ padding: '40px 30px' }}>
-            {/* Currency Selector */}
-            <div style={{ marginBottom: '30px' }}>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Currency
-              </div>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '4px',
-                  background: '#fff',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  color: '#333'
-                }}
-              >
-                <option value="USD">USD</option>
-                <option value="GBP">GBP</option>
-                <option value="EUR">EUR</option>
-              </select>
-            </div>
+          <div style={{ padding: '100px 30px 40px 30px' }}>
 
             {/* Logo & Title */}
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <div style={{ marginBottom: '20px' }}>
-                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="30" cy="30" r="28" stroke="#d4c5a9" strokeWidth="1.5"/>
-                  <text x="30" y="35" textAnchor="middle" fontSize="14" fontFamily="serif" fill="#d4c5a9">LE</text>
-                  <path d="M20 18 L30 12 L40 18" stroke="#d4c5a9" strokeWidth="1.5" fill="none"/>
-                  <circle cx="30" cy="10" r="3" fill="#d4c5a9"/>
-                </svg>
+              {/* Large Ventus Logo at Top */}
+              <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
+                <img 
+                  src="/assets/img/ventus-logo.png" 
+                  alt="Ventus" 
+                  style={{ 
+                    height: '60px', 
+                    width: 'auto',
+                    objectFit: 'contain'
+                  }} 
+                />
               </div>
+              
+              {/* Title */}
               <h1 style={{
                 fontSize: '32px',
-                fontWeight: 400,
-                color: '#333',
-                fontFamily: '"Playfair Display", Georgia, serif',
-                margin: 0
+                fontWeight: 300,
+                color: '#1a1a1a',
+                fontFamily: "'Lato', sans-serif",
+                margin: 0,
+                marginBottom: '20px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
               }}>
-                Join the club
+                JOIN VENTUS
               </h1>
+              
+              {/* Small Card with Ventus Logo */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  width: '120px',
+                  height: '80px',
+                  borderRadius: '12px',
+                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #f0f0f0'
+                }}>
+                  <img 
+                    src="/assets/img/ventus-logo.png" 
+                    alt="Ventus" 
+                    style={{ 
+                      height: '40px', 
+                      width: 'auto',
+                      objectFit: 'contain'
+                    }} 
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Plans List - Vertical Stack */}
@@ -383,105 +428,72 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                     flexDirection: 'column'
                   }}
                 >
-                  {/* Card Visual */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    marginBottom: '20px'
-                  }}>
-                    <div style={{
-                      width: '160px',
-                      height: '100px',
-                      borderRadius: '12px',
-                      background: getCardBackground(plan.cardStyle),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-                      border: plan.cardStyle === 'white' ? '1px solid #e0e0e0' : 'none'
-                    }}>
-                      <svg width="36" height="36" viewBox="0 0 60 60" fill="none">
-                        <circle cx="30" cy="30" r="28" stroke={getLogoColor(plan.cardStyle)} strokeWidth="1" opacity="0.6"/>
-                        <text x="30" y="35" textAnchor="middle" fontSize="11" fontFamily="serif" fill={getLogoColor(plan.cardStyle)} opacity="0.8">LE</text>
-                        <path d="M22 20 L30 15 L38 20" stroke={getLogoColor(plan.cardStyle)} strokeWidth="1" fill="none" opacity="0.6"/>
-                        <circle cx="30" cy="13" r="2" fill={getLogoColor(plan.cardStyle)} opacity="0.6"/>
-                      </svg>
-                    </div>
-                  </div>
 
-                  {/* Plan Name & Price */}
-                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                    <h3 style={{
-                      fontSize: '26px',
-                      fontWeight: 400,
-                      color: '#1a1a1a',
-                      fontFamily: '"Playfair Display", Georgia, serif',
-                      margin: 0,
-                      marginBottom: '10px'
-                    }}>
-                      {plan.name}
-                    </h3>
+                  {/* Price */}
+                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                     <div>
                       <span style={{
-                        fontSize: '24px',
-                        fontWeight: 500,
-                        color: '#1a1a1a'
+                        fontSize: '32px',
+                        fontWeight: 300,
+                        color: '#1a1a1a',
+                        fontFamily: "'Lato', sans-serif"
                       }}>
                         {currencySymbol}{getPrice(plan)}
                       </span>
                       <div style={{ 
-                        fontSize: '13px', 
-                        color: '#888',
-                        marginTop: '2px'
+                        fontSize: '14px', 
+                        color: '#666',
+                        marginTop: '4px',
+                        fontFamily: "'Lato', sans-serif"
                       }}>
                         per year
                       </div>
-                    </div>
-
-                    {/* Toggle Indicator */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginTop: '16px',
-                      gap: '5px'
-                    }}>
-                      <div style={{ 
-                        width: '28px', 
-                        height: '2px', 
-                        backgroundColor: plan.cardStyle === 'gold' ? '#c9b896' : '#d4c5a9', 
-                        borderRadius: '2px' 
-                      }} />
+                      
+                      {/* Toggle Indicator */}
                       <div style={{
-                        width: '18px',
-                        height: '18px',
-                        border: `2px solid ${plan.cardStyle === 'gold' ? '#c9b896' : '#d4c5a9'}`,
-                        borderRadius: '50%',
                         display: 'flex',
+                        justifyContent: 'center',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        marginTop: '12px',
+                        gap: '5px'
                       }}>
+                        <div style={{ 
+                          width: '24px', 
+                          height: '2px', 
+                          backgroundColor: plan.cardStyle === 'gold' ? '#c9b896' : '#d4c5a9', 
+                          borderRadius: '2px' 
+                        }} />
                         <div style={{
-                          width: '6px',
-                          height: '6px',
-                          backgroundColor: plan.cardStyle === 'gold' ? '#c9b896' : '#d4c5a9',
-                          borderRadius: '50%'
+                          width: '14px',
+                          height: '14px',
+                          border: `2px solid ${plan.cardStyle === 'gold' ? '#c9b896' : '#d4c5a9'}`,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <div style={{
+                            width: '4px',
+                            height: '4px',
+                            backgroundColor: plan.cardStyle === 'gold' ? '#c9b896' : '#d4c5a9',
+                            borderRadius: '50%'
+                          }} />
+                        </div>
+                        <div style={{ 
+                          width: '24px', 
+                          height: '2px', 
+                          backgroundColor: '#e0e0e0', 
+                          borderRadius: '2px' 
                         }} />
                       </div>
-                      <div style={{ 
-                        width: '28px', 
-                        height: '2px', 
-                        backgroundColor: '#e0e0e0', 
-                        borderRadius: '2px' 
-                      }} />
                     </div>
                   </div>
 
                   {/* Divider */}
                   <div style={{ 
                     height: '1px', 
-                    backgroundColor: '#f0f0f0', 
-                    margin: '8px 0 20px' 
+                    backgroundColor: '#e0e0e0', 
+                    margin: '0 0 20px 0' 
                   }} />
 
                   {/* Benefits List */}
@@ -490,22 +502,27 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       <div key={idx} style={{
                         paddingBottom: '14px',
                         marginBottom: '14px',
-                        borderBottom: idx < plan.benefits.length - 1 ? '1px solid #f5f5f5' : 'none'
+                        borderBottom: idx < plan.benefits.length - 1 ? '1px solid #e0e0e0' : 'none'
                       }}>
                         <h4 style={{
-                          fontSize: '14px',
-                          fontWeight: 600,
+                          fontSize: '13px',
+                          fontWeight: 300,
                           color: '#1a1a1a',
                           margin: 0,
-                          marginBottom: '4px'
+                          marginBottom: '6px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          fontFamily: "'Lato', sans-serif"
                         }}>
-                          {benefit.title}
+                          {benefit.title.toUpperCase()}
                         </h4>
                         <p style={{
                           fontSize: '13px',
                           color: '#666',
                           lineHeight: 1.5,
-                          margin: 0
+                          margin: 0,
+                          fontWeight: 300,
+                          fontFamily: "'Lato', sans-serif"
                         }}>
                           {benefit.description}
                         </p>
@@ -525,10 +542,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                         border: 'none',
                         borderRadius: '6px',
                         fontSize: '15px',
-                        fontWeight: 500,
+                        fontWeight: 300,
                         cursor: 'pointer',
                         transition: 'opacity 0.2s, transform 0.2s',
-                        marginBottom: '10px'
+                        marginBottom: '10px',
+                        fontFamily: "'Lato', sans-serif"
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.opacity = '0.9';
@@ -545,7 +563,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       textAlign: 'center',
                       fontSize: '11px',
                       color: '#999',
-                      margin: 0
+                      margin: 0,
+                      fontFamily: "'Lato', sans-serif"
                     }}>
                       Annual fee group membership
                     </p>
@@ -558,7 +577,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
 
         {/* Registration Form View */}
         {showForm && (
-          <div style={{ padding: '40px 30px' }}>
+          <div style={{ padding: '50px 30px 40px 30px' }}>
             {/* Back Button */}
             <button
               onClick={() => setShowForm(false)}
@@ -572,10 +591,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                 color: '#666',
                 cursor: 'pointer',
                 padding: '0',
-                marginBottom: '20px'
+                marginBottom: '20px',
+                fontFamily: "'Lato', sans-serif"
               }}
             >
-              <span style={{ fontSize: '18px' }}>←</span> Back to plans
+              <span style={{ fontSize: '18px', fontFamily: "'Lato', sans-serif" }}>←</span> Back to plans
             </button>
 
             {/* Selected Plan Card Preview */}
@@ -594,19 +614,26 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                 right: '12px',
                 opacity: 0.4
               }}>
-                <svg width="32" height="32" viewBox="0 0 60 60" fill="none">
-                  <circle cx="30" cy="30" r="28" stroke={getLogoColor(selectedPlan.cardStyle)} strokeWidth="1"/>
-                  <text x="30" y="35" textAnchor="middle" fontSize="10" fontFamily="serif" fill={getLogoColor(selectedPlan.cardStyle)}>LE</text>
-                </svg>
+                <img 
+                  src="/assets/img/ventus-logo.png" 
+                  alt="Ventus" 
+                  style={{ 
+                    height: '32px', 
+                    width: 'auto',
+                    objectFit: 'contain',
+                    filter: selectedPlan.cardStyle === 'black' ? 'brightness(0) invert(1)' : 'none'
+                  }} 
+                />
               </div>
               
               <h2 style={{
                 fontSize: '22px',
-                fontWeight: 400,
+                fontWeight: 300,
                 color: selectedPlan.cardStyle === 'black' ? '#fff' : '#333',
-                fontFamily: '"Playfair Display", Georgia, serif',
+                fontFamily: "'Lato', sans-serif",
                 textAlign: 'center',
-                marginBottom: '8px'
+                marginBottom: '8px',
+                textTransform: 'uppercase'
               }}>
                 {selectedPlan.name}
               </h2>
@@ -614,15 +641,17 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
               <div style={{ textAlign: 'center' }}>
                 <span style={{
                   fontSize: '22px',
-                  fontWeight: 500,
-                  color: selectedPlan.cardStyle === 'black' ? '#fff' : '#333'
+                  fontWeight: 300,
+                  color: selectedPlan.cardStyle === 'black' ? '#fff' : '#333',
+                  fontFamily: "'Lato', sans-serif"
                 }}>
                   {currencySymbol}{finalPrice}
                 </span>
                 <div style={{ 
                   fontSize: '12px', 
                   color: selectedPlan.cardStyle === 'black' ? '#aaa' : '#666', 
-                  marginTop: '2px' 
+                  marginTop: '2px',
+                  fontFamily: "'Lato', sans-serif"
                 }}>
                   per year
                 </div>
@@ -636,7 +665,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   borderRadius: '4px',
                   textAlign: 'center',
                   fontSize: '12px',
-                  color: '#2e7d32'
+                  color: '#2e7d32',
+                  fontFamily: "'Lato', sans-serif"
                 }}>
                   {couponValidation.discountPercent}% discount applied!
                 </div>
@@ -645,19 +675,25 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
 
             {/* Form Header */}
             <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-              <svg width="36" height="36" viewBox="0 0 60 60" fill="none">
-                <circle cx="30" cy="30" r="28" stroke="#d4c5a9" strokeWidth="1.5"/>
-                <text x="30" y="35" textAnchor="middle" fontSize="12" fontFamily="serif" fill="#d4c5a9">LE</text>
-              </svg>
+              <img 
+                src="/assets/img/ventus-logo.png" 
+                alt="Ventus" 
+                style={{ 
+                  height: '36px', 
+                  width: 'auto',
+                  objectFit: 'contain'
+                }} 
+              />
             </div>
             
             <h2 style={{
               fontSize: '24px',
-              fontWeight: 400,
+              fontWeight: 300,
               textAlign: 'center',
               marginBottom: '30px',
-              fontFamily: '"Playfair Display", Georgia, serif',
-              color: '#333'
+              fontFamily: "'Lato', sans-serif",
+              color: '#333',
+              textTransform: 'uppercase'
             }}>
               Your details
             </h2>
@@ -670,7 +706,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                 marginBottom: '20px',
                 backgroundColor: submitStatus === 'success' ? '#e8f5e9' : '#ffebee',
                 color: submitStatus === 'success' ? '#2e7d32' : '#c62828',
-                fontSize: '14px'
+                fontSize: '14px',
+                fontFamily: "'Lato', sans-serif"
               }}>
                 {submitMessage}
               </div>
@@ -690,7 +727,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.firstName && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.firstName}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.firstName}</div>
                 )}
               </div>
 
@@ -707,7 +744,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.lastName && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.lastName}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.lastName}</div>
                 )}
               </div>
 
@@ -724,7 +761,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.email && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.email}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.email}</div>
                 )}
               </div>
 
@@ -741,7 +778,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.password && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.password}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.password}</div>
                 )}
               </div>
 
@@ -758,7 +795,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.confirmPassword && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.confirmPassword}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.confirmPassword}</div>
                 )}
               </div>
 
@@ -775,7 +812,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.cityOfResidence && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.cityOfResidence}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.cityOfResidence}</div>
                 )}
               </div>
 
@@ -815,7 +852,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   }}
                 />
                 {formErrors.phoneNumber && (
-                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px' }}>{formErrors.phoneNumber}</div>
+                  <div style={{ color: '#c62828', fontSize: '12px', marginTop: '4px', fontFamily: "'Lato', sans-serif" }}>{formErrors.phoneNumber}</div>
                 )}
               </div>
 
@@ -836,7 +873,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
 
               {/* Instagram Competition */}
               <div style={{ marginBottom: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '24px' }}>
-                <p style={{ fontSize: '13px', color: '#333', marginBottom: '12px', lineHeight: 1.5 }}>
+                <p style={{ fontSize: '13px', color: '#333', marginBottom: '12px', lineHeight: 1.5, fontFamily: "'Lato', sans-serif" }}>
                   Do you want to participate in our weekly Instagram competition to win stays at hotels?
                 </p>
                 <div style={{ display: 'flex', gap: '24px' }}>
@@ -848,7 +885,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       onChange={() => handleInputChange('instagramCompetition', 'yes')}
                       style={{ width: '16px', height: '16px', accentColor: '#c4b896' }}
                     />
-                    <span style={{ fontSize: '13px' }}>Yes</span>
+                    <span style={{ fontSize: '13px', fontFamily: "'Lato', sans-serif" }}>Yes</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                     <input
@@ -858,14 +895,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       onChange={() => handleInputChange('instagramCompetition', 'no')}
                       style={{ width: '16px', height: '16px', accentColor: '#c4b896' }}
                     />
-                    <span style={{ fontSize: '13px' }}>No</span>
+                    <span style={{ fontSize: '13px', fontFamily: "'Lato', sans-serif" }}>No</span>
                   </label>
                 </div>
               </div>
 
               {/* Children */}
               <div style={{ marginBottom: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '24px' }}>
-                <p style={{ fontSize: '13px', color: '#333', marginBottom: '12px', lineHeight: 1.5 }}>
+                <p style={{ fontSize: '13px', color: '#333', marginBottom: '12px', lineHeight: 1.5, fontFamily: "'Lato', sans-serif" }}>
                   Do you have any children to add to your membership profile?
                 </p>
                 <div style={{ display: 'flex', gap: '24px' }}>
@@ -877,7 +914,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       onChange={() => handleInputChange('hasChildren', 'yes')}
                       style={{ width: '16px', height: '16px', accentColor: '#c4b896' }}
                     />
-                    <span style={{ fontSize: '13px' }}>Yes</span>
+                    <span style={{ fontSize: '13px', fontFamily: "'Lato', sans-serif" }}>Yes</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                     <input
@@ -887,7 +924,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       onChange={() => handleInputChange('hasChildren', 'no')}
                       style={{ width: '16px', height: '16px', accentColor: '#c4b896' }}
                     />
-                    <span style={{ fontSize: '13px' }}>No</span>
+                    <span style={{ fontSize: '13px', fontFamily: "'Lato', sans-serif" }}>No</span>
                   </label>
                 </div>
               </div>
@@ -922,7 +959,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                       borderRadius: '4px',
                       cursor: formData.couponCode ? 'pointer' : 'not-allowed',
                       fontSize: '13px',
-                      fontWeight: 500
+                      fontWeight: 300,
+                      fontFamily: "'Lato', sans-serif"
                     }}
                   >
                     Apply
@@ -932,7 +970,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   <div style={{
                     marginTop: '8px',
                     fontSize: '12px',
-                    color: couponValidation.valid ? '#2e7d32' : '#c62828'
+                    color: couponValidation.valid ? '#2e7d32' : '#c62828',
+                    fontFamily: "'Lato', sans-serif"
                   }}>
                     {couponValidation.message}
                   </div>
@@ -946,12 +985,12 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                 borderRadius: '8px',
                 marginBottom: '24px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', fontFamily: "'Lato', sans-serif" }}>
                   <span style={{ color: '#666' }}>{selectedPlan.name} Membership</span>
                   <span>{currencySymbol}{basePrice}</span>
                 </div>
                 {couponValidation?.valid && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#2e7d32', fontSize: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#2e7d32', fontSize: '14px', fontFamily: "'Lato', sans-serif" }}>
                     <span>Discount ({couponValidation.discountPercent}%)</span>
                     <span>-{currencySymbol}{((basePrice * couponValidation.discountPercent) / 100).toFixed(0)}</span>
                   </div>
@@ -961,8 +1000,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   justifyContent: 'space-between',
                   paddingTop: '8px',
                   borderTop: '1px solid #e0e0e0',
-                  fontWeight: 600,
-                  fontSize: '16px'
+                  fontWeight: 300,
+                  fontSize: '16px',
+                  fontFamily: "'Lato', sans-serif"
                 }}>
                   <span>Total</span>
                   <span>{currencySymbol}{finalPrice}</span>
@@ -981,10 +1021,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '16px',
-                  fontWeight: 500,
+                  fontWeight: 300,
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   opacity: isSubmitting ? 0.7 : 1,
-                  transition: 'opacity 0.2s'
+                  transition: 'opacity 0.2s',
+                  fontFamily: "'Lato', sans-serif"
                 }}
               >
                 {isSubmitting ? 'Processing...' : finalPrice === 0 ? 'Join for Free' : `Pay ${currencySymbol}${finalPrice} & Join`}
@@ -995,7 +1036,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                 fontSize: '11px',
                 color: '#888',
                 marginTop: '12px',
-                lineHeight: 1.5
+                lineHeight: 1.5,
+                fontFamily: "'Lato', sans-serif"
               }}>
                 By joining, you agree to our Terms & Conditions and Privacy Policy
               </p>
