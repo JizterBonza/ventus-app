@@ -317,6 +317,7 @@ END OF OLD BOOKING FORM */
 import React, { useState, useEffect } from "react";
 import { BookingResponse, AvailabilityResponse } from "../../types/search";
 import { submitBooking } from "../../utils/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface BookingFormProps {
     hotelId: number;
@@ -360,6 +361,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     initialRooms,
     availabilityResult = null,
 }) => {
+    const { isAuthenticated } = useAuth();
     const [formData, setFormData] = useState({
         startDate: startDate || "",
         endDate: endDate || "",
@@ -826,11 +828,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                                 .map((rate, rateIndex) => {
                                                     const rateValue = rate.rate_in_requested_currency ?? rate.rate ?? rate.total_to_book_in_requested_currency ?? rate.total_to_book;
                                                     const currency = rate.requested_currency_code ?? rate.currency_code ?? availabilityResult.default_currency ?? '';
-                                                    const rateDisplay = rateValue !== undefined && rateValue !== null 
+                                                    const rateDisplay = isAuthenticated && rateValue !== undefined && rateValue !== null 
                                                         ? `${currency} ${typeof rateValue === 'number' ? rateValue.toLocaleString() : rateValue}` 
-                                                        : 'Price not available';
+                                                        : isAuthenticated ? 'Price not available' : 'Login to view price';
                                                     const rateTitle = rate.title || 'Standard Rate';
-                                                    const optionLabel = `${roomName} - ${rateTitle} (${rateDisplay})`;
+                                                    const optionLabel = isAuthenticated 
+                                                        ? `${roomName} - ${rateTitle} (${rateDisplay})`
+                                                        : `${roomName} - ${rateTitle}`;
                                                     
                                                     return (
                                                         <option key={`${roomIndex}-${rateIndex}`} value={String(rate.rate_index)}>
@@ -856,14 +860,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                         const currency = typeof roomType.rate === 'object'
                                             ? roomType.rate?.requested_currency_code ?? roomType.rate?.currency_code ?? roomType.currency
                                             : roomType.currency ?? availabilityResult.default_currency ?? '';
-                                        const rateDisplay = rateValue ? `${currency} ${rateValue}` : 'Price not available';
+                                        const rateDisplay = isAuthenticated && rateValue 
+                                            ? `${currency} ${rateValue}` 
+                                            : isAuthenticated ? 'Price not available' : 'Login to view price';
                                         
                                         // Use rate_index from roomType (already validated above)
                                         const rateIndexValue = String(roomType.rate_index);
                                         
                                         return (
                                             <option key={roomIndex} value={rateIndexValue}>
-                                                {roomName} - {rateDisplay}
+                                                {isAuthenticated ? `${roomName} - ${rateDisplay}` : `${roomName}`}
                                             </option>
                                         );
                                     })}

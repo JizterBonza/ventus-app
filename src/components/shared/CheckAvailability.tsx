@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AvailabilityParams, AvailabilityResponse, RateInfo } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface AvailabilityResultWithFormData extends AvailabilityResponse {
     formData?: {
@@ -28,6 +29,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     className = "",
     onAvailabilityResult,
 }) => {
+    const { isAuthenticated } = useAuth();
     const [formData, setFormData] = useState({
         start_date: "",
         end_date: "",
@@ -361,7 +363,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         </div>
                     )}
 
-                    {availabilityResult.lowest_rate !== null && (
+                    {isAuthenticated && availabilityResult.lowest_rate !== null && (
                         <div className="card mt-3">
                             <div className="card-body" style={{ color: '#fff' }}>
                                 <h5 className="card-title" style={{ color: '#fff' }}>Pricing</h5>
@@ -393,7 +395,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                             Max Occupancy: {roomType.max_occupancy}
                                                         </span>
                                                     )}
-                                                    {formattedRate && (
+                                                    {isAuthenticated && formattedRate && (
                                                         <strong style={{ color: '#fff' }}>
                                                             {formattedRate}
                                                         </strong>

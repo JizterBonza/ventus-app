@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchHotelsByQuery } from '../../utils/api';
+import { useAuth } from '../../contexts/AuthContext';
 import './SearchBar.css';
 
 interface SearchBarProps {
@@ -21,6 +22,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const [results, setResults] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -124,7 +126,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
               <div className="result-info">
                 <h6>{result.name}</h6>
                 <p>{result.location}</p>
-                {result.price && <span className="price">${result.price}/night</span>}
+                {isAuthenticated && result.price && <span className="price">${result.price}/night</span>}
               </div>
             </div>
           ))}

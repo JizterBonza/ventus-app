@@ -249,7 +249,7 @@ const SearchResults: React.FC = () => {
                                                                 <h6>{displayHotel.location}
                                                                 </h6>
                                                             )}
-                                                            {displayHotel.price && (
+                                                            {isAuthenticated && displayHotel.price && (
                                                                 <p className="hotel-price" style={{ 
                                                                     fontWeight: "600", 
                                                                     fontSize: "1.1rem",

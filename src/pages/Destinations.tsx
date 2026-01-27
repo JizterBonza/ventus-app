@@ -4,12 +4,14 @@ import { useSearch } from "../hooks/useSearch";
 import { Hotel, SearchParams } from "../types/search";
 import { getHotelDetailsBatch } from "../utils/api";
 import { interestCategories } from "../utils/interestCategories";
+import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import PageHeader from "../components/shared/PageHeader";
 
 const Search: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
+    const { isAuthenticated } = useAuth();
     const [searchParams, setSearchParams] = useState({
         location: "",
         priceRange: "all",
@@ -423,14 +425,16 @@ const Search: React.FC = () => {
                                                                 )}
                                                             </ul>
                                                         </div>
-                                                        <div className="card-actions">
-                                                            <div className="card-price">
-                                                                <span className="price-label">from</span>
-                                                                <span className="price-amount">
-                                                                    ${displayHotel.price}/night
-                                                                </span>
+                                                        {isAuthenticated && (
+                                                            <div className="card-actions">
+                                                                <div className="card-price">
+                                                                    <span className="price-label">from</span>
+                                                                    <span className="price-amount">
+                                                                        ${displayHotel.price}/night
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 </Link>
                                             </div>

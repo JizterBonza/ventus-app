@@ -672,9 +672,11 @@ const HotelDetail: React.FC = () => {
                                     <div>
                                         <strong>Hotel Amenities</strong> {hotel.amenities.join(", ")}
                                     </div>
-                                    <div>
-                                        <strong>Starting from</strong> ${hotel.price || "N/A"}/night
-                                    </div>
+                                    {isAuthenticated && (
+                                        <div>
+                                            <strong>Starting from</strong> ${hotel.price || "N/A"}/night
+                                        </div>
+                                    )}
 
                                 </div>
 
