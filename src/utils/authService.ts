@@ -421,11 +421,8 @@ export const subscribeUser = async (
   planId: string, 
   couponCode?: string,
   paymentDetails?: {
-    cardNumber: string;
-    cardName: string;
-    expiryMonth: string;
-    expiryYear: string;
-    cvv: string;
+    type: 'paypal';
+    orderId: string;
   }
 ): Promise<{ success: boolean; subscriptionId?: string; message?: string; error?: string }> => {
   try {

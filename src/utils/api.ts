@@ -1,5 +1,6 @@
 import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse } from '../types/search';
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
+import { isAuthenticated } from './authService';
 
 // API Configuration with CORS proxy for production
 const getApiBaseUrl = () => {
@@ -769,13 +770,10 @@ export interface BookingRequest {
   rateIndex: string;
   guestName: string;
   guestEmail: string;
-  creditCard: {
-    number: string;
-    name: string;
-    cvc: string;
-    brand_name: string;
-    exp_month: string;
-    exp_year: string;
+  paymentMethod: {
+    type: 'paypal';
+    orderId?: string;
+    payerId?: string;
   };
   rooms: Array<{
     adults: number;
@@ -789,24 +787,28 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
   console.log('Submitting booking with data:', bookingData);
   
   try {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      throw new Error('You must be logged in to make a booking. Please log in and try again.');
+    }
+    
     // Validate required fields
     if (!bookingData.sessionId || bookingData.sessionId.trim() === '') {
       throw new Error('Session ID is required. Please ensure you have completed the availability check.');
     }
     
-    if (!bookingData.creditCard.exp_month || bookingData.creditCard.exp_month.trim() === '') {
-      throw new Error('Expiration month is required.');
+    // Validate PayPal payment
+    if (!bookingData.paymentMethod || bookingData.paymentMethod.type !== 'paypal') {
+      throw new Error('PayPal payment is required.');
+    }
+    
+    if (!bookingData.paymentMethod.orderId) {
+      throw new Error('PayPal order ID is required. Please complete the PayPal payment.');
     }
     
     // Log the actual API URL (without proxy) for clarity
     const actualApiUrl = `${getActualApiBaseUrl()}/hotels/bookings`;
     console.log('Booking API URL:', actualApiUrl);
-    
-    // Convert exp_month from string to integer (remove leading zeros)
-    const expMonthInt = parseInt(bookingData.creditCard.exp_month, 10);
-    if (isNaN(expMonthInt) || expMonthInt < 1 || expMonthInt > 12) {
-      throw new Error('Invalid expiration month. Please select a valid month.');
-    }
     
     // Validate rateIndex is provided
     if (!bookingData.rateIndex || bookingData.rateIndex.trim() === '') {
@@ -834,13 +836,10 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
       hotel_id: bookingData.hotelId,
       guest_name: bookingData.guestName,
       guest_email: bookingData.guestEmail,
-      credit_card: {
-        number: bookingData.creditCard.number,
-        name: bookingData.creditCard.name,
-        cvc: bookingData.creditCard.cvc,
-        brand_name: bookingData.creditCard.brand_name,
-        exp_month: expMonthInt, // Convert to integer
-        exp_year: bookingData.creditCard.exp_year,
+      payment_method: {
+        type: 'paypal',
+        order_id: bookingData.paymentMethod.orderId,
+        payer_id: bookingData.paymentMethod.payerId,
       },
       rooms: bookingData.rooms.map(room => ({
         adults: room.adults,

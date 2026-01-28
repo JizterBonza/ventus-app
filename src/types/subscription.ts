@@ -176,6 +176,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 // Valid coupon codes
 export const VALID_COUPONS: Record<string, { discountPercent: number; description: string }> = {
   'VENTUS': { discountPercent: 100, description: 'Full access - 100% discount!' },
+  'VENTUSVIP': { discountPercent: 100, description: 'Full access - 100% discount!' },
   'WELCOME50': { discountPercent: 50, description: '50% off your first subscription' },
   'SAVE20': { discountPercent: 20, description: '20% discount applied' }
 };

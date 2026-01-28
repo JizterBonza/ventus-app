@@ -314,7 +314,7 @@ export default BookingForm;
 END OF OLD BOOKING FORM */
 
 // NEW BOOKING FORM - Compatible with POST API
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BookingResponse, AvailabilityResponse } from "../../types/search";
 import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -339,13 +339,9 @@ interface RoomData {
     children: Array<{ age: number }>;
 }
 
-interface CreditCardData {
-    number: string;
-    name: string;
-    cvc: string;
-    brand_name: string;
-    exp_month: string;
-    exp_year: string;
+interface PayPalPaymentData {
+    orderId?: string;
+    payerId?: string;
 }
 
 const BookingForm: React.FC<BookingFormProps> = ({
@@ -369,14 +365,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
         rateIndex: rateIndex || "",
         guestName: "",
         guestEmail: "",
-        creditCard: {
-            number: "",
-            name: "",
-            cvc: "",
-            brand_name: "VISA",
-            exp_month: "",
-            exp_year: "",
-        },
+        paypalPayment: {
+            orderId: undefined,
+            payerId: undefined,
+        } as PayPalPaymentData,
         rooms: initialRooms && initialRooms.length > 0 
             ? initialRooms.map(room => ({
                 adults: room.adults,
@@ -384,6 +376,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
             }))
             : [{ adults: 1, children: [] }] as RoomData[],
     });
+    
+    const [paypalApproved, setPaypalApproved] = useState(false);
+    const paypalContainerRef = useRef<HTMLDivElement | null>(null);
+    const paypalButtonsRef = useRef<any>(null);
+    const isInitializingRef = useRef(false);
 
     // Update form data when props change (e.g., after availability check)
     useEffect(() => {
@@ -454,21 +451,346 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+    
+    // Calculate booking total from availability result
+    const calculateBookingTotal = (): number => {
+        if (!availabilityResult || !formData.rateIndex) {
+            return 0;
+        }
+        
+        // Find the selected rate
+        for (const roomType of availabilityResult.room_types || []) {
+            if (roomType.rates && roomType.rates.length > 0) {
+                const selectedRate = roomType.rates.find(rate => String(rate.rate_index) === formData.rateIndex);
+                if (selectedRate) {
+                    const amount = selectedRate.total_to_book_in_requested_currency 
+                        ?? selectedRate.total_to_book 
+                        ?? selectedRate.rate_in_requested_currency 
+                        ?? selectedRate.rate 
+                        ?? 0;
+                    return typeof amount === 'number' ? amount : 0;
+                }
+            }
+            // Fallback to legacy rate_index
+            if (String(roomType.rate_index) === formData.rateIndex) {
+                const rateValue = typeof roomType.rate === 'object' 
+                    ? roomType.rate?.total_to_book_in_requested_currency ?? roomType.rate?.total_to_book ?? roomType.rate?.rate ?? 0
+                    : roomType.rate ?? 0;
+                return typeof rateValue === 'number' ? rateValue : 0;
+            }
+        }
+        return 0;
+    };
+    
+    // PayPal button handlers
+    useEffect(() => {
+        const currency = availabilityResult?.default_currency || 'USD';
+        
+        // Only initialize if we have a rate selected and total > 0
+        if (!formData.rateIndex || paypalApproved) {
+            // Clear container safely
+            if (paypalContainerRef.current) {
+                paypalContainerRef.current.innerHTML = '';
+            }
+            // Clean up PayPal buttons instance
+            if (paypalButtonsRef.current) {
+                try {
+                    paypalButtonsRef.current.close();
+                } catch (e) {
+                    // Ignore errors during cleanup
+                }
+                paypalButtonsRef.current = null;
+            }
+            isInitializingRef.current = false;
+            return;
+        }
 
-        if (name.startsWith("creditCard.")) {
-            const field = name.split(".")[1];
-            setFormData((prev) => ({
-                ...prev,
-                creditCard: {
-                    ...prev.creditCard,
-                    [field]: value,
+        // Prevent multiple simultaneous initializations
+        if (isInitializingRef.current) {
+            return;
+        }
+
+        // Clean up any existing PayPal scripts to avoid conflicts
+        const existingScripts = document.querySelectorAll('script[src*="paypal.com/sdk"]');
+        existingScripts.forEach(script => {
+            // Remove old scripts that don't match current currency
+            const scriptSrc = (script as HTMLScriptElement).src;
+            if (!scriptSrc.includes(`currency=${currency}`)) {
+                script.remove();
+                // Clear PayPal from window if it exists
+                if ((window as any).paypal) {
+                    delete (window as any).paypal;
+                }
+            }
+        });
+
+        // Check if PayPal SDK is already loaded with correct currency
+        const checkPayPalLoaded = () => {
+            if ((window as any).paypal) {
+                // Small delay to ensure SDK is fully ready
+                setTimeout(() => {
+                    if (!isInitializingRef.current && paypalContainerRef.current) {
+                        initializePayPalButton();
+                    }
+                }, 100);
+                return true;
+            }
+            return false;
+        };
+
+        if (typeof window !== 'undefined') {
+            // First check if already loaded
+            if (checkPayPalLoaded()) {
+                return;
+            }
+
+            // Check if script with correct currency is already in the DOM
+            const existingScript = document.querySelector(`script[src*="paypal.com/sdk"][src*="currency=${currency}"]`);
+            if (existingScript) {
+                // Wait for it to load
+                let attempts = 0;
+                const maxAttempts = 50; // 5 seconds max
+                const checkInterval = setInterval(() => {
+                    attempts++;
+                    if (checkPayPalLoaded()) {
+                        clearInterval(checkInterval);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        console.warn('PayPal SDK did not load, attempting dynamic load');
+                        loadPayPalScript(currency);
+                    }
+                }, 100);
+            } else {
+                // No script found, load it dynamically
+                loadPayPalScript(currency);
+            }
+        }
+
+        // Cleanup function
+        return () => {
+            isInitializingRef.current = false;
+            // Clean up PayPal buttons instance
+            if (paypalButtonsRef.current) {
+                try {
+                    paypalButtonsRef.current.close();
+                } catch (e) {
+                    // Ignore errors during cleanup
+                }
+                paypalButtonsRef.current = null;
+            }
+            // Clear container safely
+            if (paypalContainerRef.current) {
+                paypalContainerRef.current.innerHTML = '';
+            }
+        };
+    }, [formData.rateIndex, availabilityResult, paypalApproved]);
+
+    const loadPayPalScript = (currency: string = 'USD') => {
+        // Check again if PayPal is already loaded
+        if ((window as any).paypal) {
+            setTimeout(() => {
+                if (!isInitializingRef.current && paypalContainerRef.current) {
+                    initializePayPalButton();
+                }
+            }, 100);
+            return;
+        }
+
+        // Remove any existing PayPal scripts first
+        const existingScripts = document.querySelectorAll('script[src*="paypal.com/sdk"]');
+        existingScripts.forEach(script => script.remove());
+
+        const script = document.createElement('script');
+        script.id = 'paypal-sdk-script-booking';
+        script.src = `https://www.paypal.com/sdk/js?client-id=AfaoowvVXx5dXMEisezXWp4ZQpQm_3lRs-7YmDJc4-dDTFb529Tso9nmdCEF6P6Yn_wwnSpP_z0w10dk&currency=${currency}`;
+        script.async = true;
+        script.onload = () => {
+            // Wait a bit for PayPal to fully initialize
+            setTimeout(() => {
+                if ((window as any).paypal && !isInitializingRef.current && paypalContainerRef.current) {
+                    initializePayPalButton();
+                } else if (!(window as any).paypal) {
+                    console.error('PayPal SDK loaded but paypal object not available');
+                    isInitializingRef.current = false;
+                    showPayPalError('PayPal SDK failed to initialize. Please try again.');
+                }
+            }, 200);
+        };
+        script.onerror = (error) => {
+            console.error('Failed to load PayPal SDK:', error);
+            isInitializingRef.current = false;
+            showPayPalError('Failed to load PayPal. Please check your internet connection and try again.');
+        };
+        document.body.appendChild(script);
+    };
+
+    const showPayPalError = (message: string) => {
+        const container = paypalContainerRef.current;
+        if (container && document.body.contains(container)) {
+            container.innerHTML = `
+                <div style="padding: 12px; background-color: #ffebee; border-radius: 6px; color: #c62828; font-size: 14px; font-family: 'Lato', sans-serif; margin-bottom: 10px;">
+                    ${message}
+                </div>
+                <button 
+                    type="button"
+                    onclick="window.location.reload()"
+                    style="
+                        padding: 10px 20px;
+                        background-color: #c4b896;
+                        color: #fff;
+                        border: none;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        font-family: 'Lato', sans-serif;
+                    "
+                >
+                    Retry
+                </button>
+            `;
+        }
+    };
+    
+    const initializePayPalButton = () => {
+        if (paypalApproved || !formData.rateIndex || isInitializingRef.current) {
+            return;
+        }
+        
+        // Check if container exists and is in the DOM
+        const container = paypalContainerRef.current;
+        if (!container) {
+            console.warn('PayPal container ref not found');
+            return;
+        }
+
+        // Verify container is still in the DOM
+        if (!document.body.contains(container)) {
+            console.warn('PayPal container removed from DOM');
+            isInitializingRef.current = false;
+            return;
+        }
+
+        if (!(window as any).paypal) {
+            console.warn('PayPal SDK not available');
+            isInitializingRef.current = false;
+            showPayPalError('PayPal SDK not loaded. Please try again.');
+            return;
+        }
+        
+        // Clean up previous buttons instance
+        if (paypalButtonsRef.current) {
+            try {
+                paypalButtonsRef.current.close();
+            } catch (e) {
+                // Ignore errors during cleanup
+            }
+            paypalButtonsRef.current = null;
+        }
+        
+        // Clear existing buttons
+        container.innerHTML = '';
+        
+        const totalAmount = calculateBookingTotal();
+        if (totalAmount <= 0) {
+            container.innerHTML = '<p class="text-muted">Please select a room type and rate to see payment options.</p>';
+            isInitializingRef.current = false;
+            return;
+        }
+
+        const currency = availabilityResult?.default_currency || 'USD';
+        
+        // Set initialization flag
+        isInitializingRef.current = true;
+        
+        try {
+            // Double-check container is still in DOM before rendering
+            if (!document.body.contains(container)) {
+                console.warn('PayPal container removed from DOM before render');
+                isInitializingRef.current = false;
+                return;
+            }
+
+            const buttons = (window as any).paypal.Buttons({
+                createOrder: (data: any, actions: any) => {
+                    return actions.order.create({
+                        purchase_units: [{
+                            amount: {
+                                value: totalAmount.toFixed(2),
+                                currency_code: currency
+                            },
+                            description: `Booking for ${hotelName}`
+                        }]
+                    });
                 },
-            }));
-        } else {
-            setFormData((prev) => ({
-                ...prev,
-                [name]: value,
-            }));
+                onApprove: (data: any, actions: any) => {
+                    return actions.order.capture().then((details: any) => {
+                        console.log('PayPal payment approved:', details);
+                        setFormData((prev) => ({
+                            ...prev,
+                            paypalPayment: {
+                                orderId: details.id,
+                                payerId: details.payer.payer_id,
+                            },
+                        }));
+                        setPaypalApproved(true);
+                    }).catch((error: any) => {
+                        console.error('PayPal capture error:', error);
+                        setSubmitStatus("error");
+                        setSubmitMessage("PayPal payment capture failed. Please try again.");
+                        setPaypalApproved(false);
+                    });
+                },
+                onError: (err: any) => {
+                    console.error('PayPal error:', err);
+                    setSubmitStatus("error");
+                    setSubmitMessage("PayPal payment failed. Please try again.");
+                    setPaypalApproved(false);
+                    isInitializingRef.current = false;
+                },
+                onCancel: () => {
+                    console.log('PayPal payment cancelled');
+                    setPaypalApproved(false);
+                    setFormData((prev) => ({
+                        ...prev,
+                        paypalPayment: {
+                            orderId: undefined,
+                            payerId: undefined,
+                        },
+                    }));
+                }
+            });
+
+            // Store buttons instance
+            paypalButtonsRef.current = buttons;
+
+            // Render with error handling
+            buttons.render(container).then(() => {
+                // Successfully rendered
+                isInitializingRef.current = false;
+            }).catch((error: any) => {
+                console.error('PayPal button render error:', error);
+                isInitializingRef.current = false;
+                paypalButtonsRef.current = null;
+                
+                // Only show error if container still exists
+                if (document.body.contains(container)) {
+                    showPayPalError('Failed to load PayPal payment button. Please try again.');
+                }
+            });
+        } catch (error) {
+            console.error('Error initializing PayPal button:', error);
+            isInitializingRef.current = false;
+            paypalButtonsRef.current = null;
+            
+            // Only show error if container still exists
+            if (document.body.contains(container)) {
+                showPayPalError('Failed to initialize PayPal payment. Please try again.');
+            }
         }
     };
 
@@ -615,24 +937,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
             setSubmitMessage("Please enter your email");
             return false;
         }
-        if (!formData.creditCard.number.trim()) {
-            setSubmitMessage("Please enter credit card number");
-            return false;
-        }
-        if (!formData.creditCard.name.trim()) {
-            setSubmitMessage("Please enter cardholder name");
-            return false;
-        }
-        if (!formData.creditCard.cvc.trim()) {
-            setSubmitMessage("Please enter CVC");
-            return false;
-        }
-        if (!formData.creditCard.exp_month) {
-            setSubmitMessage("Please select expiration month");
-            return false;
-        }
-        if (!formData.creditCard.exp_year) {
-            setSubmitMessage("Please enter expiration year");
+        if (!paypalApproved || !formData.paypalPayment.orderId) {
+            setSubmitMessage("Please complete PayPal payment");
             return false;
         }
         if (formData.rooms.length === 0) {
@@ -650,6 +956,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Check if user is authenticated
+        if (!isAuthenticated) {
+            setSubmitStatus("error");
+            setSubmitMessage("You must be logged in to make a booking. Please log in and try again.");
+            return;
+        }
 
         if (!validateForm()) {
             setSubmitStatus("error");
@@ -669,7 +982,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 rateIndex: formData.rateIndex,
                 guestName: formData.guestName,
                 guestEmail: formData.guestEmail,
-                creditCard: formData.creditCard,
+                paymentMethod: {
+                    type: 'paypal',
+                    orderId: formData.paypalPayment.orderId,
+                    payerId: formData.paypalPayment.payerId,
+                },
                 rooms: formData.rooms,
             });
 
@@ -686,16 +1003,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     rateIndex: "",
                     guestName: "",
                     guestEmail: "",
-                    creditCard: {
-                        number: "",
-                        name: "",
-                        cvc: "",
-                        brand_name: "VISA",
-                        exp_month: "",
-                        exp_year: "",
+                    paypalPayment: {
+                        orderId: undefined,
+                        payerId: undefined,
                     },
                     rooms: [{ adults: 1, children: [] }],
                 });
+                setPaypalApproved(false);
             } else {
                 setSubmitStatus("error");
                 setSubmitMessage(response.message || "Booking failed. Please try again.");
@@ -928,115 +1242,26 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         </div>
                     </div>
                 </div>
-                <h5 className="mt-5">Credit Card Information *</h5>       
+                <h5 className="mt-5">Payment Method *</h5>
                 <div className="d-grid form-row">
                     <div className="form-column">
                         <div className="form-column-inner">
-                          
-                            <label htmlFor="creditCard.number" className="form-label">
-                                Card Number *
-                            </label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                id="creditCard.number"
-                                name="creditCard.number"
-                                value={formData.creditCard.number}
-                                onChange={handleInputChange}
-                                placeholder="1234 1234 1234 1234"
-                                maxLength={19}
-                                required
-                            />
-                        </div>
-                        <div className="form-column-inner">
-                            <label htmlFor="creditCard.name" className="form-label">
-                                Cardholder Name *
-                            </label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                id="creditCard.name"
-                                name="creditCard.name"
-                                value={formData.creditCard.name}
-                                onChange={handleInputChange}
-                                placeholder="John Doe"
-                                required
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                        <div className="form-column-inner">
-                            <label htmlFor="creditCard.cvc" className="form-label">
-                                CVC *
-                            </label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                id="creditCard.cvc"
-                                name="creditCard.cvc"
-                                value={formData.creditCard.cvc}
-                                onChange={handleInputChange}
-                                placeholder="123"
-                                maxLength={4}
-                                required
-                            />
-                        </div>
-                        <div className="form-column-inner">
-                            <label htmlFor="creditCard.brand_name" className="form-label">
-                                Card Brand *
-                            </label>
-                            <select
-                                className="form-select"
-                                id="creditCard.brand_name"
-                                name="creditCard.brand_name"
-                                value={formData.creditCard.brand_name}
-                                onChange={handleInputChange}
-                                required
-                            >
-                                <option value="VISA">VISA</option>
-                                <option value="MASTERCARD">MASTERCARD</option>
-                                <option value="AMEX">AMEX</option>
-                                <option value="DISCOVER">DISCOVER</option>
-                            </select>
-                        </div>
-                        <div className="form-column-inner">
-                            <label htmlFor="creditCard.exp_month" className="form-label">
-                                Expiration Month *
-                            </label>
-                            <select
-                                className="form-select"
-                                id="creditCard.exp_month"
-                                name="creditCard.exp_month"
-                                value={formData.creditCard.exp_month}
-                                onChange={handleInputChange}
-                                required
-                            >
-                                <option value="">MM</option>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                                    <option key={month} value={month.toString().padStart(2, "0")}>
-                                        {month.toString().padStart(2, "0")}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="form-column-inner">
-                            <label htmlFor="creditCard.exp_year" className="form-label">
-                                Expiration Year *
-                            </label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                id="creditCard.exp_year"
-                                name="creditCard.exp_year"
-                                value={formData.creditCard.exp_year}
-                                onChange={handleInputChange}
-                                placeholder="2030"
-                                maxLength={4}
-                                required
-                            />
+                            <label className="form-label">PayPal Payment *</label>
+                            {paypalApproved ? (
+                                <div className="alert alert-success">
+                                    <i className="fa fa-check-circle me-2"></i>
+                                    PayPal payment approved. Order ID: {formData.paypalPayment.orderId}
+                                </div>
+                            ) : (
+                                <div 
+                                    id="paypal-button-container" 
+                                    ref={paypalContainerRef}
+                                    style={{ minHeight: '50px' }}
+                                ></div>
+                            )}
+                            <small className="text-muted d-block mt-2">
+                                You will be redirected to PayPal to complete your payment.
+                            </small>
                         </div>
                     </div>
                 </div>

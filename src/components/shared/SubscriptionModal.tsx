@@ -61,6 +61,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [submitMessage, setSubmitMessage] = useState('');
+  const [paypalApproved, setPaypalApproved] = useState(false);
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
 
   // Get price based on currency
   const getPrice = (plan: SubscriptionPlan) => {
@@ -125,6 +127,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
       setCouponValidation(null);
       setSubmitStatus('idle');
       setSubmitMessage('');
+      setPaypalApproved(false);
+      setPaypalOrderId(null);
     }
   }, [isOpen]);
 
@@ -167,6 +171,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
     return basePrice;
   };
 
+  const finalPrice = calculateFinalPrice();
+
   const validateForm = (): boolean => {
     const errors: { [key: string]: string } = {};
 
@@ -192,10 +198,218 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
     return Object.keys(errors).length === 0;
   };
 
+  // Initialize PayPal button
+  useEffect(() => {
+    if (showForm && finalPrice > 0 && !paypalApproved) {
+      // Clean up any existing PayPal scripts to avoid conflicts
+      const existingScripts = document.querySelectorAll('script[src*="paypal.com/sdk"]');
+      existingScripts.forEach(script => {
+        // Remove old scripts that don't match current currency
+        const scriptSrc = (script as HTMLScriptElement).src;
+        if (!scriptSrc.includes(`currency=${currency}`)) {
+          script.remove();
+          // Clear PayPal from window if it exists
+          if ((window as any).paypal) {
+            delete (window as any).paypal;
+          }
+        }
+      });
+
+      // Check if PayPal SDK is already loaded with correct currency
+      const checkPayPalLoaded = () => {
+        if ((window as any).paypal) {
+          // Small delay to ensure SDK is fully ready
+          setTimeout(() => {
+            initializePayPalButton();
+          }, 100);
+          return true;
+        }
+        return false;
+      };
+
+      if (typeof window !== 'undefined') {
+        // First check if already loaded
+        if (checkPayPalLoaded()) {
+          return;
+        }
+
+        // Check if script with correct currency is already in the DOM
+        const existingScript = document.querySelector(`script[src*="paypal.com/sdk"][src*="currency=${currency}"]`);
+        if (existingScript) {
+          // Wait for it to load
+          let attempts = 0;
+          const maxAttempts = 50; // 5 seconds max
+          const checkInterval = setInterval(() => {
+            attempts++;
+            if (checkPayPalLoaded()) {
+              clearInterval(checkInterval);
+            } else if (attempts >= maxAttempts) {
+              clearInterval(checkInterval);
+              console.warn('PayPal SDK did not load, attempting dynamic load');
+              loadPayPalScript();
+            }
+          }, 100);
+        } else {
+          // No script found, load it dynamically
+          loadPayPalScript();
+        }
+      }
+    } else {
+      // Clean up PayPal button container when not needed
+      const container = document.getElementById('subscription-paypal-button-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      const container = document.getElementById('subscription-paypal-button-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, [showForm, finalPrice, paypalApproved, currency]);
+
+  const loadPayPalScript = () => {
+    // Check again if PayPal is already loaded
+    if ((window as any).paypal) {
+      setTimeout(() => {
+        initializePayPalButton();
+      }, 100);
+      return;
+    }
+
+    // Remove any existing PayPal scripts first
+    const existingScripts = document.querySelectorAll('script[src*="paypal.com/sdk"]');
+    existingScripts.forEach(script => script.remove());
+
+    const script = document.createElement('script');
+    script.id = 'paypal-sdk-script';
+    script.src = `https://www.paypal.com/sdk/js?client-id=AfaoowvVXx5dXMEisezXWp4ZQpQm_3lRs-7YmDJc4-dDTFb529Tso9nmdCEF6P6Yn_wwnSpP_z0w10dk&currency=${currency}`;
+    script.async = true;
+    script.onload = () => {
+      // Wait a bit for PayPal to fully initialize
+      setTimeout(() => {
+        if ((window as any).paypal) {
+          initializePayPalButton();
+        } else {
+          console.error('PayPal SDK loaded but paypal object not available');
+          showPayPalError('PayPal SDK failed to initialize. Please try again.');
+        }
+      }, 200);
+    };
+    script.onerror = (error) => {
+      console.error('Failed to load PayPal SDK:', error);
+      showPayPalError('Failed to load PayPal. Please check your internet connection and try again.');
+    };
+    document.body.appendChild(script);
+  };
+
+  const showPayPalError = (message: string) => {
+    const container = document.getElementById('subscription-paypal-button-container');
+    if (container) {
+      container.innerHTML = `
+        <div style="padding: 12px; background-color: #ffebee; border-radius: 6px; color: #c62828; font-size: 14px; font-family: 'Lato', sans-serif; margin-bottom: 10px;">
+          ${message}
+        </div>
+        <button 
+          type="button"
+          onclick="window.location.reload()"
+          style="
+            padding: 10px 20px;
+            background-color: #c4b896;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Lato', sans-serif;
+          "
+        >
+          Retry
+        </button>
+      `;
+    }
+  };
+
+  const initializePayPalButton = () => {
+    const container = document.getElementById('subscription-paypal-button-container');
+    if (!container) {
+      console.warn('PayPal container not found');
+      return;
+    }
+
+    if (!(window as any).paypal) {
+      console.warn('PayPal SDK not available');
+      showPayPalError('PayPal SDK not loaded. Please try again.');
+      return;
+    }
+
+    if (paypalApproved || finalPrice <= 0) {
+      return;
+    }
+    
+    // Clear container
+    container.innerHTML = '';
+    
+    try {
+      (window as any).paypal.Buttons({
+        createOrder: (data: any, actions: any) => {
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: finalPrice.toFixed(2),
+                currency_code: currency
+              },
+              description: `${selectedPlan.name} Membership`
+            }]
+          });
+        },
+        onApprove: (data: any, actions: any) => {
+          return actions.order.capture().then((details: any) => {
+            console.log('PayPal payment approved:', details);
+            setPaypalOrderId(details.id);
+            setPaypalApproved(true);
+          }).catch((error: any) => {
+            console.error('PayPal capture error:', error);
+            setSubmitStatus('error');
+            setSubmitMessage('PayPal payment capture failed. Please try again.');
+            setPaypalApproved(false);
+          });
+        },
+        onError: (err: any) => {
+          console.error('PayPal error:', err);
+          setSubmitStatus('error');
+          setSubmitMessage('PayPal payment failed. Please try again.');
+          setPaypalApproved(false);
+        },
+        onCancel: () => {
+          console.log('PayPal payment cancelled');
+          setPaypalApproved(false);
+          setPaypalOrderId(null);
+        }
+      }).render('#subscription-paypal-button-container').catch((error: any) => {
+        console.error('PayPal button render error:', error);
+        showPayPalError('Failed to load PayPal payment button. Please try again.');
+      });
+    } catch (error) {
+      console.error('Error initializing PayPal button:', error);
+      showPayPalError('Failed to initialize PayPal payment. Please try again.');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
+      return;
+    }
+
+    // If price > 0, require PayPal payment
+    if (finalPrice > 0 && !paypalApproved) {
+      setSubmitStatus('error');
+      setSubmitMessage('Please complete PayPal payment to continue.');
       return;
     }
 
@@ -205,7 +419,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
     try {
       const response = await subscribeUser(
         selectedPlan.id,
-        couponValidation?.valid ? formData.couponCode.toUpperCase().trim() : undefined
+        couponValidation?.valid ? formData.couponCode.toUpperCase().trim() : undefined,
+        paypalApproved && paypalOrderId ? {
+          type: 'paypal' as const,
+          orderId: paypalOrderId
+        } : undefined
       );
 
       if (response.success) {
@@ -234,8 +452,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
     setSelectedPlanId(planId);
     setShowForm(true);
   };
-
-  const finalPrice = calculateFinalPrice();
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -1009,10 +1225,32 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                 </div>
               </div>
 
+              {/* PayPal Payment (if price > 0) */}
+              {finalPrice > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={labelStyle}>Payment Method *</label>
+                  {paypalApproved ? (
+                    <div style={{
+                      padding: '12px',
+                      backgroundColor: '#e8f5e9',
+                      borderRadius: '6px',
+                      color: '#2e7d32',
+                      fontSize: '14px',
+                      fontFamily: "'Lato', sans-serif"
+                    }}>
+                      <i className="fa fa-check-circle me-2"></i>
+                      PayPal payment approved. Order ID: {paypalOrderId}
+                    </div>
+                  ) : (
+                    <div id="subscription-paypal-button-container" style={{ minHeight: '50px' }}></div>
+                  )}
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (finalPrice > 0 && !paypalApproved)}
                 style={{
                   width: '100%',
                   padding: '14px',
@@ -1022,13 +1260,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                   borderRadius: '6px',
                   fontSize: '16px',
                   fontWeight: 300,
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  opacity: isSubmitting ? 0.7 : 1,
+                  cursor: (isSubmitting || (finalPrice > 0 && !paypalApproved)) ? 'not-allowed' : 'pointer',
+                  opacity: (isSubmitting || (finalPrice > 0 && !paypalApproved)) ? 0.7 : 1,
                   transition: 'opacity 0.2s',
                   fontFamily: "'Lato', sans-serif"
                 }}
               >
-                {isSubmitting ? 'Processing...' : finalPrice === 0 ? 'Join for Free' : `Pay ${currencySymbol}${finalPrice} & Join`}
+                {isSubmitting ? 'Processing...' : finalPrice === 0 ? 'Join for Free' : (paypalApproved ? `Complete Registration` : `Pay ${currencySymbol}${finalPrice} & Join`)}
               </button>
 
               <p style={{

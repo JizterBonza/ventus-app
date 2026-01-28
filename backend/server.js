@@ -391,6 +391,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 // Valid coupon codes (matching frontend)
 const VALID_COUPONS = {
   'VENTUS': { discountPercent: 100, description: 'Full access - 100% discount!' },
+  'VENTUSVIP': { discountPercent: 100, description: 'Full access - 100% discount!' },
   'WELCOME50': { discountPercent: 50, description: '50% off your first subscription' },
   'SAVE20': { discountPercent: 20, description: '20% discount applied' }
 };
@@ -423,12 +424,30 @@ app.post('/api/subscriptions/subscribe', authenticateToken, async (req, res) => 
     const basePrice = 299;
     const finalPrice = Math.max(0, basePrice - (basePrice * discountPercent / 100));
 
-    // If price > 0, payment details would normally be required
-    // For now, we'll simulate successful payment
-    if (finalPrice > 0 && !paymentDetails) {
-      // In a real app, you'd integrate with a payment provider like Stripe
-      // For demo purposes, we'll allow subscription without payment details
-      console.log(`Subscription without payment details - user ${userId}, price: £${finalPrice}`);
+    // If price > 0, PayPal payment is required
+    if (finalPrice > 0) {
+      if (!paymentDetails || paymentDetails.type !== 'paypal') {
+        return res.status(400).json({
+          success: false,
+          error: 'PayPal payment is required for paid subscriptions'
+        });
+      }
+      
+      if (!paymentDetails.orderId) {
+        return res.status(400).json({
+          success: false,
+          error: 'PayPal order ID is required'
+        });
+      }
+      
+      // In a real app, you'd verify the PayPal order with PayPal's API
+      // You can use the PayPal Secret Key (PAYPAL_SECRET_KEY env var) for server-side verification
+      // Example: Use @paypal/checkout-server-sdk to verify the order
+      // For now, we'll log the payment details
+      console.log(`PayPal payment received - user ${userId}, order ID: ${paymentDetails.orderId}, price: £${finalPrice}`);
+      
+      // TODO: Verify PayPal order with PayPal API using PAYPAL_SECRET_KEY
+      // This ensures the payment was actually completed and prevents fraud
     }
 
     // Generate a subscription ID

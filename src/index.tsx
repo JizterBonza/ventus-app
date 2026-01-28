@@ -6,6 +6,20 @@ import reportWebVitals from './reportWebVitals';
 
 console.log('Index.tsx is loading');
 
+// Global error handler to catch unhandled errors
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+  // Prevent default error handling if needed
+  // event.preventDefault();
+});
+
+// Handle unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  // Prevent default error handling if needed
+  // event.preventDefault();
+});
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );

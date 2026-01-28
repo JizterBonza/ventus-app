@@ -844,12 +844,12 @@ const HotelDetail: React.FC = () => {
                                                 {relatedHotel.address || relatedHotel.location}
                                             </div>
                                         
-                                            <a>
+                                            <div>
                                                 View Hotel 
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
                                                     <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
                                                 </svg>
-                                            </a>
+                                            </div>
                                         </div>
                                     </Link>
                                 </div>
@@ -873,38 +873,74 @@ const HotelDetail: React.FC = () => {
             {availabilityResult && availabilityResult.is_available && availabilityResult.room_types && availabilityResult.room_types.length > 0 && (
                 <section className="section-padding booking-section">
                     <div className="container">
-                        <BookingForm
-                            hotelId={hotel.id}
-                            hotelName={hotel.name}
-                            onBookingSuccess={handleBookingSuccess}
-                            onBookingError={handleBookingError}
-                            sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
-                            startDate={availabilityFormData?.start_date || ""}
-                            endDate={availabilityFormData?.end_date || ""}
-                            initialRooms={availabilityFormData ? [{
-                                adults: availabilityFormData.adults,
-                                children: availabilityFormData.children
-                            }] : undefined}
-                            rateIndex={(() => {
-                                // Extract rate_index from the first available rate in the first room type
-                                if (availabilityResult?.room_types && availabilityResult.room_types.length > 0) {
-                                    const firstRoomType = availabilityResult.room_types[0];
-                                    // Check if room type has rates array
-                                    if (firstRoomType.rates && firstRoomType.rates.length > 0) {
-                                        const firstRate = firstRoomType.rates[0];
-                                        if (firstRate.rate_index !== undefined && firstRate.rate_index !== null) {
-                                            return String(firstRate.rate_index);
+                        {isAuthenticated ? (
+                            <BookingForm
+                                hotelId={hotel.id}
+                                hotelName={hotel.name}
+                                onBookingSuccess={handleBookingSuccess}
+                                onBookingError={handleBookingError}
+                                sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
+                                startDate={availabilityFormData?.start_date || ""}
+                                endDate={availabilityFormData?.end_date || ""}
+                                initialRooms={availabilityFormData ? [{
+                                    adults: availabilityFormData.adults,
+                                    children: availabilityFormData.children
+                                }] : undefined}
+                                rateIndex={(() => {
+                                    // Extract rate_index from the first available rate in the first room type
+                                    if (availabilityResult?.room_types && availabilityResult.room_types.length > 0) {
+                                        const firstRoomType = availabilityResult.room_types[0];
+                                        // Check if room type has rates array
+                                        if (firstRoomType.rates && firstRoomType.rates.length > 0) {
+                                            const firstRate = firstRoomType.rates[0];
+                                            if (firstRate.rate_index !== undefined && firstRate.rate_index !== null) {
+                                                return String(firstRate.rate_index);
+                                            }
+                                        }
+                                        // Fallback to legacy rate_index field
+                                        if (firstRoomType.rate_index !== undefined && firstRoomType.rate_index !== null) {
+                                            return String(firstRoomType.rate_index);
                                         }
                                     }
-                                    // Fallback to legacy rate_index field
-                                    if (firstRoomType.rate_index !== undefined && firstRoomType.rate_index !== null) {
-                                        return String(firstRoomType.rate_index);
-                                    }
-                                }
-                                return undefined;
-                            })()}
-                            availabilityResult={availabilityResult}
-                        />
+                                    return undefined;
+                                })()}
+                                availabilityResult={availabilityResult}
+                            />
+                        ) : (
+                            <div className="global-form">
+                                <div className="text-center">
+                                    <h2>Book Your Stay</h2>
+                                    <p className="text-muted mb-0">Hotel: {hotel.name}</p>
+                                </div>
+                                {/* <div className="alert alert-info text-center">
+                                    <h4><i className="fa fa-info-circle me-2"></i>Login Required</h4>
+                                    <p className="mb-3">You must be logged in to make a booking. Please log in to continue with your reservation.</p>
+                                    <Link to="/login" className="btn btn-primary btn-lg">
+                                        Log In to Book
+                                    </Link>
+                                    <p className="mt-3 mb-0">
+                                        Don't have an account? <Link to="/signup">Sign up here</Link>
+                                    </p>
+                                </div> */}
+                                <div className="section-membership" style={{ display: 'block' }}>
+                                    <div className="section-membership-content text-center">
+                                        <div className="membership-content_heading">
+                                            <img src="/assets/img/ventus-logo.png" />
+                                            <h3>Join now to unlock exclusive member benefits</h3>
+                                            <button 
+                                                onClick={() => setIsSubscriptionModalOpen(true)}
+                                                className="btn btn-primary btn-lg"
+                                            >
+                                                Join Now
+                                            </button>
+                                        </div>
+                                        <div className="membership-content_foot">
+                                            <p>Already have an account? Sign in <Link to="/login">here</Link></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
             )}
