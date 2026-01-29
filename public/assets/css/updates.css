@@ -1256,6 +1256,8 @@ input:-internal-autofill-selected:active {
 }
 .subscription-modal label{
     line-height: 1;
+    color: #000 !important;
+    font-weight: 400 !important;
 }
 .subscription-modal input[type="text"],
 .subscription-modal input[type="email"],
@@ -1265,13 +1267,14 @@ input:-internal-autofill-selected:active {
 .subscription-modal textarea{
     width: 100% !important;
 }
-.subscription-modal  button{
+.subscription-modal  .subscription-modal-button{
     letter-spacing: 0.703px;
     text-transform: uppercase;
     height: 48px;
-    padding: 7.912px 27.253px !important;
-    border-radius: 0 !important;
-    font-weight: 400 !important;
+    padding: 7.912px 27.253px;
+    border-radius: 0 ;
+    font-weight: 400;
+    font-size: 14.066px;
 }
 .subscription-modal h4{
     font-size: 18px;
@@ -1282,4 +1285,11 @@ input:-internal-autofill-selected:active {
 }
 .subscription-modal-small-text{
     font-size: 12px;
+}
+.applyCoupon{
+    height: 54px;
+    text-transform: uppercase;
+    font-weight: 400;
+    background: #C9B896;
+    font-size: 13px;
 }
