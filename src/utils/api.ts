@@ -13,17 +13,22 @@ const getApiBaseUrl = () => {
   return ACTUAL_API_BASE;
 };
 
+// Primary CORS proxy: must respond to preflight (OPTIONS) with 2xx.
+// corsproxy.io often fails preflight on staging (non-OK status); AllOrigins handles it.
+const DEFAULT_CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
 /**
  * In production, the browser blocks direct API calls (CORS). We must send the
- * full URL (path + query) to the CORS proxy so it returns 2xx for preflight.
- * Format: proxy + encoded(fullUrl). Using ?url= is the recommended format.
+ * full URL (path + query) to a CORS proxy that returns 2xx for preflight (OPTIONS).
+ * Override via REACT_APP_CORS_PROXY (e.g. your own proxy on Render) if needed.
  */
 const getProxiedUrl = (actualUrl: string): string => {
   if (process.env.NODE_ENV === 'development') {
     return actualUrl;
   }
-  // Recommended format: ?url= to avoid ambiguity with path/query
-  return `https://corsproxy.io/?url=${encodeURIComponent(actualUrl)}`;
+  const proxyBase = process.env.REACT_APP_CORS_PROXY ?? DEFAULT_CORS_PROXY;
+  const base = proxyBase.endsWith('=') || proxyBase.endsWith('/') ? proxyBase : `${proxyBase}?url=`;
+  return `${base}${encodeURIComponent(actualUrl)}`;
 };
 
 // Get the actual API URL (without proxy) for logging purposes
@@ -49,7 +54,7 @@ const getActualApiUrl = (url: string): string => {
   }
   
   // If it's a proxy URL (?url= or ?encoded), try to extract the destination URL
-  const proxyMatch = url.match(/https:\/\/corsproxy\.io\/\?(?:url=)?(.+)/);
+  const proxyMatch = url.match(/(?:corsproxy\.io|allorigins\.win\/raw)\/?\?(?:url=)?(.+)/) ?? url.match(/\?url=(.+)/);
   if (proxyMatch) {
     try {
       return decodeURIComponent(proxyMatch[1]);
@@ -69,9 +74,9 @@ const getActualApiUrl = (url: string): string => {
 const API_BASE_URL = getApiBaseUrl();
 const API_TOKEN = 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
 
-// Fallback CORS proxies in case the primary one fails
+// Fallback CORS proxies if primary fails (e.g. rate limit or preflight issue)
 const FALLBACK_PROXIES = [
-  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?url=',
   'https://cors-anywhere.herokuapp.com/',
   'https://thingproxy.freeboard.io/fetch/'
 ];

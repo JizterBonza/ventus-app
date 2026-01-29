@@ -3,6 +3,8 @@
 ## Problem Description
 The application was experiencing "Failed to fetch" errors in production when trying to access the API at `https://api-staging.littleemperors.com/v2`. This was caused by CORS (Cross-Origin Resource Sharing) restrictions that prevent browsers from making direct API calls to different domains.
 
+**Staging preflight error:** On staging (e.g. `ventus-app-staging.onrender.com`), corsproxy.io can return a non-2xx status for the browser’s OPTIONS preflight, causing: *"Response to preflight request doesn't pass access control check: It does not have HTTP ok status."* The fix is to use a proxy that responds to preflight (e.g. **api.allorigins.win** as primary) and/or set `REACT_APP_CORS_PROXY`.
+
 ## Root Cause
 - **Development**: Uses a proxy (`setupProxy.js`) to bypass CORS restrictions
 - **Production**: Was making direct API calls to the external domain, which browsers block due to CORS policy
@@ -10,27 +12,16 @@ The application was experiencing "Failed to fetch" errors in production when try
 ## Solution Implemented
 
 ### 1. CORS Proxy Integration
-Updated `src/utils/api.ts` to use CORS proxies in production:
+Updated `src/utils/api.ts` to use CORS proxies in production. The **primary proxy is api.allorigins.win** (handles preflight correctly). You can override it for staging with an env var:
 
-```typescript
-const getApiBaseUrl = () => {
-  if (process.env.NODE_ENV === 'development') {
-    return '/v2'; // Use proxy in development
-  } else {
-    // Use CORS proxy in production to avoid CORS issues
-    const corsProxy = 'https://corsproxy.io/?';
-    const apiUrl = 'https://api-staging.littleemperors.com/v2';
-    return `${corsProxy}${encodeURIComponent(apiUrl)}`;
-  }
-};
-```
+- **REACT_APP_CORS_PROXY** – If set, this is used as the proxy base (e.g. `https://your-proxy.onrender.com/` or `https://api.allorigins.win/raw?url=`). Must support `?url=<encoded-full-url>` and respond to OPTIONS with 2xx.
 
 ### 2. Fallback Proxy System
-Implemented multiple fallback CORS proxies in case the primary one fails:
+If the primary proxy fails (e.g. rate limit or preflight), the app tries fallbacks:
 
 ```typescript
 const FALLBACK_PROXIES = [
-  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?url=',
   'https://cors-anywhere.herokuapp.com/',
   'https://thingproxy.freeboard.io/fetch/'
 ];
@@ -94,11 +85,12 @@ Navigate to `/api-test` to:
 
 ## Alternative Solutions (If CORS Proxies Fail)
 
-### 1. Contact API Provider
-Ask `littleemperors.com` to add CORS headers for your domain:
+### 1. Contact API Provider (recommended for staging/production)
+Ask `littleemperors.com` to allow your staging origin so you can call the API directly (no proxy):
 ```
-Access-Control-Allow-Origin: https://yourdomain.com
+Access-Control-Allow-Origin: https://ventus-app-staging.onrender.com
 ```
+Then you can avoid CORS proxies entirely for that environment.
 
 ### 2. Build Your Own Proxy Server
 Create a simple Express.js proxy:
