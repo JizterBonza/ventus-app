@@ -82,24 +82,39 @@ const FALLBACK_PROXIES = [
 ];
 
 /**
+ * When using a CORS proxy, we must not trigger a preflight (OPTIONS). Custom
+ * headers (Authorization, Content-Type) trigger preflight, and public proxies
+ * often don't return Access-Control-Allow-Origin on that response. So for
+ * GET requests to a proxy we send a "simple" request: no custom headers.
+ * The proxy fetches the URL server-side (without our auth); the API may still
+ * allow unauthenticated GET for search/hotels. Set REACT_APP_API_DIRECT=true
+ * when the API allows your origin (CORS) so we call the API directly with auth.
+ */
+
+/**
  * Makes an API request with fallback proxies.
- * In production, the full destination URL is wrapped in a CORS proxy so the
- * proxy receives one encoded URL and can respond to preflight with 2xx.
+ * In production, the full destination URL is wrapped in a CORS proxy. We use
+ * simple requests (no custom headers) when calling the proxy to avoid preflight.
  */
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   const actualUrl = getActualApiUrl(url);
-  const fetchUrl = process.env.NODE_ENV === 'production' ? getProxiedUrl(actualUrl) : url;
+  const useProxy = process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_DIRECT;
+  const fetchUrl = useProxy ? getProxiedUrl(actualUrl) : url;
+
+  // When calling a proxy, use a "simple" request (no custom headers) so the
+  // browser does not send OPTIONS preflight; public proxies often fail preflight.
+  const requestOptions: RequestInit = useProxy && (options.method === 'GET' || options.method === undefined)
+    ? { method: 'GET' }
+    : options;
 
   try {
     console.log('Attempting API request with primary URL:', actualUrl);
-    const response = await fetch(fetchUrl, options);
+    const response = await fetch(fetchUrl, requestOptions);
     
-    // If the response is ok, return it
     if (response.ok) {
       return response;
     }
     
-    // If it's a CORS error or network error, try fallback proxies
     if (response.status === 0 || response.status === 403 || response.status === 404) {
       throw new Error('Primary proxy failed, trying fallbacks');
     }
@@ -108,19 +123,14 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
   } catch (error) {
     console.warn('Primary API request failed, trying fallback proxies:', error);
     
-    // Try fallback proxies (each expects full destination URL encoded)
     for (const proxy of FALLBACK_PROXIES) {
       try {
         const fallbackUrl = `${proxy}${encodeURIComponent(actualUrl)}`;
         console.log('Trying fallback proxy:', fallbackUrl);
-        
-        const response = await fetch(fallbackUrl, {
-          ...options,
-          headers: {
-            ...options.headers,
-            'Origin': window.location.origin
-          }
-        });
+        const fallbackOpts = useProxy && (options.method === 'GET' || options.method === undefined)
+          ? { method: 'GET' }
+          : { ...options, headers: { ...options.headers, 'Origin': window.location.origin } };
+        const response = await fetch(fallbackUrl, fallbackOpts);
         
         if (response.ok) {
           console.log('Fallback proxy succeeded');
@@ -132,7 +142,6 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
       }
     }
     
-    // If all proxies fail, throw the original error
     throw error;
   }
 };
