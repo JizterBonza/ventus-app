@@ -759,21 +759,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                         borderBottom: idx < plan.benefits.length - 1 ? '1px solid #e0e0e0' : 'none'
                       }}>
                         <h4 style={{
-                          fontSize: '13px',
                           fontWeight: 300,
-                          color: '#1a1a1a',
                           margin: 0,
                           marginBottom: '6px',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
                           fontFamily: "'Lato', sans-serif"
                         }}>
                           {benefit.title.toUpperCase()}
                         </h4>
                         <p style={{
-                          fontSize: '13px',
-                          color: '#666',
-                          lineHeight: 1.5,
                           margin: 0,
                           fontWeight: 300,
                           fontFamily: "'Lato', sans-serif"
@@ -813,12 +807,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
                     >
                       Become a member
                     </button>
-                    <p style={{
+                    <p className="subscription-modal-small-text" style={{
                       textAlign: 'center',
-                      fontSize: '11px',
-                      color: '#999',
-                      margin: 0,
-                      fontFamily: "'Lato', sans-serif"
                     }}>
                       Annual fee group membership
                     </p>
