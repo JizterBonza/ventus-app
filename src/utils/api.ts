@@ -13,13 +13,13 @@ const getApiBaseUrl = () => {
   return ACTUAL_API_BASE;
 };
 
-// Primary CORS proxy: must respond to preflight (OPTIONS) with 2xx.
-// corsproxy.io often fails preflight on staging (non-OK status); AllOrigins handles it.
-const DEFAULT_CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+// Primary CORS proxy. api.allorigins.win can block staging origins (no Access-Control-Allow-Origin).
+// Try corsproxy.io first; override via REACT_APP_CORS_PROXY (e.g. your own proxy on Render) for reliability.
+const DEFAULT_CORS_PROXY = 'https://corsproxy.io/?url=';
 
 /**
  * In production, the browser blocks direct API calls (CORS). We must send the
- * full URL (path + query) to a CORS proxy that returns 2xx for preflight (OPTIONS).
+ * full URL (path + query) to a CORS proxy that returns CORS headers for your origin.
  * Override via REACT_APP_CORS_PROXY (e.g. your own proxy on Render) if needed.
  */
 const getProxiedUrl = (actualUrl: string): string => {
@@ -74,9 +74,9 @@ const getActualApiUrl = (url: string): string => {
 const API_BASE_URL = getApiBaseUrl();
 const API_TOKEN = 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
 
-// Fallback CORS proxies if primary fails (e.g. rate limit or preflight issue)
+// Fallback CORS proxies if primary fails (e.g. CORS blocked, rate limit, or preflight issue)
 const FALLBACK_PROXIES = [
-  'https://corsproxy.io/?url=',
+  'https://api.allorigins.win/raw?url=',
   'https://cors-anywhere.herokuapp.com/',
   'https://thingproxy.freeboard.io/fetch/'
 ];

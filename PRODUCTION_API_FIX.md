@@ -5,6 +5,29 @@ The application was experiencing "Failed to fetch" errors in production when try
 
 **Staging preflight error:** On staging (e.g. `ventus-app-staging.onrender.com`), corsproxy.io can return a non-2xx status for the browser’s OPTIONS preflight, causing: *"Response to preflight request doesn't pass access control check: It does not have HTTP ok status."* The fix is to use a proxy that responds to preflight (e.g. **api.allorigins.win** as primary) and/or set `REACT_APP_CORS_PROXY`.
 
+### Understanding: "No 'Access-Control-Allow-Origin' header" on the CORS proxy
+
+When you see:
+```text
+Access to fetch at 'https://api.allorigins.win/raw?url=...' from origin 'https://ventus-app-staging.onrender.com'
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+**What this means:**
+
+1. **Who is blocking:** The **browser** is blocking the response. Your code is calling a CORS proxy (e.g. `api.allorigins.win`), not the API directly.
+
+2. **Why:** The proxy’s response does not include an `Access-Control-Allow-Origin` header (or doesn’t include your origin). For cross-origin requests, the browser only exposes the response to your page if the server explicitly allows your origin with that header. No header → browser hides the response and reports a CORS error.
+
+3. **Common causes:**
+   - The proxy **blocks or doesn’t allow** your staging origin (`https://ventus-app-staging.onrender.com`).
+   - The proxy returns an **error** (4xx/5xx or network error) and **error responses** sometimes don’t include CORS headers, so the browser still blocks.
+   - The proxy **changed policy** or is rate-limiting and omits CORS on certain responses.
+
+4. **What your code does:** When `fetch()` fails like this, the promise rejects with "Failed to fetch", so `makeApiRequest` catches it and tries the fallback proxies. If all proxies fail for similar CORS/network reasons, you see "Primary API request failed, trying fallback proxies" and the error propagates.
+
+**Reliable fix:** Use your **own proxy** (e.g. on Render) and set `REACT_APP_CORS_PROXY` to that URL, or ask the API provider to allow your staging origin so you can call the API directly (no proxy).
+
 ## Root Cause
 - **Development**: Uses a proxy (`setupProxy.js`) to bypass CORS restrictions
 - **Production**: Was making direct API calls to the external domain, which browsers block due to CORS policy
@@ -146,9 +169,9 @@ Use the `/api-test` page to:
 - Some proxies may be unreliable
 
 ### 2. Fallback Strategy
-- Primary proxy: `corsproxy.io`
+- Primary proxy: `corsproxy.io` (api.allorigins.win can block staging origins)
 - Fallback 1: `api.allorigins.win`
-- Fallback 2: `cors-anywhere.herokuapp.com`
+- Fallback 2: `cors-anywhere.herokuapp.com` (may require requesting access for your origin)
 - Fallback 3: `thingproxy.freeboard.io`
 
 ### 3. Caching
