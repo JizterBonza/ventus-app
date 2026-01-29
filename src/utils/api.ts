@@ -2,30 +2,41 @@ import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingR
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
 import { isAuthenticated } from './authService';
 
+const ACTUAL_API_BASE = 'https://api-staging.littleemperors.com/v2';
+
 // API Configuration with CORS proxy for production
 const getApiBaseUrl = () => {
   if (process.env.NODE_ENV === 'development') {
     return '/v2'; // Use proxy in development
-  } else {
-    // Use CORS proxy in production to avoid CORS issues
-    const corsProxy = 'https://corsproxy.io/?';
-    const apiUrl = 'https://api-staging.littleemperors.com/v2';
-    return `${corsProxy}${encodeURIComponent(apiUrl)}`;
   }
+  // Production: return actual base; makeApiRequest will wrap full URL in proxy
+  return ACTUAL_API_BASE;
+};
+
+/**
+ * In production, the browser blocks direct API calls (CORS). We must send the
+ * full URL (path + query) to the CORS proxy so it returns 2xx for preflight.
+ * Format: proxy + encoded(fullUrl). Using ?url= is the recommended format.
+ */
+const getProxiedUrl = (actualUrl: string): string => {
+  if (process.env.NODE_ENV === 'development') {
+    return actualUrl;
+  }
+  // Recommended format: ?url= to avoid ambiguity with path/query
+  return `https://corsproxy.io/?url=${encodeURIComponent(actualUrl)}`;
 };
 
 // Get the actual API URL (without proxy) for logging purposes
-const getActualApiBaseUrl = () => {
-  return 'https://api-staging.littleemperors.com/v2';
-};
+const getActualApiBaseUrl = () => ACTUAL_API_BASE;
 
 // Convert a proxy URL to the actual API URL for logging
 const getActualApiUrl = (url: string): string => {
   const actualBase = getActualApiBaseUrl();
   
-  // If it's a relative URL (development proxy), extract the path and construct full URL
+  // If it's a relative URL (development proxy), strip /v2 and append to base
   if (url.startsWith('/')) {
-    return `${actualBase}${url}`;
+    const path = url.startsWith('/v2/') ? url.slice(4) : url.slice(1);
+    return `${actualBase}/${path}`;
   }
   
   // If it contains the actual API URL, extract it
@@ -37,8 +48,8 @@ const getActualApiUrl = (url: string): string => {
     }
   }
   
-  // If it's a proxy URL, try to extract the encoded URL
-  const proxyMatch = url.match(/https:\/\/corsproxy\.io\/\?url=(.+)/);
+  // If it's a proxy URL (?url= or ?encoded), try to extract the destination URL
+  const proxyMatch = url.match(/https:\/\/corsproxy\.io\/\?(?:url=)?(.+)/);
   if (proxyMatch) {
     try {
       return decodeURIComponent(proxyMatch[1]);
@@ -66,15 +77,17 @@ const FALLBACK_PROXIES = [
 ];
 
 /**
- * Makes an API request with fallback proxies
+ * Makes an API request with fallback proxies.
+ * In production, the full destination URL is wrapped in a CORS proxy so the
+ * proxy receives one encoded URL and can respond to preflight with 2xx.
  */
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
-  // Try the primary URL first
+  const actualUrl = getActualApiUrl(url);
+  const fetchUrl = process.env.NODE_ENV === 'production' ? getProxiedUrl(actualUrl) : url;
+
   try {
-    // Log the actual API URL (without proxy) for clarity
-    const actualUrl = getActualApiUrl(url);
     console.log('Attempting API request with primary URL:', actualUrl);
-    const response = await fetch(url, options);
+    const response = await fetch(fetchUrl, options);
     
     // If the response is ok, return it
     if (response.ok) {
@@ -90,10 +103,10 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
   } catch (error) {
     console.warn('Primary API request failed, trying fallback proxies:', error);
     
-    // Try fallback proxies
+    // Try fallback proxies (each expects full destination URL encoded)
     for (const proxy of FALLBACK_PROXIES) {
       try {
-        const fallbackUrl = `${proxy}${encodeURIComponent(url.replace(getApiBaseUrl(), 'https://api-staging.littleemperors.com/v2'))}`;
+        const fallbackUrl = `${proxy}${encodeURIComponent(actualUrl)}`;
         console.log('Trying fallback proxy:', fallbackUrl);
         
         const response = await fetch(fallbackUrl, {
