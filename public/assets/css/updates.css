@@ -1221,3 +1221,65 @@ input:-internal-autofill-selected:active {
         left: 40px;
     }
 }
+
+
+.subscription-modal-overlay{
+    pointer-events: none;
+}
+.subscription-modal{
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    pointer-events: all;
+}
+.subscription-modal > div{
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 90vh;
+    scrollbar-width: thin;
+    scrollbar-color: #c4b896 #f5f5f5;
+}
+.subscription-modal > div::-webkit-scrollbar{
+    width: 8px;
+}
+.subscription-modal > div::-webkit-scrollbar-track{
+    background: #f5f5f5;
+    border-radius: 10px;
+}
+.subscription-modal > div::-webkit-scrollbar-thumb{
+    background: #c4b896;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+.subscription-modal > div::-webkit-scrollbar-thumb:hover{
+    background: #b8aa86;
+}
+.subscription-modal label{
+    line-height: 1;
+}
+.subscription-modal input[type="text"],
+.subscription-modal input[type="email"],
+.subscription-modal input[type="password"],
+.subscription-modal input[type="tel"],
+.subscription-modal select,
+.subscription-modal textarea{
+    width: 100% !important;
+}
+.subscription-modal  button{
+    letter-spacing: 0.703px;
+    text-transform: uppercase;
+    height: 48px;
+    padding: 7.912px 27.253px !important;
+    border-radius: 0 !important;
+    font-weight: 400 !important;
+}
+.subscription-modal h4{
+    font-size: 18px;
+}
+.subscription-modal p:not(.subscription-modal-small-text){
+    font-size: 16px;
+    line-height: 24px;
+}
+.subscription-modal-small-text{
+    font-size: 12px;
+}
