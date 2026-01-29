@@ -13,9 +13,9 @@ const getApiBaseUrl = () => {
   return ACTUAL_API_BASE;
 };
 
-// Primary CORS proxy. api.allorigins.win can block staging origins (no Access-Control-Allow-Origin).
-// Try corsproxy.io first; override via REACT_APP_CORS_PROXY (e.g. your own proxy on Render) for reliability.
-const DEFAULT_CORS_PROXY = 'https://corsproxy.io/?url=';
+// Primary CORS proxy. allorigins handles preflight for staging; corsproxy.io can block or rate-limit.
+// Override via REACT_APP_CORS_PROXY (e.g. your own proxy on Render) for reliability.
+const DEFAULT_CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 /**
  * In production, the browser blocks direct API calls (CORS). We must send the
@@ -76,6 +76,7 @@ const API_TOKEN = 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
 
 // Fallback CORS proxies if primary fails (e.g. CORS blocked, rate limit, or preflight issue)
 const FALLBACK_PROXIES = [
+  'https://corsproxy.io/?url=',
   'https://api.allorigins.win/raw?url=',
   'https://cors-anywhere.herokuapp.com/',
   'https://thingproxy.freeboard.io/fetch/'
@@ -142,7 +143,9 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
       }
     }
     
-    throw error;
+    throw new Error(
+      'Search is temporarily unavailable. Please try again in a few minutes.'
+    );
   }
 };
 
