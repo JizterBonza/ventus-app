@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { subscribeUser } from '../../utils/authService';
+import { subscribeUser, signupUser } from '../../utils/authService';
+import { useAuth } from '../../contexts/AuthContext';
 import { VALID_COUPONS, CouponValidation, SubscriptionPlan, SUBSCRIPTION_PLANS } from '../../types/subscription';
 
 interface SubscriptionModalProps {
@@ -34,6 +35,7 @@ const ORDERED_PLANS = [
 ];
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
+  const { isAuthenticated } = useAuth();
   const [currency, setCurrency] = useState('USD');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('travel-yearly');
   const [showForm, setShowForm] = useState(false);
@@ -417,6 +419,36 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
     setSubmitStatus('idle');
 
     try {
+      // Step 1: Sign up user if not authenticated
+      if (!isAuthenticated) {
+        // Combine country code and phone number for signup
+        const phone = formData.countryCode && formData.phoneNumber 
+          ? `${formData.countryCode}${formData.phoneNumber}` 
+          : undefined;
+
+        // Sign up the user first
+        const signupResponse = await signupUser({
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: phone,
+          agreeToTerms: true // Implicit agreement when submitting subscription form
+        });
+
+        if (!signupResponse.success) {
+          setSubmitStatus('error');
+          setSubmitMessage(signupResponse.error || 'Failed to create account. Please try again.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Signup successful - token is now in localStorage
+        // The auth context will pick this up on next render, but we can proceed with subscription
+      }
+
+      // Step 2: Subscribe user to the plan
       const response = await subscribeUser(
         selectedPlan.id,
         couponValidation?.valid ? formData.couponCode.toUpperCase().trim() : undefined,
@@ -429,6 +461,12 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
       if (response.success) {
         setSubmitStatus('success');
         setSubmitMessage(`Welcome to the ${selectedPlan.name} tier! Your membership has been activated successfully.`);
+        // Close modal after a short delay to show success message
+        setTimeout(() => {
+          onClose();
+          // Reload page to reflect new auth state
+          window.location.reload();
+        }, 2000);
       } else {
         setSubmitStatus('error');
         setSubmitMessage(response.error || 'Failed to process membership. Please try again.');

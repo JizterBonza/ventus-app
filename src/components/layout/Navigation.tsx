@@ -2,11 +2,9 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import UserMenu from "../shared/UserMenu";
-import SubscriptionModal from "../shared/SubscriptionModal";
 
 const Navigation: React.FC = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const { isAuthenticated, isLoading } = useAuth();
 
     return (
@@ -93,9 +91,9 @@ const Navigation: React.FC = () => {
                                         </Link>
                                     </li>
                                     <li className="nav-item signup-btn mobile-nav-auth desktop-auth">
-                                        <button 
+                                        <Link 
                                             className="nav-link" 
-                                            onClick={() => setIsSubscriptionModalOpen(true)}
+                                            to="/signup"
                                             style={{
                                                 background: '#aa8453',
                                                 color: '#fff',
@@ -103,11 +101,13 @@ const Navigation: React.FC = () => {
                                                 borderRadius: '4px',
                                                 marginLeft: '10px',
                                                 border: 'none',
-                                                cursor: 'pointer'
+                                                cursor: 'pointer',
+                                                textDecoration: 'none',
+                                                display: 'inline-block'
                                             }}
                                         >
                                             Sign Up
-                                        </button>
+                                        </Link>
                                     </li>
                                 </>
                             )}
@@ -115,12 +115,6 @@ const Navigation: React.FC = () => {
                     )}
                 </ul>
             </div>
-
-            {/* Subscription Modal */}
-            <SubscriptionModal 
-                isOpen={isSubscriptionModalOpen} 
-                onClose={() => setIsSubscriptionModalOpen(false)} 
-            />
         </>
     );
 };
