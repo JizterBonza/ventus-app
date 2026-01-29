@@ -560,20 +560,27 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
             onChange={(e) => setCurrency(e.target.value)}
             style={{
               padding: '4px 8px',
-              border: '1px solid #e0e0e0',
-              borderRadius: '4px',
+              border: '1px solid #E0E0E0',
+              borderRadius: '9px',
               background: '#fff',
               fontSize: '12px',
               cursor: 'pointer',
               color: '#333',
               fontFamily: "'Lato', sans-serif",
               width: '70px',
-              height: '40px',
+              height: '32px',
+              lineHeight: 1,
+              appearance: 'none',
+              paddingRight: '24px',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M1.64689 4.64604C1.69334 4.59948 1.74852 4.56253 1.80926 4.53733C1.87001 4.51212 1.93513 4.49915 2.00089 4.49915C2.06666 4.49915 2.13178 4.51212 2.19253 4.53733C2.25327 4.56253 2.30845 4.59948 2.35489 4.64604L8.00089 10.293L13.6469 4.64604C13.6934 4.59955 13.7486 4.56267 13.8093 4.53752C13.87 4.51236 13.9352 4.49941 14.0009 4.49941C14.0666 4.49941 14.1317 4.51236 14.1925 4.53752C14.2532 4.56267 14.3084 4.59955 14.3549 4.64604C14.4014 4.69253 14.4383 4.74772 14.4634 4.80846C14.4886 4.86919 14.5015 4.9343 14.5015 5.00004C14.5015 5.06578 14.4886 5.13088 14.4634 5.19162C14.4383 5.25236 14.4014 5.30755 14.3549 5.35404L8.35489 11.354C8.30845 11.4006 8.25327 11.4375 8.19253 11.4628C8.13178 11.488 8.06666 11.5009 8.00089 11.5009C7.93513 11.5009 7.87001 11.488 7.80926 11.4628C7.74852 11.4375 7.69334 11.4006 7.64689 11.354L1.64689 5.35404C1.60033 5.30759 1.56339 5.25242 1.53818 5.19167C1.51297 5.13093 1.5 5.06581 1.5 5.00004C1.5 4.93427 1.51297 4.86915 1.53818 4.80841C1.56339 4.74766 1.60033 4.69248 1.64689 4.64604Z' fill='%23000'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 6px center',
+              backgroundSize: '12px 12px'
             }}
           >
-            <option value="USD">USD</option>
-            <option value="GBP">GBP</option>
-            <option value="EUR">EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">£ GBP</option>
+            <option value="EUR">€ EUR</option>
           </select>
         </div>
 
