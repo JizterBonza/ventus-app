@@ -1176,6 +1176,7 @@ input:-internal-autofill-selected:active {
 .global-form .form{
     position: relative;
     overflow: visible;
+    max-width: 750px;
 }
 .global-form .form .form-column[style*="gridColumn"]{
     width: 100%;
@@ -1495,7 +1496,8 @@ select.form-control{
     font-weight: 300;
     margin-bottom: 0;
 }
-.availability-section .global-form .form{
+.availability-section .global-form .form,
+.booking-section .global-form .form{
     gap:0;
 }
 .room-types-list h6{
@@ -1512,4 +1514,25 @@ select.form-control{
     background: #dbe2d6;
     display: inline-block;
     padding: 0 10px;
+}
+.rooms-section .flex-dir-col{
+    flex-direction: column;
+    gap: 20px;
+}
+.text-muted.privacy{
+    line-height: 1.2;
+    text-align: center;
+    font-size: 14px;
+}
+.d-grid.submit-section{
+    display: flex !important;
+}
+.d-grid.submit-section .btn{
+    background: #000;
+}
+.d-grid.submit-section .btn:hover{
+    background: var(--gold);
+}
+.rooms-section .btn-primary:after{
+    display: none !important;
 }

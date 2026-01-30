@@ -1266,10 +1266,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     </div>
                 </div>
 
-                <div className="d-grid form-row">
+                <div className="d-grid form-row rooms-section">
                     <div className="form-column">
                         <div className="form-column-inner">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
+                            <div className="d-flex justify-content-between align-items-center mb-3 flex-dir-col">
                                 <h5 className="mt-3 mb-0">Rooms *</h5>
                                 <button
                                     type="button"
@@ -1310,14 +1310,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                         required
                                     />
                                     <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <label className="form-label mb-0">Children (Age)</label>
+                                        <label className="form-label mb-0" style={{ minWidth: '150px' }}>Children (Age)</label>
                                         <button
                                             type="button"
-                                            className="btn btn-sm btn-outline-secondary"
+                                            className="btn btn-sm btn-primary"
                                             onClick={() => addChild(roomIndex)}
                                             style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
                                         >
-                                            + Add Child
+                                         Add Child
                                         </button>
                                     </div>
                                     {room.children.map((child, childIndex) => (
@@ -1338,7 +1338,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                                 type="button"
                                                 className="btn btn-sm btn-outline-danger"
                                                 onClick={() => removeChild(roomIndex, childIndex)}
-                                                style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
+                                              
                                             >
                                                 Remove
                                             </button>
@@ -1350,7 +1350,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     </div>
                 </div>
 
-                <div className="d-grid" style={{ marginTop: '2rem' }}>
+                <div className="d-grid submit-section" style={{ marginTop: '2rem' }}>
                     {submitStatus !== "idle" && (
                         <div className={`alert ${submitStatus === "success" ? "alert-success" : "alert-danger"} mb-3`}>
                             {submitMessage}
@@ -1370,7 +1370,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                             "Submit Booking"
                         )}
                     </button>
-                    <small className="text-muted mt-2">
+                    <small className="privacy text-muted mt-2">
                         By submitting this form, you agree to our terms and conditions. Your booking will be processed
                         immediately.
                     </small>
