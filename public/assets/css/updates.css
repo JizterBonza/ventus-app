@@ -726,7 +726,7 @@ body .results-header p{
     top: 15px;
     left: 15px;
 }
-.section-quote .global-form .form input[type="text"],
+.section-quote .global-form .form input.hasDatepicker,
 .section-quote .global-form .form select.guest-select{
     padding-left: 40px;
 }
