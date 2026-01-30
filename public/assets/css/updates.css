@@ -1259,13 +1259,20 @@ input:-internal-autofill-selected:active {
     color: #000 !important;
     font-weight: 400 !important;
 }
-.subscription-modal input[type="text"],
-.subscription-modal input[type="email"],
-.subscription-modal input[type="password"],
-.subscription-modal input[type="tel"],
-.subscription-modal select,
-.subscription-modal textarea{
+.subscription-modal form input[type="text"],
+.subscription-modal form input[type="email"],
+.subscription-modal form input[type="password"],
+.subscription-modal form input[type="tel"],
+.subscription-modal form select,
+.subscription-modal form textarea{
     width: 100% !important;
+    border-radius: 0 !important;
+    border-color: #000 !important;
+    height: 53px !important;
+    line-height: 1;
+}
+.subscription-modal form input[type="radio"]{
+    accent-color: #000 !important;
 }
 .subscription-modal  .subscription-modal-button{
     letter-spacing: 0.703px;
