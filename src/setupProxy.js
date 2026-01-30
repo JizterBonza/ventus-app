@@ -20,7 +20,8 @@ module.exports = function(app) {
     })
   );
 
-  // Proxy for hotel search API
+  // Proxy for hotel search API (forwards auth so hotel details work)
+  const hotelApiToken = process.env.REACT_APP_API_TOKEN || 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
   app.use(
     '/v2',
     createProxyMiddleware({
@@ -29,6 +30,9 @@ module.exports = function(app) {
       secure: true,
       logLevel: 'debug',
       onProxyReq: (proxyReq, req, res) => {
+        if (hotelApiToken && !proxyReq.getHeader('authorization')) {
+          proxyReq.setHeader('Authorization', `Bearer ${hotelApiToken}`);
+        }
         console.log('Proxying request:', req.method, req.url);
       },
       onProxyRes: (proxyRes, req, res) => {

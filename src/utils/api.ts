@@ -72,7 +72,8 @@ const getActualApiUrl = (url: string): string => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
-const API_TOKEN = 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
+// Use REACT_APP_API_TOKEN in .env to override (e.g. if token expired); required for hotel details
+const API_TOKEN = process.env.REACT_APP_API_TOKEN || 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
 
 // Fallback CORS proxies if primary fails (e.g. CORS blocked, rate limit, or preflight issue)
 const FALLBACK_PROXIES = [
@@ -97,10 +98,21 @@ const FALLBACK_PROXIES = [
  * In production, the full destination URL is wrapped in a CORS proxy. We use
  * simple requests (no custom headers) when calling the proxy to avoid preflight.
  */
+/**
+ * When using a CORS proxy we cannot send Authorization header (triggers preflight).
+ * Append token to URL so the API can authenticate; many APIs accept access_token query param.
+ */
+const urlWithAuthIfProxied = (actualUrl: string, useProxy: boolean): string => {
+  if (!useProxy || !API_TOKEN) return actualUrl;
+  const sep = actualUrl.includes('?') ? '&' : '?';
+  return `${actualUrl}${sep}access_token=${encodeURIComponent(API_TOKEN)}`;
+};
+
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   const actualUrl = getActualApiUrl(url);
   const useProxy = process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_DIRECT;
-  const fetchUrl = useProxy ? getProxiedUrl(actualUrl) : url;
+  const urlForRequest = urlWithAuthIfProxied(actualUrl, useProxy);
+  const fetchUrl = useProxy ? getProxiedUrl(urlForRequest) : url;
 
   // When calling a proxy, use a "simple" request (no custom headers) so the
   // browser does not send OPTIONS preflight; public proxies often fail preflight.
@@ -126,7 +138,7 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
     
     for (const proxy of FALLBACK_PROXIES) {
       try {
-        const fallbackUrl = `${proxy}${encodeURIComponent(actualUrl)}`;
+        const fallbackUrl = `${proxy}${encodeURIComponent(urlForRequest)}`;
         console.log('Trying fallback proxy:', fallbackUrl);
         const fallbackOpts = useProxy && (options.method === 'GET' || options.method === undefined)
           ? { method: 'GET' }
@@ -356,6 +368,13 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
     
     const data = await response.json();
     console.log('Hotel details response data:', data);
+    
+    // Handle API auth error (e.g. missing/invalid token, or proxy stripped headers)
+    if (data && (data.error === 'authentication' || data.message === 'Unauthenticated.')) {
+      throw new Error(
+        'Hotel details require a valid API token. Set REACT_APP_API_TOKEN in .env, or use REACT_APP_API_DIRECT=true if the API allows your origin.'
+      );
+    }
     
     // Handle API error responses
     if (!data.success && data.success !== undefined) {

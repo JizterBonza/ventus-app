@@ -174,7 +174,10 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
 ### Common Issues
 
 1. **CORS Errors**: Ensure the proxy is working in development
-2. **Authentication Errors**: Check that the API token is valid
+2. **Authentication Errors** (`error: "authentication"`, `message: "Unauthenticated."`):
+   - **Development**: The dev proxy forwards the `Authorization` header. If you still get this, the API token may be expired. Set `REACT_APP_API_TOKEN` in `.env` to a valid token and restart (`npm start`).
+   - **Production with CORS proxy**: The app sends the token as `access_token` in the URL when using a proxy (headers are stripped). If the API only accepts Bearer header, set `REACT_APP_API_DIRECT=true` and ensure the API allows CORS from your origin, or use your own backend proxy that adds the header.
+   - Check that the API token is valid
 3. **Network Errors**: Verify internet connectivity and API availability
 4. **Data Mapping Issues**: Check console logs for API response format changes
 
