@@ -316,6 +316,7 @@ END OF OLD BOOKING FORM */
 // NEW BOOKING FORM - Compatible with POST API
 import React, { useState, useEffect, useRef } from "react";
 import { BookingResponse, AvailabilityResponse } from "../../types/search";
+import { VALID_COUPONS, CouponValidation } from "../../types/subscription";
 import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -365,6 +366,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         rateIndex: rateIndex || "",
         guestName: "",
         guestEmail: "",
+        referralCode: "",
         paypalPayment: {
             orderId: undefined,
             payerId: undefined,
@@ -448,9 +450,15 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
     const [submitMessage, setSubmitMessage] = useState("");
+    const [referralCodeApplied, setReferralCodeApplied] = useState(false);
+    const [couponValidation, setCouponValidation] = useState<CouponValidation | null>(null);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        if (name === "referralCode") {
+            setReferralCodeApplied(false);
+            setCouponValidation(null);
+        }
         setFormData((prev) => ({
             ...prev,
             [name]: value,
@@ -486,10 +494,64 @@ const BookingForm: React.FC<BookingFormProps> = ({
         }
         return 0;
     };
+
+    // Currency from the selected rate (same as Room Type display)
+    const getSelectedRateCurrency = (): string => {
+        if (!availabilityResult || !formData.rateIndex) {
+            return availabilityResult?.default_currency || 'USD';
+        }
+        for (const roomType of availabilityResult.room_types || []) {
+            if (roomType.rates && roomType.rates.length > 0) {
+                const selectedRate = roomType.rates.find(rate => String(rate.rate_index) === formData.rateIndex);
+                if (selectedRate) {
+                    return selectedRate.requested_currency_code ?? selectedRate.currency_code ?? availabilityResult.default_currency ?? 'USD';
+                }
+            }
+            if (String(roomType.rate_index) === formData.rateIndex) {
+                const rateObj = typeof roomType.rate === 'object' ? roomType.rate : null;
+                const rateInfo = rateObj as { requested_currency_code?: string; currency_code?: string } | null;
+                return rateInfo?.requested_currency_code ?? rateInfo?.currency_code ?? roomType.currency ?? availabilityResult.default_currency ?? 'USD';
+            }
+        }
+        return availabilityResult?.default_currency || 'USD';
+    };
+
+    // Format amount with thousand separators and 2 decimals (same style as Room Type)
+    const formatBookingAmount = (value: number): string => {
+        return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const validateCoupon = (code: string): CouponValidation => {
+        const upperCode = code.toUpperCase().trim();
+        if (!upperCode) return { valid: false, discountPercent: 0, message: '' };
+        const coupon = VALID_COUPONS[upperCode];
+        if (coupon) {
+            return { valid: true, discountPercent: coupon.discountPercent, message: coupon.description };
+        }
+        return { valid: false, discountPercent: 0, message: 'Invalid coupon code' };
+    };
+
+    const handleCouponApply = () => {
+        if (formData.referralCode.trim()) {
+            const validation = validateCoupon(formData.referralCode);
+            setCouponValidation(validation);
+            setReferralCodeApplied(true);
+        }
+    };
+
+    const calculateDiscountedTotal = (): number => {
+        const baseTotal = calculateBookingTotal();
+        if (baseTotal <= 0) return 0;
+        if (couponValidation?.valid && couponValidation.discountPercent > 0) {
+            const discountMultiplier = 1 - couponValidation.discountPercent / 100;
+            return Math.round(baseTotal * discountMultiplier * 100) / 100;
+        }
+        return baseTotal;
+    };
     
     // PayPal button handlers
     useEffect(() => {
-        const currency = availabilityResult?.default_currency || 'USD';
+        const currency = getSelectedRateCurrency();
         
         // Only initialize if we have a rate selected and total > 0
         if (!formData.rateIndex || paypalApproved) {
@@ -588,7 +650,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 paypalContainerRef.current.innerHTML = '';
             }
         };
-    }, [formData.rateIndex, availabilityResult, paypalApproved]);
+    }, [formData.rateIndex, formData.referralCode, availabilityResult, paypalApproved, couponValidation]);
 
     const loadPayPalScript = (currency: string = 'USD') => {
         // Check again if PayPal is already loaded
@@ -695,14 +757,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
         // Clear existing buttons
         container.innerHTML = '';
         
-        const totalAmount = calculateBookingTotal();
+        const totalAmount = calculateDiscountedTotal();
         if (totalAmount <= 0) {
             container.innerHTML = '<p class="text-muted">Please select a room type and rate to see payment options.</p>';
             isInitializingRef.current = false;
             return;
         }
 
-        const currency = availabilityResult?.default_currency || 'USD';
+        const currency = getSelectedRateCurrency();
         
         // Set initialization flag
         isInitializingRef.current = true;
@@ -982,6 +1044,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 rateIndex: formData.rateIndex,
                 guestName: formData.guestName,
                 guestEmail: formData.guestEmail,
+                referralCode: formData.referralCode || undefined,
                 paymentMethod: {
                     type: 'paypal',
                     orderId: formData.paypalPayment.orderId,
@@ -1003,6 +1066,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     rateIndex: "",
                     guestName: "",
                     guestEmail: "",
+                    referralCode: "",
                     paypalPayment: {
                         orderId: undefined,
                         payerId: undefined,
@@ -1010,6 +1074,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     rooms: [{ adults: 1, children: [] }],
                 });
                 setPaypalApproved(false);
+                setReferralCodeApplied(false);
+                setCouponValidation(null);
             } else {
                 setSubmitStatus("error");
                 setSubmitMessage(response.message || "Booking failed. Please try again.");
@@ -1242,8 +1308,60 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         </div>
                     </div>
                 </div>
+                <div className="d-grid form-row">
+                        <div className="form-group mb-0">
+                            <label htmlFor="referralCode" className="form-label">
+                                Referral Code
+                            </label>
+                            <div className="d-flex gap-2">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    id="referralCode"
+                                    name="referralCode"
+                                    value={formData.referralCode}
+                                    onChange={handleInputChange}
+                                    placeholder="Referral code (optional)"
+                                    style={{ textTransform: 'uppercase' }}
+                                />
+                                <button
+                                    type="button"
+                                    className="apply-btn btn btn-outline-secondary"
+                                    onClick={handleCouponApply}
+                                    disabled={!formData.referralCode.trim() || isSubmitting}
+                                >
+                                    {referralCodeApplied ? "Applied" : "Apply"}
+                                </button>
+                            </div>
+                            {couponValidation && couponValidation.message && (
+                                <div className={`small mt-1 ${couponValidation.valid ? 'text-success' : 'text-danger'}`}>
+                                    {couponValidation.message}
+                                </div>
+                            )}
+                        </div>
+                </div>
                 <div className="d-grid form-row">  <h5 className="mt-5" style={{ borderTop: '1px solid #000', paddingTop: '40px' }}>Payment Method</h5></div>
               
+                {calculateBookingTotal() > 0 && (
+                    <div className="d-grid form-row">
+                            <div className="bg-light rounded p-3 mb-3">
+                                <div className="d-flex justify-content-between small mb-2">
+                                    <span>Booking total</span>
+                                    <span>{getSelectedRateCurrency()} {formatBookingAmount(calculateBookingTotal())}</span>
+                                </div>
+                                {couponValidation?.valid && couponValidation.discountPercent > 0 && (
+                                    <div className="d-flex justify-content-between small text-success mb-2">
+                                        <span>Discount ({couponValidation.discountPercent}%)</span>
+                                        <span>-{getSelectedRateCurrency()} {formatBookingAmount(calculateBookingTotal() - calculateDiscountedTotal())}</span>
+                                    </div>
+                                )}
+                                <div className="d-flex justify-content-between pt-2 border-top">
+                                    <span className="fw-semibold">Amount to pay</span>
+                                    <span className="fw-semibold">{getSelectedRateCurrency()} {formatBookingAmount(calculateDiscountedTotal())}</span>
+                                </div>
+                            </div>
+                    </div>
+                )}
                 <div className="d-grid form-row">
                     <div className="form-column">
                         <div className="form-column-inner">

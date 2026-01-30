@@ -933,6 +933,7 @@ export interface BookingRequest {
   rateIndex: string;
   guestName: string;
   guestEmail: string;
+  referralCode?: string;
   paymentMethod: {
     type: 'paypal';
     orderId?: string;
@@ -991,7 +992,7 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
     // Otherwise keep as string (for identifiers like "SODR79-R7O")
     
     // Prepare JSON body with proper data types
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       start_date: bookingData.startDate,
       end_date: bookingData.endDate,
       session_id: bookingData.sessionId,
@@ -1009,6 +1010,9 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
         children: room.children || [],
       })),
     };
+    if (bookingData.referralCode && bookingData.referralCode.trim() !== '') {
+      requestBody.referral_code = bookingData.referralCode.trim();
+    }
     
     console.log('Booking request body:', JSON.stringify(requestBody, null, 2));
     
