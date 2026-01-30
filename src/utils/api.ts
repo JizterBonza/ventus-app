@@ -17,10 +17,15 @@ const getApiBaseUrl = () => {
     // Extract base URL (remove /api/auth if present)
     // e.g., https://ventus-backend.onrender.com/api/auth -> https://ventus-backend.onrender.com
     const backendBase = authApiUrl.replace(/\/api\/auth.*$/, '');
-    return `${backendBase}/v2`; // Use backend proxy
+    const backendProxyUrl = `${backendBase}/v2`;
+    console.log('✅ Using backend proxy:', backendProxyUrl);
+    return backendProxyUrl; // Use backend proxy
   }
   
   // Fallback: return actual base; makeApiRequest will wrap full URL in CORS proxy
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ REACT_APP_AUTH_API_URL not set - falling back to CORS proxy');
+  }
   return ACTUAL_API_BASE;
 };
 
@@ -128,6 +133,19 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
   const usingBackendProxy = backendBase && 
                             !process.env.REACT_APP_API_DIRECT && 
                             (url.startsWith(backendBase) || API_BASE_URL.startsWith(backendBase));
+  
+  // Debug logging for staging/production
+  if (process.env.NODE_ENV === 'production') {
+    console.log('🔍 API Request Debug:', {
+      environment: process.env.NODE_ENV,
+      REACT_APP_AUTH_API_URL: authApiUrl || 'NOT SET',
+      backendBase: backendBase || 'N/A',
+      API_BASE_URL,
+      url,
+      usingBackendProxy,
+      REACT_APP_API_DIRECT: process.env.REACT_APP_API_DIRECT || 'NOT SET'
+    });
+  }
   
   // Only use CORS proxy if:
   // 1. In production AND
