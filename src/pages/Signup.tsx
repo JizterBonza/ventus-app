@@ -47,7 +47,7 @@ const Signup: React.FC = () => {
     password: '',
     confirmPassword: '',
     cityOfResidence: '',
-    countryCode: '+44',
+    countryCode: '',
     phoneNumber: '',
     birthday: '',
     instagramCompetition: '',
@@ -345,8 +345,8 @@ const Signup: React.FC = () => {
                 </div>
 
                 {/* Currency selector */}
-                <div className="d-flex justify-content-end mb-3">
-                  <label className="me-2 align-self-center small text-muted">Currency</label>
+                <div className="d-flex justify-content-end mb-3 currency-selector">
+                  <label className="me-2 align-self-center small">Currency</label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value as 'USD' | 'GBP' | 'EUR')}
@@ -361,12 +361,13 @@ const Signup: React.FC = () => {
 
                 {/* Plan (Travel only) - light styling, never black */}
                 <div className="mb-4">
-                  <div className="card border" style={{ backgroundColor: '#fff', color: '#333' }}>
+                  <div className="card border travel-card" style={{ backgroundColor: '#fff', color: '#333' }}>
                     <div className="card-body">
-                      <h5 className="card-title small text-uppercase mb-1" style={{ color: '#333' }}>{selectedPlan.name}</h5>
+                      <h3 className="card-title text-uppercase mb-1" style={{ color: '#333' }}>{selectedPlan.name}</h3>
                       <p className="mb-0">
                         <span className="fw-bold" style={{ color: '#333' }}>{currencySymbol}{getPrice(selectedPlan)}</span>
-                        <span className="small text-muted">/year</span>
+                        <br></br>
+                        <span className="small">per year</span>
                       </p>
                     </div>
                   </div>
@@ -385,42 +386,46 @@ const Signup: React.FC = () => {
                 )}
 
                 <form onSubmit={handleSubmit}>
-                  {/* First Name */}
-                  <div className="form-group mb-3">
-                    <label className="form-label">First name</label>
-                    <input
-                      type="text"
-                      className={`form-control ${validationErrors.firstName ? 'is-invalid' : ''}`}
-                      value={formData.firstName}
-                      onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      disabled={isLoading}
-                    />
-                    {validationErrors.firstName && (
-                      <div className="invalid-feedback d-block">{validationErrors.firstName}</div>
-                    )}
-                  </div>
-
-                  {/* Last Name */}
-                  <div className="form-group mb-3">
-                    <label className="form-label">Last name</label>
-                    <input
-                      type="text"
-                      className={`form-control ${validationErrors.lastName ? 'is-invalid' : ''}`}
-                      value={formData.lastName}
-                      onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      disabled={isLoading}
-                    />
-                    {validationErrors.lastName && (
-                      <div className="invalid-feedback d-block">{validationErrors.lastName}</div>
-                    )}
+                  {/* First Name & Last Name */}
+                  <div className="row mb-2">
+                    <div className="col-md-6">
+                      <div className="form-group">
+                        <input
+                          type="text"
+                          className={`form-control ${validationErrors.firstName ? 'is-invalid' : ''}`}
+                          placeholder="First name"
+                          value={formData.firstName}
+                          onChange={(e) => handleInputChange('firstName', e.target.value)}
+                          disabled={isLoading}
+                        />
+                        {validationErrors.firstName && (
+                          <div className="invalid-feedback d-block">{validationErrors.firstName}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="form-group">
+                        <input
+                          type="text"
+                          className={`form-control ${validationErrors.lastName ? 'is-invalid' : ''}`}
+                          placeholder="Last name"
+                          value={formData.lastName}
+                          onChange={(e) => handleInputChange('lastName', e.target.value)}
+                          disabled={isLoading}
+                        />
+                        {validationErrors.lastName && (
+                          <div className="invalid-feedback d-block">{validationErrors.lastName}</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Email */}
                   <div className="form-group mb-3">
-                    <label className="form-label">Email</label>
                     <input
                       type="email"
                       className={`form-control ${validationErrors.email ? 'is-invalid' : ''}`}
+                      placeholder="Email"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       disabled={isLoading}
@@ -432,10 +437,10 @@ const Signup: React.FC = () => {
 
                   {/* Password */}
                   <div className="form-group mb-3">
-                    <label className="form-label">Password</label>
                     <input
                       type="password"
                       className={`form-control ${validationErrors.password ? 'is-invalid' : ''}`}
+                      placeholder="Password"
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       disabled={isLoading}
@@ -447,10 +452,10 @@ const Signup: React.FC = () => {
 
                   {/* Confirm Password */}
                   <div className="form-group mb-3">
-                    <label className="form-label">Confirm password</label>
                     <input
                       type="password"
                       className={`form-control ${validationErrors.confirmPassword ? 'is-invalid' : ''}`}
+                      placeholder="Confirm password"
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                       disabled={isLoading}
@@ -462,10 +467,10 @@ const Signup: React.FC = () => {
 
                   {/* City of Residence */}
                   <div className="form-group mb-3">
-                    <label className="form-label">City of residence</label>
                     <input
                       type="text"
                       className={`form-control ${validationErrors.cityOfResidence ? 'is-invalid' : ''}`}
+                      placeholder="City of residence"
                       value={formData.cityOfResidence}
                       onChange={(e) => handleInputChange('cityOfResidence', e.target.value)}
                       disabled={isLoading}
@@ -477,13 +482,13 @@ const Signup: React.FC = () => {
 
                   {/* Country Code */}
                   <div className="form-group mb-3">
-                    <label className="form-label">Country code</label>
                     <select
                       className="form-control"
                       value={formData.countryCode}
                       onChange={(e) => handleInputChange('countryCode', e.target.value)}
                       disabled={isLoading}
                     >
+                      <option value="" disabled>Country code</option>
                       {COUNTRY_CODES.map((cc) => (
                         <option key={cc.code} value={cc.code}>
                           {cc.code} {cc.country}
@@ -494,10 +499,10 @@ const Signup: React.FC = () => {
 
                   {/* Phone Number */}
                   <div className="form-group mb-3">
-                    <label className="form-label">Phone number</label>
                     <input
                       type="tel"
                       className={`form-control ${validationErrors.phoneNumber ? 'is-invalid' : ''}`}
+                      placeholder="Phone number"
                       value={formData.phoneNumber}
                       onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                       disabled={isLoading}
@@ -509,12 +514,10 @@ const Signup: React.FC = () => {
 
                   {/* Birthday (optional) */}
                   <div className="form-group mb-3">
-                    <label className="form-label">Birthday (optional)</label>
                     <input
                       type="text"
                       className="form-control"
-                      style={{ maxWidth: '120px' }}
-                      placeholder="DD/MM"
+                      placeholder="Birthday (DD/MM)"
                       value={formData.birthday}
                       onChange={(e) => handleInputChange('birthday', e.target.value)}
                       disabled={isLoading}
@@ -523,7 +526,7 @@ const Signup: React.FC = () => {
 
                   {/* Instagram Competition */}
                   <div className="form-group mb-3 pt-3 border-top">
-                    <p className="small text-muted mb-2">
+                    <p className="small mb-2">
                       Do you want to participate in our weekly Instagram competition to win stays at hotels?
                     </p>
                     <div className="d-flex gap-3">
@@ -552,7 +555,7 @@ const Signup: React.FC = () => {
 
                   {/* Children */}
                   <div className="form-group mb-3 pt-3 border-top">
-                    <p className="small text-muted mb-2">
+                    <p className="small mb-2">
                       Do you have any children to add to your membership profile?
                     </p>
                     <div className="d-flex gap-3">
@@ -581,12 +584,11 @@ const Signup: React.FC = () => {
 
                   {/* Voucher / Referral code */}
                   <div className="form-group mb-3 pt-3 border-top">
-                    <label className="form-label">Referral code (optional)</label>
                     <div className="d-flex gap-2">
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="Enter coupon code"
+                        placeholder="Referral code (optional)"
                         value={formData.couponCode}
                         onChange={(e) => {
                           handleInputChange('couponCode', e.target.value.toUpperCase());
@@ -597,7 +599,7 @@ const Signup: React.FC = () => {
                       />
                       <button
                         type="button"
-                        className="btn btn-outline-secondary"
+                        className="apply-btn btn btn-outline-secondary"
                         onClick={handleCouponApply}
                         disabled={!formData.couponCode.trim() || isSubmitting}
                       >
@@ -614,7 +616,7 @@ const Signup: React.FC = () => {
                   {/* Price summary */}
                   <div className="bg-light rounded p-3 mb-3">
                     <div className="d-flex justify-content-between small mb-2">
-                      <span className="text-muted">{selectedPlan.name} Membership</span>
+                      <span>{selectedPlan.name} Membership</span>
                       <span>{currencySymbol}{basePrice}</span>
                     </div>
                     {couponValidation?.valid && couponValidation.discountPercent > 0 && (
@@ -632,7 +634,6 @@ const Signup: React.FC = () => {
                   {/* PayPal payment */}
                   {finalPrice > 0 && (
                     <div className="form-group mb-3">
-                      <label className="form-label">Payment method *</label>
                       {paypalApproved && paypalOrderId ? (
                         <div className="alert alert-success py-2 small">
                           <i className="ti-check me-2"></i> PayPal payment approved. Order ID: {paypalOrderId}
@@ -674,7 +675,7 @@ const Signup: React.FC = () => {
                   <button
                     type="submit"
                     className="btn btn-primary btn-lg butn-dark w-100"
-                    disabled={isSubmitting || (finalPrice > 0 && !paypalApproved)}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <>
@@ -682,7 +683,7 @@ const Signup: React.FC = () => {
                         Creating Account...
                       </>
                     ) : (
-                      'Join Now'
+                      finalPrice > 0 ? `Pay ${currencySymbol}${finalPrice} & Join` : 'Join Now'
                     )}
                   </button>
                 </form>
