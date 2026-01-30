@@ -1293,3 +1293,133 @@ input:-internal-autofill-selected:active {
     background: #C9B896;
     font-size: 13px;
 }
+.global-form .d-grid .btn{
+    width: 100%;
+}
+.global-form .form label{
+    line-height: 1;
+}
+.global-form .d-grid .btn.btn-outline-danger{
+    color: var(--bs-btn-hover-color);
+    background-color: var(--bs-btn-hover-bg);
+    border-color: var(--bs-btn-hover-border-color);
+}
+select.form-control{
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M1.64689 4.64604C1.69334 4.59948 1.74852 4.56253 1.80926 4.53733C1.87001 4.51212 1.93513 4.49915 2.00089 4.49915C2.06666 4.49915 2.13178 4.51212 2.19253 4.53733C2.25327 4.56253 2.30845 4.59948 2.35489 4.64604L8.00089 10.293L13.6469 4.64604C13.6934 4.59955 13.7486 4.56267 13.8093 4.53752C13.87 4.51236 13.9352 4.49941 14.0009 4.49941C14.0666 4.49941 14.1317 4.51236 14.1925 4.53752C14.2532 4.56267 14.3084 4.59955 14.3549 4.64604C14.4014 4.69253 14.4383 4.74772 14.4634 4.80846C14.4886 4.86919 14.5015 4.9343 14.5015 5.00004C14.5015 5.06578 14.4886 5.13088 14.4634 5.19162C14.4383 5.25236 14.4014 5.30755 14.3549 5.35404L8.35489 11.354C8.30845 11.4006 8.25327 11.4375 8.19253 11.4628C8.13178 11.488 8.06666 11.5009 8.00089 11.5009C7.93513 11.5009 7.87001 11.488 7.80926 11.4628C7.74852 11.4375 7.69334 11.4006 7.64689 11.354L1.64689 5.35404C1.60033 5.30759 1.56339 5.25242 1.53818 5.19167C1.51297 5.13093 1.5 5.06581 1.5 5.00004C1.5 4.93427 1.51297 4.86915 1.53818 4.80841C1.56339 4.74766 1.60033 4.69248 1.64689 4.64604Z' fill='%23000'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px 12px;
+    appearance: none;
+    cursor: pointer;
+    padding-inline: 20px;
+    height: 53px;
+    border-radius: 0;
+    border: 0;
+    font-weight: 300;
+}
+.form-control{
+    color: #000;
+}
+.form-control::placeholder{
+    color: #000;
+    font-weight: 300;
+    opacity: 1;
+}
+.form-control::-webkit-input-placeholder{
+    color: #000;
+    font-weight: 300;
+    opacity: 1;
+}
+.form-control::-moz-placeholder{
+    color: #000;
+    font-weight: 300;
+    opacity: 1;
+}
+.form-control:-ms-input-placeholder{
+    color: #000;
+    font-weight: 300;
+    opacity: 1;
+}
+.form-control:-moz-placeholder{
+    color: #000;
+    font-weight: 300;
+    opacity: 1;
+}
+.col-md-6 .form-group input{
+    margin-bottom: 0 !important;
+}
+.form-group p{
+    line-height: 1.2;
+}
+.signup-page input[type="radio"]{
+    width: 20px !important;
+    height: 20px !important;
+    border: 1px solid #000;
+    border-radius: 100% !important;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #fff;
+    cursor: pointer;
+    position: relative;
+    margin: 0 !important;
+    flex-shrink: 0;
+    padding: 0 !important;
+}
+.signup-page input[type="radio"]:checked{
+    background-color: #fff !important;
+}
+.signup-page input[type="radio"]:checked::after{
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 50%;
+    background-color: #000;
+}
+.signup-page input[type="radio"]:focus{
+    outline: none;
+    box-shadow: none;
+    border-color: #000;
+}
+.signup-page input[type="radio"]:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.btn.apply-btn{
+    height:53px;
+    background-color: rgb(170 133 83);
+    border: 0;
+    color: #fff;
+}
+.btn.apply-btn:disabled{
+    opacity: 0.3;
+}
+.travel-card{
+    text-align:center;
+    background: none !important;
+    border: 2px solid #ffffff42 !important;
+    padding: 10px;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+    max-width: 456px;
+    margin: 0 auto;
+}
+.travel-card .card-title{
+    font-weight: 300;
+}
+.travel-card .small{
+    font-size: 12px;
+    line-height: 1;
+
+}
+.currency-selector{
+    max-width: 456px;
+    margin: auto;
+}
