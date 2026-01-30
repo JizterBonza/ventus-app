@@ -1505,3 +1505,11 @@ select.form-control{
 @media screen and (max-width: 641px){
    .form .form-column-inner{margin-bottom: 10px;}
 }
+
+.hotel-price{
+    margin-bottom: 10px;
+    text-align: left;
+    background: #dbe2d6;
+    display: inline-block;
+    padding: 0 10px;
+}
