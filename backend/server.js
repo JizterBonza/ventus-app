@@ -507,9 +507,10 @@ app.use(
     changeOrigin: true,
     secure: true,
     logLevel: 'debug',
-    pathRewrite: {
-      '^/v2': '/v2', // Keep the /v2 path
-    },
+    // No pathRewrite needed - we want to keep /v2 in the path
+    // pathRewrite: {
+    //   '^/v2': '/v2', // Keep the /v2 path
+    // },
     onProxyReq: (proxyReq, req, res) => {
       // Add Bearer token if not already present
       if (hotelApiToken && !proxyReq.getHeader('authorization')) {
