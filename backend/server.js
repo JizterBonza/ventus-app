@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 require('dotenv').config();
 
 const app = express();
@@ -16,7 +17,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',  // Local development
       'https://ventus-app.onrender.com',  // Production frontend
-      'https://ventus-travel-staging.onrender.com',  // Staging frontend
+      'https://ventus-app-staging.onrender.com',  // Staging frontend
+      'https://ventus-travel-staging.onrender.com',  // Alternative staging frontend
     ];
     
     // Check if origin matches allowed list
@@ -531,7 +533,7 @@ app.use('/v2', express.json(), async (req, res) => {
 
 // ============= ERROR HANDLING =============
 
-// 404 handler
+// 404 handler - must be last
 app.use((req, res) => {
   res.status(404).json({
     success: false,

@@ -195,6 +195,12 @@ const SearchResults: React.FC = () => {
                                <p>{filteredHotels.length} results found</p>
                             </div>
 
+                            {error && (
+                                <div className="alert alert-danger" role="alert">
+                                    <strong>Error:</strong> {error}
+                                </div>
+                            )}
+
                             {loading ? (
                                 <div className="text-center">
                                     <div className="spinner-border" role="status">
