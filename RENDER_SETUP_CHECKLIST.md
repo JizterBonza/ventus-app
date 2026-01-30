@@ -40,7 +40,8 @@ Use this checklist to quickly set up auto-deployment for ventus-app on Render.
 
 ### Environment Variables
 - [ ] **NODE_ENV:** `production`
-- [ ] **REACT_APP_API_DIRECT:** `true` — Required for hotel details in staging. The app normally uses a CORS proxy (no Bearer header); your API accepts Bearer only. Setting this calls the API directly with the token; the API must allow CORS from your Render origin (e.g. `https://ventus-app.onrender.com`).
+- [ ] **REACT_APP_API_BASE:** `https://ventus-backend.onrender.com/v2` — **Recommended for staging.** Points the frontend at the backend’s /v2 proxy so check availability and booking work without public CORS proxies. Backend must have `HOTEL_API_TOKEN` set (see RENDER_TROUBLESHOOTING).
+- [ ] **REACT_APP_API_DIRECT:** `true` — Alternative to REACT_APP_API_BASE: call the hotel API directly. Only works if the API allows CORS from your Render origin.
 - [ ] **REACT_APP_API_TOKEN:** (same token that works in Postman) — Set this so the build uses a valid token. If unset, the app uses a fallback token that may be expired.
 
 ### Advanced Settings (Optional)

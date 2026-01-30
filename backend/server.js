@@ -492,6 +492,43 @@ app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
   }
 });
 
+// ============= HOTEL API PROXY (/v2) =============
+// Proxies hotel search/availability/booking to api-staging.littleemperors.com so the
+// staging frontend can call this backend (same CORS origin) instead of public CORS proxies.
+const HOTEL_API_BASE = process.env.HOTEL_API_BASE || 'https://api-staging.littleemperors.com';
+const HOTEL_API_TOKEN = process.env.HOTEL_API_TOKEN || process.env.REACT_APP_API_TOKEN || '';
+
+app.use('/v2', express.json(), async (req, res) => {
+  const targetUrl = `${HOTEL_API_BASE}${req.originalUrl}`;
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    ...(HOTEL_API_TOKEN && { 'Authorization': `Bearer ${HOTEL_API_TOKEN}` }),
+  };
+  try {
+    const fetchOptions = {
+      method: req.method,
+      headers,
+      ...(req.method !== 'GET' && req.method !== 'HEAD' && req.body && { body: JSON.stringify(req.body) }),
+    };
+    const proxyRes = await fetch(targetUrl, fetchOptions);
+    const contentType = proxyRes.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await proxyRes.json()
+      : await proxyRes.text();
+    const ct = proxyRes.headers.get('content-type') || 'application/json';
+    res.status(proxyRes.status).set('Content-Type', ct);
+    if (typeof data === 'object') res.json(data);
+    else res.send(data);
+  } catch (err) {
+    console.error('Hotel API proxy error:', err);
+    res.status(502).json({
+      success: false,
+      error: 'Unable to connect to the hotel API. Please try again later.',
+    });
+  }
+});
+
 // ============= ERROR HANDLING =============
 
 // 404 handler

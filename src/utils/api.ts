@@ -2,15 +2,26 @@ import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingR
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
 import { isAuthenticated } from './authService';
 
-const ACTUAL_API_BASE = 'https://api-staging.littleemperors.com/v2';
+const DEFAULT_API_BASE = 'https://api-staging.littleemperors.com/v2';
 
-// API Configuration with CORS proxy for production
+// API base: development uses dev proxy; production uses REACT_APP_API_BASE (backend proxy) or direct API.
 const getApiBaseUrl = () => {
   if (process.env.NODE_ENV === 'development') {
-    return '/v2'; // Use proxy in development
+    return '/v2'; // Use proxy in development (setupProxy.js)
   }
-  // Production: return actual base; makeApiRequest will wrap full URL in proxy
-  return ACTUAL_API_BASE;
+  // Staging: use backend proxy (e.g. https://ventus-backend.onrender.com/v2) to avoid CORS; no public proxy needed.
+  if (process.env.REACT_APP_API_BASE) {
+    return process.env.REACT_APP_API_BASE.replace(/\/$/, '');
+  }
+  return DEFAULT_API_BASE;
+};
+
+// Actual API base for logging and for deciding whether to use CORS proxy
+const getActualApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_BASE) {
+    return process.env.REACT_APP_API_BASE.replace(/\/$/, '');
+  }
+  return DEFAULT_API_BASE;
 };
 
 // Primary CORS proxy. allorigins handles preflight for staging; corsproxy.io can block or rate-limit.
@@ -30,9 +41,6 @@ const getProxiedUrl = (actualUrl: string): string => {
   const base = proxyBase.endsWith('=') || proxyBase.endsWith('/') ? proxyBase : `${proxyBase}?url=`;
   return `${base}${encodeURIComponent(actualUrl)}`;
 };
-
-// Get the actual API URL (without proxy) for logging purposes
-const getActualApiBaseUrl = () => ACTUAL_API_BASE;
 
 // Convert a proxy URL to the actual API URL for logging
 const getActualApiUrl = (url: string): string => {
@@ -110,7 +118,8 @@ const urlWithAuthIfProxied = (actualUrl: string, useProxy: boolean): string => {
 
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   const actualUrl = getActualApiUrl(url);
-  const useProxy = process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_DIRECT;
+  // Skip CORS proxy when using backend proxy (REACT_APP_API_BASE) or when API allows direct CORS (REACT_APP_API_DIRECT)
+  const useProxy = process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_DIRECT && !process.env.REACT_APP_API_BASE;
   const urlForRequest = urlWithAuthIfProxied(actualUrl, useProxy);
   const fetchUrl = useProxy ? getProxiedUrl(urlForRequest) : url;
 
@@ -813,6 +822,19 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
     }
   } catch (error) {
     console.error('checkHotelAvailability error:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    const isNetworkError = err.message === 'Failed to fetch' ||
+      err.name === 'TypeError' ||
+      err.message.includes('temporarily unavailable') ||
+      err.message.includes('NetworkError');
+    if (isNetworkError) {
+      console.warn(
+        'Staging fix: set REACT_APP_API_BASE to your backend URL (e.g. https://ventus-backend.onrender.com/v2) and deploy the backend /v2 proxy, or set REACT_APP_API_DIRECT=true if the API allows CORS.'
+      );
+      throw new Error(
+        'Unable to connect to the backend service. Please check if the backend is running and accessible.'
+      );
+    }
     throw error;
   }
 };

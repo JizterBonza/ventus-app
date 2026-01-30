@@ -106,6 +106,15 @@ If you see database connection errors:
   - Add your frontend URL to `allowedOrigins` in `backend/server.js`
   - Or update the regex pattern to match your domain
 
+#### Issue: "Unable to connect to the backend service" when checking availability on staging
+- **Cause**: The staging frontend calls the hotel API (api-staging.littleemperors.com). In production builds, POST requests (e.g. check availability) go through a public CORS proxy, which often fails for POST with headers.
+- **Solution (recommended)**: Use the backend as a proxy so the frontend talks to your backend (same CORS as auth):
+  1. **Backend**: The backend now has a `/v2` proxy that forwards to the hotel API. On Render, add env var `HOTEL_API_TOKEN` (or `REACT_APP_API_TOKEN`) to the **ventus-backend** service with the same token that works for the hotel API.
+  2. **Staging frontend**: In the **staging** web service on Render, add:  
+     `REACT_APP_API_BASE=https://ventus-backend.onrender.com/v2`  
+     (Use your actual backend URL if different.) Redeploy the frontend.
+- **Alternative**: If the hotel API allows CORS from your staging origin, set `REACT_APP_API_DIRECT=true` on the staging frontend (no backend proxy needed).
+
 #### Issue: "404 Not Found" when calling API
 - **Solution**: 
   - Verify backend service is running
