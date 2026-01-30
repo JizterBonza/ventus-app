@@ -1458,3 +1458,46 @@ select.form-control{
 .settings-page button{
     text-transform: uppercase;
 }
+.btn-outline-primary{
+    border-color: #000 !important;
+    color: #000 !important;
+  
+}
+.btn-outline-primary:after,
+.btn.btn-outline-danger:after{
+    display: none !important;
+}
+.btn-outline-primary:hover{
+    border-color: var(--gold) !important;
+    color: #fff !important;
+    background-color: var(--gold) !important;
+}
+.global-form .d-grid .children-inputs .btn.btn-outline-danger{
+    width: fit-content;
+    margin-right: 0;
+}
+.children-inputs label{
+    flex:1;
+}
+
+.alert-warning .fa{
+    display: none;
+}
+.hotels-grid .card-description + div{
+    color: #fff;
+    font-size: 16px;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.alert h4{
+    font-weight: 300;
+    margin-bottom: 0;
+}
+.availability-section .global-form .form{
+    gap:0;
+}
+@media screen and (max-width: 641px){
+   .form .form-column-inner{margin-bottom: 10px;}
+}
