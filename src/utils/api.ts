@@ -4,12 +4,23 @@ import { isAuthenticated } from './authService';
 
 const ACTUAL_API_BASE = 'https://api-staging.littleemperors.com/v2';
 
-// API Configuration with CORS proxy for production
+// API Configuration with backend proxy support
 const getApiBaseUrl = () => {
   if (process.env.NODE_ENV === 'development') {
-    return '/v2'; // Use proxy in development
+    return '/v2'; // Use setupProxy.js in development
   }
-  // Production: return actual base; makeApiRequest will wrap full URL in proxy
+  
+  // Production/Staging: Check if backend proxy is available
+  // If REACT_APP_AUTH_API_URL is set, use backend proxy (backend handles /v2 routing)
+  const authApiUrl = process.env.REACT_APP_AUTH_API_URL;
+  if (authApiUrl && !process.env.REACT_APP_API_DIRECT) {
+    // Extract base URL (remove /api/auth if present)
+    // e.g., https://ventus-backend.onrender.com/api/auth -> https://ventus-backend.onrender.com
+    const backendBase = authApiUrl.replace(/\/api\/auth.*$/, '');
+    return `${backendBase}/v2`; // Use backend proxy
+  }
+  
+  // Fallback: return actual base; makeApiRequest will wrap full URL in CORS proxy
   return ACTUAL_API_BASE;
 };
 
@@ -110,7 +121,22 @@ const urlWithAuthIfProxied = (actualUrl: string, useProxy: boolean): string => {
 
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   const actualUrl = getActualApiUrl(url);
-  const useProxy = process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_DIRECT;
+  
+  // Check if we're using backend proxy (URL starts with backend base, not actual API)
+  const authApiUrl = process.env.REACT_APP_AUTH_API_URL;
+  const backendBase = authApiUrl ? authApiUrl.replace(/\/api\/auth.*$/, '') : '';
+  const usingBackendProxy = backendBase && 
+                            !process.env.REACT_APP_API_DIRECT && 
+                            (url.startsWith(backendBase) || API_BASE_URL.startsWith(backendBase));
+  
+  // Only use CORS proxy if:
+  // 1. In production AND
+  // 2. Not using direct mode AND
+  // 3. Not using backend proxy (backend proxy handles CORS)
+  const useProxy = process.env.NODE_ENV === 'production' && 
+                   !process.env.REACT_APP_API_DIRECT && 
+                   !usingBackendProxy;
+  
   const urlForRequest = urlWithAuthIfProxied(actualUrl, useProxy);
   const fetchUrl = useProxy ? getProxiedUrl(urlForRequest) : url;
 

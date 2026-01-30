@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 require('dotenv').config();
 
 const app = express();
@@ -16,7 +17,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',  // Local development
       'https://ventus-app.onrender.com',  // Production frontend
-      'https://ventus-travel-staging.onrender.com',  // Staging frontend
+      'https://ventus-app-staging.onrender.com',  // Staging frontend
+      'https://ventus-travel-staging.onrender.com',  // Alternative staging frontend
     ];
     
     // Check if origin matches allowed list
@@ -492,9 +494,48 @@ app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
   }
 });
 
+// ============= HOTEL API PROXY =============
+// Proxy for hotel search API (forwards auth so hotel details work)
+// This allows production/staging frontend to call /v2/* endpoints through backend
+// The backend adds the Bearer token and forwards to the hotel API
+// IMPORTANT: Place this AFTER auth routes but BEFORE 404 handler
+const hotelApiToken = process.env.REACT_APP_API_TOKEN || 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
+app.use(
+  '/v2',
+  createProxyMiddleware({
+    target: 'https://api-staging.littleemperors.com',
+    changeOrigin: true,
+    secure: true,
+    logLevel: 'debug',
+    pathRewrite: {
+      '^/v2': '/v2', // Keep the /v2 path
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      // Add Bearer token if not already present
+      if (hotelApiToken && !proxyReq.getHeader('authorization')) {
+        proxyReq.setHeader('Authorization', `Bearer ${hotelApiToken}`);
+      }
+      console.log('Proxying hotel API request:', req.method, req.url);
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      console.log('Hotel API proxy response status:', proxyRes.statusCode);
+    },
+    onError: (err, req, res) => {
+      console.error('Hotel API proxy error:', err);
+      // Don't send response if headers already sent
+      if (!res.headersSent) {
+        res.status(502).json({
+          success: false,
+          error: 'Proxy error: Unable to reach hotel API'
+        });
+      }
+    }
+  })
+);
+
 // ============= ERROR HANDLING =============
 
-// 404 handler
+// 404 handler - must be last
 app.use((req, res) => {
   res.status(404).json({
     success: false,
