@@ -174,11 +174,11 @@ const Settings: React.FC = () => {
         <div className="container">
           <div className="row">
             <div className="col-12">
-              <h1 className="mb-4">Settings</h1>
+              <h1 className="mb-4" style={{ fontSize: '40px' }}>Settings</h1>
               
               {/* Tabs */}
               <div className="settings-tabs mb-4" style={{
-                borderBottom: '2px solid #eee',
+                borderBottom: '2px solid rgba(0, 0, 0, 0.10)',
                 display: 'flex',
                 gap: '20px'
               }}>
@@ -193,8 +193,8 @@ const Settings: React.FC = () => {
                     border: 'none',
                     padding: '15px 20px',
                     cursor: 'pointer',
-                    borderBottom: activeTab === 'email' ? '2px solid #aa8453' : '2px solid transparent',
-                    color: activeTab === 'email' ? '#aa8453' : '#333',
+                    borderBottom: activeTab === 'email' ? '2px solid #000' : '2px solid transparent',
+                    color: activeTab === 'email' ? '#000' : '#000',
                     fontWeight: activeTab === 'email' ? 'bold' : 'normal',
                     marginBottom: '-2px'
                   }}
@@ -212,8 +212,8 @@ const Settings: React.FC = () => {
                     border: 'none',
                     padding: '15px 20px',
                     cursor: 'pointer',
-                    borderBottom: activeTab === 'password' ? '2px solid #aa8453' : '2px solid transparent',
-                    color: activeTab === 'password' ? '#aa8453' : '#333',
+                    borderBottom: activeTab === 'password' ? '2px solid #000' : '2px solid transparent',
+                    color: activeTab === 'password' ? '#000' : '#000',
                     fontWeight: activeTab === 'password' ? 'bold' : 'normal',
                     marginBottom: '-2px'
                   }}
@@ -233,18 +233,13 @@ const Settings: React.FC = () => {
                       <input
                         type="email"
                         id="email"
-                        className="form-control"
+                        className={`form-control ${emailErrors.email ? 'is-invalid' : ''}`}
+                        placeholder="New email address"
                         value={emailForm.email}
                         onChange={(e) => setEmailForm(prev => ({ ...prev, email: e.target.value }))}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: emailErrors.email ? '1px solid #dc3545' : '1px solid #ddd',
-                          borderRadius: '4px'
-                        }}
                       />
                       {emailErrors.email && (
-                        <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                        <div className="invalid-feedback d-block">
                           {emailErrors.email}
                         </div>
                       )}
@@ -257,18 +252,13 @@ const Settings: React.FC = () => {
                       <input
                         type="password"
                         id="currentPasswordEmail"
-                        className="form-control"
+                        className={`form-control ${emailErrors.currentPassword ? 'is-invalid' : ''}`}
+                        placeholder="Current password"
                         value={emailForm.currentPassword}
                         onChange={(e) => setEmailForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: emailErrors.currentPassword ? '1px solid #dc3545' : '1px solid #ddd',
-                          borderRadius: '4px'
-                        }}
                       />
                       {emailErrors.currentPassword && (
-                        <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                        <div className="invalid-feedback d-block">
                           {emailErrors.currentPassword}
                         </div>
                       )}
@@ -304,15 +294,6 @@ const Settings: React.FC = () => {
                       type="submit"
                       className="btn btn-primary"
                       disabled={isSubmitting}
-                      style={{
-                        backgroundColor: '#aa8453',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '10px 30px',
-                        borderRadius: '4px',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        opacity: isSubmitting ? 0.6 : 1
-                      }}
                     >
                       {isSubmitting ? 'Updating...' : 'Update Email'}
                     </button>
@@ -331,18 +312,13 @@ const Settings: React.FC = () => {
                       <input
                         type="password"
                         id="currentPassword"
-                        className="form-control"
+                        className={`form-control ${passwordErrors.currentPassword ? 'is-invalid' : ''}`}
+                        placeholder="Current password"
                         value={passwordForm.currentPassword}
                         onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: passwordErrors.currentPassword ? '1px solid #dc3545' : '1px solid #ddd',
-                          borderRadius: '4px'
-                        }}
                       />
                       {passwordErrors.currentPassword && (
-                        <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                        <div className="invalid-feedback d-block">
                           {passwordErrors.currentPassword}
                         </div>
                       )}
@@ -355,18 +331,13 @@ const Settings: React.FC = () => {
                       <input
                         type="password"
                         id="newPassword"
-                        className="form-control"
+                        className={`form-control ${passwordErrors.newPassword ? 'is-invalid' : ''}`}
+                        placeholder="New password"
                         value={passwordForm.newPassword}
                         onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: passwordErrors.newPassword ? '1px solid #dc3545' : '1px solid #ddd',
-                          borderRadius: '4px'
-                        }}
                       />
                       {passwordErrors.newPassword && (
-                        <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                        <div className="invalid-feedback d-block">
                           {passwordErrors.newPassword}
                         </div>
                       )}
@@ -379,18 +350,13 @@ const Settings: React.FC = () => {
                       <input
                         type="password"
                         id="confirmPassword"
-                        className="form-control"
+                        className={`form-control ${passwordErrors.confirmPassword ? 'is-invalid' : ''}`}
+                        placeholder="Confirm new password"
                         value={passwordForm.confirmPassword}
                         onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: passwordErrors.confirmPassword ? '1px solid #dc3545' : '1px solid #ddd',
-                          borderRadius: '4px'
-                        }}
                       />
                       {passwordErrors.confirmPassword && (
-                        <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                        <div className="invalid-feedback d-block">
                           {passwordErrors.confirmPassword}
                         </div>
                       )}
@@ -426,15 +392,6 @@ const Settings: React.FC = () => {
                       type="submit"
                       className="btn btn-primary"
                       disabled={isSubmitting}
-                      style={{
-                        backgroundColor: '#aa8453',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '10px 30px',
-                        borderRadius: '4px',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        opacity: isSubmitting ? 0.6 : 1
-                      }}
                     >
                       {isSubmitting ? 'Updating...' : 'Update Password'}
                     </button>

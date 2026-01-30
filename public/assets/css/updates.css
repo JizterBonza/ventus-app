@@ -1423,3 +1423,11 @@ select.form-control{
     max-width: 456px;
     margin: auto;
 }
+
+.settings-page{
+    background: #DBE2D6;
+}
+.settings-page .search-form-section,
+.settings-page  .form-label{
+    display: none;
+}
