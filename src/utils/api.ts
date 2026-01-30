@@ -372,7 +372,7 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
     // Handle API auth error (e.g. missing/invalid token, or proxy stripped headers)
     if (data && (data.error === 'authentication' || data.message === 'Unauthenticated.')) {
       throw new Error(
-        'Hotel details require a valid API token. Set REACT_APP_API_TOKEN in .env, or use REACT_APP_API_DIRECT=true if the API allows your origin.'
+        'Hotel details require a valid API token. In staging/production the app uses a CORS proxy and sends the token as access_token in the URL; if the API only accepts Bearer header (like Postman), set REACT_APP_API_DIRECT=true in your staging env and ensure the API allows CORS from your origin. Also set REACT_APP_API_TOKEN to the same token that works in Postman.'
       );
     }
     
