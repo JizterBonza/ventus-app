@@ -1480,7 +1480,7 @@ select.form-control{
     flex:1;
 }
 
-.alert-warning .fa{
+.alert .fa{
     display: none;
 }
 .hotels-grid .card-description + div{
@@ -1498,6 +1498,10 @@ select.form-control{
 .availability-section .global-form .form{
     gap:0;
 }
+.room-types-list h6{
+    margin-bottom: 0 !important;
+}
+
 @media screen and (max-width: 641px){
    .form .form-column-inner{margin-bottom: 10px;}
 }

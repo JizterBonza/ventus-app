@@ -871,7 +871,7 @@ const HotelDetail: React.FC = () => {
             </section>
 
             {availabilityResult && availabilityResult.is_available && availabilityResult.room_types && availabilityResult.room_types.length > 0 && (
-                <section className="section-padding booking-section">
+                <section className="section-padding booking-section" style={{ paddingTop: 0 }}>
                     <div className="container">
                         {isAuthenticated ? (
                             <BookingForm
@@ -910,7 +910,13 @@ const HotelDetail: React.FC = () => {
                             <div className="global-form">
                                 <div className="text-center">
                                     <h2>Book Your Stay</h2>
-                                    <p className="text-muted mb-0">Hotel: {hotel.name}</p>
+                                    <p className="text-muted mb-3">Hotel: {hotel.name}</p>
+                                    <button 
+                                                onClick={() => setIsSubscriptionModalOpen(true)}
+                                                className="btn btn-primary btn-lg"
+                                            >
+                                                Join Now
+                                            </button>
                                 </div>
                                 {/* <div className="alert alert-info text-center">
                                     <h4><i className="fa fa-info-circle me-2"></i>Login Required</h4>
@@ -922,23 +928,20 @@ const HotelDetail: React.FC = () => {
                                         Don't have an account? <Link to="/signup">Sign up here</Link>
                                     </p>
                                 </div> */}
-                                <div className="section-membership" style={{ display: 'block' }}>
+                              {/*    <div className="section-membership" style={{ display: 'block' }}>
                                     <div className="section-membership-content text-center">
                                         <div className="membership-content_heading">
                                             <img src="/assets/img/ventus-logo.png" />
                                             <h3>Join now to unlock exclusive member benefits</h3>
-                                            <button 
-                                                onClick={() => setIsSubscriptionModalOpen(true)}
-                                                className="btn btn-primary btn-lg"
-                                            >
-                                                Join Now
-                                            </button>
+                                            
                                         </div>
                                         <div className="membership-content_foot">
                                             <p>Already have an account? Sign in <Link to="/login">here</Link></p>
                                         </div>
                                     </div>
-                                </div>
+                                </div>  */}
+
+
                             </div>
                         )}
                     </div>
