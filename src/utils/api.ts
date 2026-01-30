@@ -182,12 +182,39 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
     ? { method: 'GET' }
     : options;
 
+  // Enhanced debug logging
+  if (process.env.NODE_ENV === 'production') {
+    console.log('🚀 Fetch Details:', {
+      usingBackendProxy,
+      useProxy,
+      fetchUrl,
+      actualUrlForLogging: actualUrl,
+      requestMethod: options.method || 'GET',
+      hasAuthHeader: !!(options.headers as any)?.['Authorization']
+    });
+  }
+
   try {
     console.log('Attempting API request with primary URL:', actualUrl);
+    console.log('📍 Actual fetch URL:', fetchUrl);
+    
+    if (usingBackendProxy) {
+      console.log('✅ Using backend proxy - request will go to:', fetchUrl);
+    }
+    
     const response = await fetch(fetchUrl, requestOptions);
     
     if (response.ok) {
+      if (usingBackendProxy) {
+        console.log('✅ Backend proxy request succeeded');
+      }
       return response;
+    }
+    
+    // If using backend proxy and got non-OK response, throw error with details
+    if (usingBackendProxy) {
+      const errorText = await response.text().catch(() => 'Unable to read error response');
+      throw new Error(`Backend proxy returned ${response.status}: ${errorText}`);
     }
     
     if (response.status === 0 || response.status === 403 || response.status === 404) {
@@ -196,8 +223,17 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
     
     return response;
   } catch (error) {
+    // If using backend proxy, don't try CORS fallback proxies
+    if (usingBackendProxy) {
+      console.error('❌ Backend proxy request failed:', error);
+      throw new Error(
+        'Unable to connect to the backend service. Please check if the backend is running and accessible.'
+      );
+    }
+    
     console.warn('Primary API request failed, trying fallback proxies:', error);
     
+    // Only try CORS fallback proxies if not using backend proxy
     for (const proxy of FALLBACK_PROXIES) {
       try {
         const fallbackUrl = `${proxy}${encodeURIComponent(urlForRequest)}`;
