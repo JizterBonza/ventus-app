@@ -277,6 +277,16 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
     const data = await response.json();
     console.log('API Response Data:', data);
     
+    // Handle API auth error (proxy can't send Bearer; API only accepts Bearer header)
+    if (data && (data.error === 'authentication' || data.message === 'Unauthenticated.')) {
+      throw new Error(
+        'Search requires a valid API token. The staging API only accepts Bearer token in the Authorization header. ' +
+        'When using a CORS proxy we send the token in the URL, which this API does not accept. ' +
+        'Fix: Set REACT_APP_API_DIRECT=true in your production/staging environment and ensure the API allows CORS from your origin (e.g. your Render URL). ' +
+        'Alternatively run a backend proxy that forwards requests with the Bearer header.'
+      );
+    }
+    
     // Handle API error responses
     if (!data.success && data.success !== undefined) {
       throw new Error(data.message || 'Search failed');
