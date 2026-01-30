@@ -256,12 +256,7 @@ const SearchResults: React.FC = () => {
                                                                 </h6>
                                                             )}
                                                             {isAuthenticated && displayHotel.price && (
-                                                                <p className="hotel-price" style={{ 
-                                                                    fontWeight: "600", 
-                                                                    fontSize: "1.1rem",
-                                                                    color: "#28a745",
-                                                                    marginBottom: "10px"
-                                                                }}>
+                                                                <p className="hotel-price">
                                                                     Starting from ${displayHotel.price}/night
                                                                 </p>
                                                             )}
