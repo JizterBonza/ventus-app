@@ -54,6 +54,20 @@ const getActualApiBaseUrl = () => ACTUAL_API_BASE;
 const getActualApiUrl = (url: string): string => {
   const actualBase = getActualApiBaseUrl();
   
+  // Check if this is a backend proxy URL - if so, extract path for logging but keep backend URL
+  const authApiUrl = process.env.REACT_APP_AUTH_API_URL;
+  const backendBase = authApiUrl ? authApiUrl.replace(/\/api\/auth.*$/, '') : '';
+  if (backendBase && url.startsWith(backendBase)) {
+    // This is a backend proxy URL - extract path for logging purposes
+    const pathMatch = url.match(new RegExp(`${backendBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/v2(/.*)`));
+    if (pathMatch) {
+      // Return the actual API URL for logging, but the original URL will be used for fetch
+      return `${actualBase}${pathMatch[1]}`;
+    }
+    // If no match, return as-is (shouldn't happen, but safe fallback)
+    return url;
+  }
+  
   // If it's a relative URL (development proxy), strip /v2 and append to base
   if (url.startsWith('/')) {
     const path = url.startsWith('/v2/') ? url.slice(4) : url.slice(1);
@@ -69,7 +83,7 @@ const getActualApiUrl = (url: string): string => {
     }
   }
   
-  // If it's a proxy URL (?url= or ?encoded), try to extract the destination URL
+  // If it's a CORS proxy URL (?url= or ?encoded), try to extract the destination URL
   const proxyMatch = url.match(/(?:corsproxy\.io|allorigins\.win\/raw)\/?\?(?:url=)?(.+)/) ?? url.match(/\?url=(.+)/);
   if (proxyMatch) {
     try {
@@ -125,14 +139,15 @@ const urlWithAuthIfProxied = (actualUrl: string, useProxy: boolean): string => {
 };
 
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
-  const actualUrl = getActualApiUrl(url);
-  
-  // Check if we're using backend proxy (URL starts with backend base, not actual API)
+  // Check if we're using backend proxy FIRST (before converting URL)
   const authApiUrl = process.env.REACT_APP_AUTH_API_URL;
   const backendBase = authApiUrl ? authApiUrl.replace(/\/api\/auth.*$/, '') : '';
   const usingBackendProxy = backendBase && 
                             !process.env.REACT_APP_API_DIRECT && 
                             (url.startsWith(backendBase) || API_BASE_URL.startsWith(backendBase));
+  
+  // Get actual API URL for logging purposes only
+  const actualUrl = getActualApiUrl(url);
   
   // Debug logging for staging/production
   if (process.env.NODE_ENV === 'production') {
@@ -142,6 +157,7 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
       backendBase: backendBase || 'N/A',
       API_BASE_URL,
       url,
+      actualUrl, // For logging only
       usingBackendProxy,
       REACT_APP_API_DIRECT: process.env.REACT_APP_API_DIRECT || 'NOT SET'
     });
@@ -155,8 +171,10 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
                    !process.env.REACT_APP_API_DIRECT && 
                    !usingBackendProxy;
   
+  // If using backend proxy, use the original URL (don't convert it)
+  // Otherwise, use CORS proxy logic
   const urlForRequest = urlWithAuthIfProxied(actualUrl, useProxy);
-  const fetchUrl = useProxy ? getProxiedUrl(urlForRequest) : url;
+  const fetchUrl = usingBackendProxy ? url : (useProxy ? getProxiedUrl(urlForRequest) : url);
 
   // When calling a proxy, use a "simple" request (no custom headers) so the
   // browser does not send OPTIONS preflight; public proxies often fail preflight.
