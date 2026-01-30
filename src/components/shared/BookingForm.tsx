@@ -1242,11 +1242,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         </div>
                     </div>
                 </div>
-                <h5 className="mt-5">Payment Method *</h5>
+                <div className="d-grid form-row">  <h5 className="mt-5" style={{ borderTop: '1px solid #000', paddingTop: '40px' }}>Payment Method</h5></div>
+              
                 <div className="d-grid form-row">
                     <div className="form-column">
                         <div className="form-column-inner">
-                            <label className="form-label">PayPal Payment *</label>
+                          
                             {paypalApproved ? (
                                 <div className="alert alert-success">
                                     <i className="fa fa-check-circle me-2"></i>
@@ -1315,7 +1316,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                             type="button"
                                             className="btn btn-sm btn-primary"
                                             onClick={() => addChild(roomIndex)}
-                                            style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
                                         >
                                          Add Child
                                         </button>

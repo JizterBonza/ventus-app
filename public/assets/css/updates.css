@@ -1515,9 +1515,15 @@ select.form-control{
     display: inline-block;
     padding: 0 10px;
 }
+.global-form.rooms-section .form .d-grid.form-row{
+    margin-top: 40px;
+    border-top: 1px solid #000;
+}
 .rooms-section .flex-dir-col{
     flex-direction: column;
     gap: 20px;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
 }
 .text-muted.privacy{
     line-height: 1.2;
