@@ -1329,6 +1329,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                     className="apply-btn btn btn-outline-secondary"
                                     onClick={handleCouponApply}
                                     disabled={!formData.referralCode.trim() || isSubmitting}
+                                    style={{width: '50%'}}
                                 >
                                     {referralCodeApplied ? "Applied" : "Apply"}
                                 </button>
