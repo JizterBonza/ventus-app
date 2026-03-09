@@ -40,7 +40,7 @@ export const interestCategories: InterestCategory[] = [
         title: "New Openings",
         description:
             "Keep up to date with the hottest hotel openings.",
-        image: "/assets/img/interests/newopenings.jpg",
+        image: "/assets/img/interests/newopenings-2.jpg",
         categories: ["Adventure", "Popular"],
         location: "Indian Ocean",
         query: "new openings",
