@@ -1548,3 +1548,6 @@ select.form-control{
 .rooms-section .btn-primary:after{
     display: none !important;
 }
+#quote{
+    display: none;
+}
