@@ -6,5 +6,6 @@ export interface InterestCategory {
     categories: string[];
     location: string;
     query?: string;
+    inspirationId?: number;
 }
 

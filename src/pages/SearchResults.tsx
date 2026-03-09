@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
-import { getHotelDetailsBatch } from "../utils/api";
+import { getHotelDetailsBatch, searchHotelsByInspiration } from "../utils/api";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -71,23 +71,52 @@ const SearchResults: React.FC = () => {
     const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
+    const [loadingInspiration, setLoadingInspiration] = useState(false);
+    const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
     // Handle URL parameters and perform search
     useEffect(() => {
+        const inspirationId = urlSearchParams.get("inspirationId");
         const location = urlSearchParams.get("location");
+        const title = urlSearchParams.get("title");
         const priceRange = urlSearchParams.get("priceRange") || "all";
         const rating = urlSearchParams.get("rating") || "all";
         const sortBy = urlSearchParams.get("sortBy") || "recommended";
 
         setSearchParams({
-            location: location || "",
+            location: title || location || "",
             priceRange,
             rating,
             sortBy,
         });
 
-        if (location) {
+        if (inspirationId) {
+            // Use the /hotels?inspiration_id endpoint for category cards,
+            // falling back to text search if the ID doesn't exist in this environment
+            setInspirationResults([]);
+            setLoadingInspiration(true);
+            searchHotelsByInspiration(Number(inspirationId), 20)
+                .then((results) => {
+                    if (results.length > 0) {
+                        setInspirationResults(results);
+                    } else {
+                        // Fallback: text search using the title
+                        const fallbackQuery = title || "";
+                        if (fallbackQuery) {
+                            searchAdvanced({ query: fallbackQuery, limit: 20 });
+                        }
+                    }
+                })
+                .catch(() => {
+                    // Fallback on error (e.g. ID invalid in staging)
+                    const fallbackQuery = title || "";
+                    if (fallbackQuery) {
+                        searchAdvanced({ query: fallbackQuery, limit: 20 });
+                    }
+                })
+                .finally(() => setLoadingInspiration(false));
+        } else if (location) {
             const searchParamsForAPI = {
                 query: location,
                 limit: 20,
@@ -120,7 +149,7 @@ const SearchResults: React.FC = () => {
 
     // Apply client-side filtering and sorting to API results
     useEffect(() => {
-        let filtered = hotels;
+        let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
 
         // Apply price filter
         if (searchParams.priceRange !== "all") {
@@ -176,7 +205,7 @@ const SearchResults: React.FC = () => {
         } else {
             setDetailedHotels([]);
         }
-    }, [hotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
+    }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
 
     return (
         <div className="search-page">
@@ -201,7 +230,7 @@ const SearchResults: React.FC = () => {
                                 </div>
                             )}
 
-                            {loading ? (
+                            {(loading || loadingInspiration) ? (
                                 <div className="text-center">
                                     <div className="spinner-border" role="status">
                                         <span className="sr-only">Loading...</span>

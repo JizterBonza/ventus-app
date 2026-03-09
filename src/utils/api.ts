@@ -700,6 +700,46 @@ export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]>
 };
 
 /**
+ * Fetch hotels by inspiration ID using the /hotels endpoint
+ */
+export const searchHotelsByInspiration = async (inspirationId: number, perPage: number = 20): Promise<Hotel[]> => {
+  const url = `${API_BASE_URL}/hotels?inspiration_id=${inspirationId}&per_page=${perPage}`;
+  console.log('Fetching hotels by inspiration ID:', inspirationId);
+
+  try {
+    const response = await makeApiRequest(url, { method: 'GET' });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const items: any[] = data.data || data.content || [];
+    return items.map((item: any) => ({
+      id: item.id,
+      name: item.name || item.text || 'Unknown Hotel',
+      location: item.location || '',
+      description: item.description || '',
+      amenities: item.amenities || [],
+      images: item.images || [],
+      videos: item.videos || [],
+      links: item.links || { self: { href: '', method: 'GET' } },
+      hotel_groups: item.hotel_groups,
+      fun_fact: item.fun_fact,
+      unique_experiences: item.unique_experiences,
+      website: item.website,
+      instagram: item.instagram,
+      benefits: item.benefits,
+      benefits_footnotes: item.benefits_footnotes,
+      hotel_information: item.hotel_information,
+    }));
+  } catch (error) {
+    console.error('searchHotelsByInspiration error:', error);
+    throw error;
+  }
+};
+
+/**
  * Enhanced search function with better error handling and response mapping
  */
 export const searchHotelsEnhanced = async (params: SearchParams): Promise<SearchResponse> => {

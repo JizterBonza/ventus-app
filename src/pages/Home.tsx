@@ -991,16 +991,17 @@ const Home: React.FC = () => {
                     <div className="row">
                         {filteredInterests.map((interest) => {
                             const handleInterestClick = () => {
-                                const query = interest.query;
-                                if (query) {
-                                    // Navigate to search results page with the query, just like the Search Button does
-                                    const urlParams = new URLSearchParams();
-                                    urlParams.set("location", query);
-                                    const searchUrl = `/search-results?${urlParams.toString()}`;
-                                    navigate(searchUrl);
-                                    // Scroll to top when navigating
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                const urlParams = new URLSearchParams();
+                                if (interest.inspirationId) {
+                                    urlParams.set("inspirationId", interest.inspirationId.toString());
+                                    urlParams.set("title", interest.title);
+                                } else if (interest.query) {
+                                    urlParams.set("location", interest.query);
+                                } else {
+                                    return;
                                 }
+                                navigate(`/search-results?${urlParams.toString()}`);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
                             };
 
                             return (
