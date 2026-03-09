@@ -17,7 +17,7 @@ const Membership: React.FC = () => {
                         <div className="membership-content_heading">
                             <img src="/assets/img/ventus-logo.png" />
                             
-                            <h3>Join now to unlock exclusive member benefits</h3>
+                            <h3>Join now to view rates and unlock exclusive members benefits</h3>
                             <button 
                                 onClick={handleJoinClick} 
                                 className="btn btn-primary btn-lg"
