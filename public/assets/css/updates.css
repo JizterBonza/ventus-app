@@ -45,6 +45,336 @@ body .search-form-section{
     padding: 10px 0;
     box-shadow: none;
 }
+
+/* ── Little Emperors–style search bar ── */
+.le-search-section {
+    background: #fff;
+    padding: 12px 0;
+    border-bottom: 1px solid #e8e8e8;
+}
+.le-search-bar-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+.le-search-bar {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    overflow: visible;
+    position: relative;
+    gap:5px;
+}
+.le-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    flex-shrink: 0;
+    position: relative;
+    height: 100%;
+    background: #fff;
+    border-radius: 5px;
+    border:1px solid #e8e8e8;
+}
+.le-field-location {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.le-field-location .le-input {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: #222;
+    width: 100%;
+    background: transparent;
+    margin-bottom: 0;
+}
+.le-field-location .le-input::placeholder {
+    color: #999;
+}
+.le-divider {
+    width: 1px;
+    height: 28px;
+    background: #d8d8d8;
+    flex-shrink: 0;
+}
+/* Date field */
+.le-field-dates {
+    gap: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.le-date-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.le-date-arrow {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #888;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.15s;
+}
+.le-date-arrow:hover { color: #222; }
+.le-date-text {
+    font-size: 13px;
+    color: #222;
+    white-space: nowrap;
+    font-family: 'Lato', sans-serif;
+    min-width: 80px;
+    text-align: center;
+}
+.le-date-text.placeholder { color: #999; }
+.le-date-text.active { font-weight: 400; }
+.le-date-sep {
+    color: #ccc;
+    font-size: 16px;
+    margin: 0 4px;
+}
+.le-nights {
+    font-size: 11px;
+    color: #888;
+    background: #f0f0f0;
+    border-radius: 10px;
+    padding: 1px 6px;
+}
+/* Calendar dropdown */
+.le-calendar-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: -60px;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 20px;
+    min-width: 580px;
+}
+.le-cal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+.le-cal-months {
+    display: flex;
+    gap: 28px;
+    flex: 1;
+}
+.le-cal-nav {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+    color: #444;
+    transition: background 0.15s;
+}
+.le-cal-nav:hover { background: #f5f5f5; }
+.le-calendar-month {
+    flex: 1;
+}
+.le-cal-month-name {
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 10px;
+    color: #222;
+    font-family: 'Lato', sans-serif;
+    text-transform: capitalize;
+}
+.le-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+.le-cal-day-name {
+    font-size: 10px;
+    text-align: center;
+    color: #999;
+    padding: 4px 0;
+    font-family: 'Lato', sans-serif;
+}
+.le-cal-cell {
+    text-align: center;
+    padding: 6px 2px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 50%;
+    color: #333;
+    font-family: 'Lato', sans-serif;
+    transition: background 0.12s, color 0.12s;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.le-cal-cell.empty { cursor: default; }
+.le-cal-cell.past { color: #ccc; cursor: default; }
+.le-cal-cell:not(.past):not(.empty):hover,
+.le-cal-cell.hovered { background: #f0f0f0; }
+.le-cal-cell.in-range {
+    background: #f5f0e8;
+    border-radius: 0;
+}
+.le-cal-cell.selected {
+    background: #222 !important;
+    color: #fff !important;
+    border-radius: 50% !important;
+}
+.le-cal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+.le-cal-clear {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #666;
+    font-family: 'Lato', sans-serif;
+}
+.le-cal-done {
+    background: #222;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #fff;
+    font-family: 'Lato', sans-serif;
+}
+/* Guest field */
+.le-field-guests {
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.le-guest-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.le-guest-num {
+    font-size: 13px;
+    color: #222;
+    font-family: 'Lato', sans-serif;
+    min-width: 14px;
+    text-align: center;
+}
+.le-guest-sep {
+    width: 1px;
+    height: 16px;
+    background: #d0d0d0;
+    display: inline-block;
+    margin: 0 2px;
+}
+.le-guest-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 16px 20px;
+    min-width: 220px;
+}
+.le-guest-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: #333;
+    font-family: 'Lato', sans-serif;
+}
+.le-counter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.le-counter button {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    transition: background 0.15s;
+}
+.le-counter button:hover { background: #f5f5f5; }
+.le-counter span {
+    font-size: 14px;
+    min-width: 20px;
+    text-align: center;
+}
+.le-guest-done {
+    width: 100%;
+    background: #222;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    margin-top: 4px;
+}
+/* Search button */
+.le-search-btn {
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    padding: 0 24px;
+    height: 100%;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    font-family: 'Lato', sans-serif;
+    transition: background 0.15s;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+.le-search-btn:hover { background: #333; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .le-search-bar {
+        flex-wrap: wrap;
+        height: auto;
+        border-radius: 8px;
+    }
+    .le-field { padding: 10px 12px; width: 100%; border-bottom: 1px solid #f0f0f0; }
+    .le-divider { display: none; }
+    .le-search-btn { width: 100%; border-radius: 0 0 8px 8px; padding: 12px; height: 44px; }
+    .le-calendar-dropdown { left: 0; min-width: 100vw; border-radius: 0; }
+    .le-cal-months { flex-direction: column; gap: 16px; }
+}
 .navbar{
     position: relative;
     background-color: var(--black-200);
