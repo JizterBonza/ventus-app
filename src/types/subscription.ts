@@ -67,17 +67,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
         description: '£20 booking fee with no hidden costs'
       },
       {
-        title: 'Instagram competitions',
-        description: 'Win complimentary stays at hotels in the collection'
-      },
-      {
         title: 'Events',
         description: "Access to exclusive tickets to some of the world's most sought after events"
       },
-      {
-        title: 'Lifestyle offers',
-        description: 'Money off car hire, private jets and more'
-      }
     ]
   },
   {
