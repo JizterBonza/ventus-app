@@ -60,7 +60,7 @@ const Home: React.FC = () => {
     // Fetch slider hotels on component mount
     useEffect(() => {
         const fetchSliderHotels = async () => {
-            const hotelIds = [8161, 8131, 7190, 10858, 6106, 10506, 89, 10907, 831, 9433, 508, 11063];
+            const hotelIds = [11063, 9665, 9679, 10218, 11905];
             setLoadingSliderHotels(true);
             try {
                 const hotels = await getHotelDetailsBatch(hotelIds);
