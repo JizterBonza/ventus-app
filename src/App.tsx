@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
 import Home from "./pages/Home";
+import HomeBackup from "./pages/HomeBackup";
 import About from "./pages/About";
 import Rooms from "./pages/Rooms";
 import Destinations from "./pages/Destinations";
@@ -54,6 +55,7 @@ function App() {
                     <Routes>
                         {/* Public Routes */}
                         <Route path="/" element={<Home />} />
+                        <Route path="/home-backup" element={<HomeBackup />} />
                         <Route path="/about-us" element={<About />} />
                         <Route path="/the-magazine" element={<Magazine />} />
                         <Route path="/magazine/:slug" element={<MagazinePost />} />
