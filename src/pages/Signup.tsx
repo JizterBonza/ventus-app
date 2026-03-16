@@ -50,7 +50,6 @@ const Signup: React.FC = () => {
     countryCode: '',
     phoneNumber: '',
     birthday: '',
-    instagramCompetition: '',
     hasChildren: '',
     couponCode: '',
     agreeToTerms: false
@@ -522,35 +521,6 @@ const Signup: React.FC = () => {
                       onChange={(e) => handleInputChange('birthday', e.target.value)}
                       disabled={isLoading}
                     />
-                  </div>
-
-                  {/* Instagram Competition */}
-                  <div className="form-group mb-3 pt-3 border-top">
-                    <p className="small mb-2">
-                      Do you want to participate in our weekly Instagram competition to win stays at hotels?
-                    </p>
-                    <div className="d-flex gap-3">
-                      <label className="d-flex align-items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="instagram"
-                          checked={formData.instagramCompetition === 'yes'}
-                          onChange={() => handleInputChange('instagramCompetition', 'yes')}
-                          disabled={isLoading}
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="d-flex align-items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="instagram"
-                          checked={formData.instagramCompetition === 'no'}
-                          onChange={() => handleInputChange('instagramCompetition', 'no')}
-                          disabled={isLoading}
-                        />
-                        <span>No</span>
-                      </label>
-                    </div>
                   </div>
 
                   {/* Children */}
