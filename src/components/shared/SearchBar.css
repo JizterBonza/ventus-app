@@ -3,6 +3,20 @@
   width: 100%;
 }
 
+/* SearchBarNew: wrap location field so dropdown positions correctly */
+.le-field-location-wrap {
+  position: relative;
+}
+
+.le-search-suggestions {
+  min-width: 100%;
+}
+
+.search-result-loading {
+  color: #666;
+  cursor: default;
+}
+
 .search-form .input-group {
   position: relative;
 }

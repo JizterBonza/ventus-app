@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSearch } from "../../hooks/useSearch";
-import { SearchParams } from "../../types/search";
+import { SearchParams, Hotel } from "../../types/search";
+import { searchHotelsByQuery } from "../../utils/api";
+import "./SearchBar.css";
 
 interface SearchBarNewProps {
     onSearch?: () => void;
@@ -151,9 +153,13 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
     });
     const [hovered, setHovered] = useState<Date | null>(null);
     const [showGuestDropdown, setShowGuestDropdown] = useState(false);
+    const [suggestions, setSuggestions] = useState<Hotel[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
     const calendarRef = useRef<HTMLDivElement>(null);
     const guestRef = useRef<HTMLDivElement>(null);
+    const locationRef = useRef<HTMLDivElement>(null);
 
     // Load from cookies / URL params on mount
     useEffect(() => {
@@ -183,10 +189,38 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
             if (guestRef.current && !guestRef.current.contains(e.target as Node)) {
                 setShowGuestDropdown(false);
             }
+            if (locationRef.current && !locationRef.current.contains(e.target as Node)) {
+                setShowSuggestions(false);
+            }
         };
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
+
+    // Debounced predictive search suggestions
+    useEffect(() => {
+        const q = location.trim();
+        if (!q || q.length < 2) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            setSuggestionsLoading(true);
+            setShowSuggestions(true);
+            try {
+                const results = await searchHotelsByQuery(q, 5);
+                setSuggestions(results);
+                setShowSuggestions(results.length > 0);
+            } catch {
+                setSuggestions([]);
+                setShowSuggestions(false);
+            } finally {
+                setSuggestionsLoading(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [location]);
 
     const shiftDate = (date: Date | null, days: number): Date => {
         const d = date ? new Date(date) : new Date();
@@ -252,8 +286,8 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         <section className="search-form-section le-search-section">
             <div className="le-search-bar-wrap">
                 <form onSubmit={handleSearch} className="le-search-bar">
-                    {/* Location */}
-                    <div className="le-field le-field-location">
+                    {/* Location with predictive suggestions */}
+                    <div className="le-field le-field-location le-field-location-wrap" ref={locationRef}>
                         <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
                             <path d="M17.5824 16.6719L12.6399 11.7294C15.1762 8.67284 14.786 4.18553 11.7294 1.64923C8.67284 -0.887071 4.18553 -0.431837 1.64923 2.5597C-0.887071 5.55124 -0.431837 10.1686 2.5597 12.6399C5.22607 14.851 9.06304 14.851 11.7294 12.6399L16.6719 17.5824L17.5824 16.6719ZM1.32406 7.17707C1.32406 3.9254 3.9254 1.32406 7.17707 1.32406C10.4287 1.32406 13.0301 3.9254 13.0301 7.17707C13.0301 10.4287 10.4287 13.0301 7.17707 13.0301C3.9254 13.0301 1.32406 10.4287 1.32406 7.17707Z" fill="#666" />
                         </svg>
@@ -262,8 +296,34 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                             placeholder="Search a hotel or destination"
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
+                            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                             className="le-input"
+                            autoComplete="off"
                         />
+                        {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
+                            <div className="search-results-dropdown le-search-suggestions">
+                                {suggestionsLoading ? (
+                                    <div className="search-result-item search-result-loading">Searching...</div>
+                                ) : (
+                                    suggestions.map((hotel) => (
+                                        <div
+                                            key={hotel.id}
+                                            className="search-result-item"
+                                            onClick={() => {
+                                                setLocation(hotel.name);
+                                                setShowSuggestions(false);
+                                            }}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
+                                            <div className="result-info">
+                                                <h6>{hotel.name}</h6>
+                                                {hotel.location && <p>{hotel.location}</p>}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="le-divider" />
