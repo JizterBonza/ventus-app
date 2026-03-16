@@ -712,7 +712,7 @@ const HotelDetail: React.FC = () => {
                                                 ))}
                                             </div>
                                         )}
-                                        <a href="#quote" className="btn btn-primary">Get a trip quote</a>
+                                        <a href="#check-availability" className="btn btn-primary">Check Availability</a>
                                     </div>
                                 </div>
                             ) : null
@@ -860,7 +860,7 @@ const HotelDetail: React.FC = () => {
                 </section>
             )}
          
-            <section className="section-padding availability-section">
+            <section id="check-availability" className="section-padding availability-section">
                 <div className="container">
                     <CheckAvailability
                         hotelId={hotel.id}
