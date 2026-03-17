@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch } from "../utils/api";
+import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch, checkHotelAvailability } from "../utils/api";
+import { getVisitorCurrency } from "../utils/currency";
 import { Hotel, HotelImage, AvailabilityResponse, RateInfo } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
@@ -72,6 +73,9 @@ const HotelDetail: React.FC = () => {
         children: Array<{ age: number }>;
     } | null>(null);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+    /** "Starting from" price from availability API (today/tomorrow, visitor currency). Independent of Check Availability. */
+    const [startingFromPrice, setStartingFromPrice] = useState<{ rate: number; currency: string } | null>(null);
+    const [startingFromPriceLoading, setStartingFromPriceLoading] = useState(false);
 
     // Fallback hotel images for when API doesn't provide images
     const fallbackImages = [
@@ -240,6 +244,63 @@ const HotelDetail: React.FC = () => {
 
         fetchHotelDetails();
     }, [id]);
+
+    // Fetch "Starting from" price via availability API (today/tomorrow, visitor currency). Does not affect Check Availability.
+    useEffect(() => {
+        if (!hotel || !isAuthenticated) {
+            setStartingFromPrice(null);
+            setStartingFromPriceLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setStartingFromPriceLoading(true);
+        const controller = new AbortController();
+        (async () => {
+            try {
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const start_date = today.toISOString().split("T")[0];
+                const end_date = tomorrow.toISOString().split("T")[0];
+                const currency = await getVisitorCurrency();
+                if (cancelled) return;
+                const results = await checkHotelAvailability({
+                    hotel_id: hotel.id,
+                    start_date,
+                    end_date,
+                    currency,
+                    rooms: [{ adults: 1, children: [] }],
+                });
+                if (cancelled || !results?.length) return;
+                const first = results[0];
+                if (!first?.is_available || first.lowest_rate == null) return;
+                const lr = first.lowest_rate;
+                const rateValue =
+                    typeof lr === "number"
+                        ? lr
+                        : (lr as RateInfo).rate_in_requested_currency ??
+                          (lr as RateInfo).rate ??
+                          (lr as RateInfo).total_to_book_in_requested_currency ??
+                          (lr as RateInfo).total_to_book;
+                const currencyCode =
+                    typeof lr === "object" && lr !== null
+                        ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? first.default_currency ?? currency
+                        : first.default_currency ?? currency;
+                if (typeof rateValue === "number" && !cancelled) {
+                    setStartingFromPrice({ rate: rateValue, currency: currencyCode || "USD" });
+                }
+            } catch {
+                // Fail silently; "Starting from" will fall back to hotel.price or availability result
+                if (!cancelled) setStartingFromPrice(null);
+            } finally {
+                if (!cancelled) setStartingFromPriceLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
+    }, [hotel?.id, isAuthenticated]);
 
     const [showGallery, setShowGallery] = useState(false);
 
@@ -673,20 +734,48 @@ const HotelDetail: React.FC = () => {
                                         <strong>Hotel Amenities</strong> {hotel.amenities.join(", ")}
                                     </div>
                                     {isAuthenticated && (() => {
-                                        const fromAvailability = availabilityResult?.lowest_rate != null && availabilityResult.lowest_rate !== undefined;
-                                        const rateValue = fromAvailability
-                                            ? (typeof availabilityResult!.lowest_rate === 'number'
-                                                ? availabilityResult!.lowest_rate
-                                                : (availabilityResult!.lowest_rate as RateInfo).rate_in_requested_currency ?? (availabilityResult!.lowest_rate as RateInfo).rate ?? (availabilityResult!.lowest_rate as RateInfo).total_to_book_in_requested_currency ?? (availabilityResult!.lowest_rate as RateInfo).total_to_book)
-                                            : hotel.price;
-                                        const currency = fromAvailability && typeof availabilityResult!.lowest_rate === 'object'
-                                            ? ((availabilityResult!.lowest_rate as RateInfo).requested_currency_code ?? (availabilityResult!.lowest_rate as RateInfo).currency_code ?? 'USD')
-                                            : 'USD';
-                                        const symbol = currency === 'USD' ? '$' : `${currency} `;
-                                        if (rateValue == null || (typeof rateValue !== 'number')) return null;
+                                        if (startingFromPriceLoading && startingFromPrice == null && (availabilityResult?.lowest_rate == null || availabilityResult?.lowest_rate === undefined)) {
+                                            return (
+                                                <div>
+                                                    <strong>Starting from</strong>{" "}
+                                                    <span className="text-muted" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                                                        Loading...
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                        // Prefer "Starting from" API (today/tomorrow, visitor currency), then Check Availability result, then hotel.price
+                                        let rateValue: number | null = null;
+                                        let currency = "USD";
+                                        if (startingFromPrice != null) {
+                                            rateValue = startingFromPrice.rate;
+                                            currency = startingFromPrice.currency;
+                                        } else if (availabilityResult?.lowest_rate != null && availabilityResult.lowest_rate !== undefined) {
+                                            const lr = availabilityResult.lowest_rate;
+                                            const fromLr =
+                                                typeof lr === "number"
+                                                    ? lr
+                                                    : (lr as RateInfo).rate_in_requested_currency ?? (lr as RateInfo).rate ?? (lr as RateInfo).total_to_book_in_requested_currency ?? (lr as RateInfo).total_to_book;
+                                            rateValue = fromLr != null ? fromLr : null;
+                                            currency =
+                                                typeof lr === "object"
+                                                    ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? "USD"
+                                                    : "USD";
+                                        } else {
+                                            rateValue = hotel.price ?? null;
+                                        }
+                                        const symbol = currency === "USD" ? "$" : `${currency} `;
+                                        if (rateValue != null && typeof rateValue === "number") {
+                                            return (
+                                                <div>
+                                                    <strong>Starting from</strong> {symbol}{rateValue.toLocaleString()}/night
+                                                </div>
+                                            );
+                                        }
                                         return (
                                             <div>
-                                                <strong>Starting from</strong> {symbol}{rateValue.toLocaleString()}/night
+                                                <strong>Starting from</strong> /night
                                             </div>
                                         );
                                     })()}

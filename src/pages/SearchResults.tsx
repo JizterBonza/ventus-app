@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
-import { Hotel } from "../types/search";
-import { getHotelDetailsBatch, searchHotelsByInspiration } from "../utils/api";
+import { Hotel, RateInfo } from "../types/search";
+import { getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
+import { getVisitorCurrency } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -74,6 +75,10 @@ const SearchResults: React.FC = () => {
     const [loadingInspiration, setLoadingInspiration] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    /** Starting-from price per hotel id (today/tomorrow, visitor currency). Only when authenticated. */
+    const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
+    const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
+    const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
 
     // Handle URL parameters and perform search
     useEffect(() => {
@@ -207,6 +212,71 @@ const SearchResults: React.FC = () => {
         }
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
 
+    // Fetch "Starting from" prices for each hotel (today/tomorrow, visitor currency). Only when authenticated.
+    useEffect(() => {
+        if (!isAuthenticated || filteredHotels.length === 0) {
+            setStartingFromPrices({});
+            setLoadingStartingFromPrices(false);
+            return;
+        }
+        let cancelled = false;
+        setLoadingStartingFromPrices(true);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const start_date = today.toISOString().split("T")[0];
+        const end_date = tomorrow.toISOString().split("T")[0];
+
+        (async () => {
+            try {
+                const currency = await getVisitorCurrency();
+                if (cancelled) return;
+                const results = await Promise.allSettled(
+                    filteredHotels.map((hotel) =>
+                        checkHotelAvailability({
+                            hotel_id: hotel.id,
+                            start_date,
+                            end_date,
+                            currency,
+                            rooms: [{ adults: 1, children: [] }],
+                        })
+                    )
+                );
+                if (cancelled) return;
+                const next: Record<number, { rate: number; currency: string }> = {};
+                results.forEach((settled, index) => {
+                    const hotel = filteredHotels[index];
+                    if (!hotel || settled.status !== "fulfilled" || !settled.value?.length) return;
+                    const first = settled.value[0];
+                    if (!first?.is_available || first.lowest_rate == null) return;
+                    const lr = first.lowest_rate;
+                    const rateValue =
+                        typeof lr === "number"
+                            ? lr
+                            : (lr as RateInfo).rate_in_requested_currency ??
+                              (lr as RateInfo).rate ??
+                              (lr as RateInfo).total_to_book_in_requested_currency ??
+                              (lr as RateInfo).total_to_book;
+                    const currencyCode =
+                        typeof lr === "object" && lr !== null
+                            ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? first.default_currency ?? currency
+                            : first.default_currency ?? currency;
+                    if (typeof rateValue === "number") {
+                        next[hotel.id] = { rate: rateValue, currency: currencyCode || "USD" };
+                    }
+                });
+                if (!cancelled) setStartingFromPrices(next);
+            } catch {
+                if (!cancelled) setStartingFromPrices({});
+            } finally {
+                if (!cancelled) setLoadingStartingFromPrices(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, hotelIdsKey]);
+
     return (
         <div className="search-page">
             <Header />
@@ -284,11 +354,36 @@ const SearchResults: React.FC = () => {
                                                                 <h6>{displayHotel.location}
                                                                 </h6>
                                                             )}
-                                                            {isAuthenticated && displayHotel.price && (
-                                                                <p className="hotel-price">
-                                                                    Starting from ${displayHotel.price}/night
-                                                                </p>
-                                                            )}
+                                                            {isAuthenticated && (() => {
+                                                                const priceInfo = startingFromPrices[hotel.id];
+                                                                const isLoading = loadingStartingFromPrices && priceInfo == null;
+                                                                if (isLoading) {
+                                                                    return (
+                                                                        <p className="hotel-price">
+                                                                            Starting from{" "}
+                                                                            <span className="text-muted" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                                                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                                                                                Loading...
+                                                                            </span>
+                                                                        </p>
+                                                                    );
+                                                                }
+                                                                const rateValue = priceInfo != null ? priceInfo.rate : (displayHotel.price ?? null);
+                                                                const currency = priceInfo?.currency ?? "USD";
+                                                                const symbol = currency === "USD" ? "$" : `${currency} `;
+                                                                if (rateValue != null) {
+                                                                    return (
+                                                                        <p className="hotel-price">
+                                                                            Starting from {symbol}{rateValue.toLocaleString()}/night
+                                                                        </p>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <p className="hotel-price">
+                                                                        Starting from /night
+                                                                    </p>
+                                                                );
+                                                            })()}
                                                             {displayHotel.description && (
                                                                 <p>{displayHotel.description.length > 450
                                                                         ? `${displayHotel.description.substring(0, 450)}...`
