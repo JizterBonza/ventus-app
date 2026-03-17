@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch } from "../utils/api";
-import { Hotel, HotelImage, AvailabilityResponse } from "../types/search";
+import { Hotel, HotelImage, AvailabilityResponse, RateInfo } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
@@ -203,16 +203,16 @@ const HotelDetail: React.FC = () => {
                 setLoading(true);
                 setError(null);
 
-                console.log("Fetching hotel details for ID:", id);
-                console.log("Environment:", process.env.NODE_ENV);
-
+                // console.log("Fetching hotel details for ID:", id);
+                // console.log("Environment:", process.env.NODE_ENV);
+                //
                 const hotelData = await getHotelDetails(parseInt(id));
                 setHotel(hotelData);
                 setIsFav(isFavourite(hotelData.id));
-
-                console.log("Successfully fetched hotel details:", hotelData);
+                //
+                // console.log("Successfully fetched hotel details:", hotelData);
             } catch (err) {
-                console.error("Error fetching hotel details:", err);
+                // console.error("Error fetching hotel details:", err);
 
                 // Provide more specific error messages for production
                 let errorMessage = "Failed to fetch hotel details";
@@ -346,7 +346,7 @@ const HotelDetail: React.FC = () => {
                 if ($hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
                         $hotelHeaderGallery.slick("unslick");
-                        console.log("Slider destroyed");
+                        // console.log("Slider destroyed");
                     } catch (error) {
                         console.error("Error destroying slider:", error);
                     }
@@ -363,8 +363,8 @@ const HotelDetail: React.FC = () => {
             if (!hotel || !hotel.location) return;
             
             try {
-                console.log('Fetching related hotels for location:', hotel.location);
-                
+                // console.log('Fetching related hotels for location:', hotel.location);
+                //
                 // Search for hotels in the same location
                 const searchResults = await searchHotelsByQuery(hotel.location, 10);
                 
@@ -378,7 +378,7 @@ const HotelDetail: React.FC = () => {
                     const hotelIds = filteredHotels.map(h => h.id);
                     const detailedHotels = await getHotelDetailsBatch(hotelIds);
                     setRelatedHotels(detailedHotels);
-                    console.log('Related hotels with details fetched:', detailedHotels);
+                    // console.log('Related hotels with details fetched:', detailedHotels);
                 } else {
                     setRelatedHotels([]);
                 }
@@ -393,34 +393,34 @@ const HotelDetail: React.FC = () => {
     }, [hotel]);
 
     const handleAvailabilityResult = (result: any) => {
-        console.log('Availability result received:', result);
+        // console.log('Availability result received:', result);
         setAvailabilityResult(result);
-        
+        //
         // Extract and store form data if available
         if (result.formData) {
             setAvailabilityFormData(result.formData);
         }
-        
+        //
         // Warn if session_id is missing
         if (!result.session_id) {
-            console.warn('Availability check returned no session_id. Booking may fail.');
+            // console.warn('Availability check returned no session_id. Booking may fail.');
         }
     };
 
     const handleBookingSuccess = (response: any) => {
-        console.log("Booking successful:", response);
+        // console.log("Booking successful:", response);
         // You can add additional success handling here
         // For example, redirect to a confirmation page
     };
 
     const handleBookingError = (error: string) => {
-        console.error("Booking error:", error);
+        // console.error("Booking error:", error);
         // You can add additional error handling here
     };
 
     const handleBookingSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Booking submitted:", bookingData);
+        // console.log("Booking submitted:", bookingData);
         // Handle booking logic here
     };
 
@@ -672,11 +672,24 @@ const HotelDetail: React.FC = () => {
                                     <div>
                                         <strong>Hotel Amenities</strong> {hotel.amenities.join(", ")}
                                     </div>
-                                    {isAuthenticated && (
-                                        <div>
-                                            <strong>Starting from</strong> ${hotel.price || "N/A"}/night
-                                        </div>
-                                    )}
+                                    {isAuthenticated && (() => {
+                                        const fromAvailability = availabilityResult?.lowest_rate != null && availabilityResult.lowest_rate !== undefined;
+                                        const rateValue = fromAvailability
+                                            ? (typeof availabilityResult!.lowest_rate === 'number'
+                                                ? availabilityResult!.lowest_rate
+                                                : (availabilityResult!.lowest_rate as RateInfo).rate_in_requested_currency ?? (availabilityResult!.lowest_rate as RateInfo).rate ?? (availabilityResult!.lowest_rate as RateInfo).total_to_book_in_requested_currency ?? (availabilityResult!.lowest_rate as RateInfo).total_to_book)
+                                            : hotel.price;
+                                        const currency = fromAvailability && typeof availabilityResult!.lowest_rate === 'object'
+                                            ? ((availabilityResult!.lowest_rate as RateInfo).requested_currency_code ?? (availabilityResult!.lowest_rate as RateInfo).currency_code ?? 'USD')
+                                            : 'USD';
+                                        const symbol = currency === 'USD' ? '$' : `${currency} `;
+                                        if (rateValue == null || (typeof rateValue !== 'number')) return null;
+                                        return (
+                                            <div>
+                                                <strong>Starting from</strong> {symbol}{rateValue.toLocaleString()}/night
+                                            </div>
+                                        );
+                                    })()}
 
                                 </div>
 

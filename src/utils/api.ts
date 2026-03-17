@@ -142,19 +142,19 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
   const actualUrl = getActualApiUrl(url);
   // Skip CORS proxy when using backend proxy (REACT_APP_API_BASE) or when API allows direct CORS (REACT_APP_API_DIRECT)
   
-  // Debug logging for staging/production
-  if (process.env.NODE_ENV === 'production') {
-    console.log('🔍 API Request Debug:', {
-      environment: process.env.NODE_ENV,
-      REACT_APP_AUTH_API_URL: authApiUrl || 'NOT SET',
-      backendBase: backendBase || 'N/A',
-      API_BASE_URL,
-      url,
-      actualUrl, // For logging only
-      usingBackendProxy,
-      REACT_APP_API_DIRECT: process.env.REACT_APP_API_DIRECT || 'NOT SET'
-    });
-  }
+  // Debug logging for staging/production (comment back in to view API request debug)
+  // if (process.env.NODE_ENV === 'production') {
+  //   console.log('🔍 API Request Debug:', {
+  //     environment: process.env.NODE_ENV,
+  //     REACT_APP_AUTH_API_URL: authApiUrl || 'NOT SET',
+  //     backendBase: backendBase || 'N/A',
+  //     API_BASE_URL,
+  //     url,
+  //     actualUrl, // For logging only
+  //     usingBackendProxy,
+  //     REACT_APP_API_DIRECT: process.env.REACT_APP_API_DIRECT || 'NOT SET'
+  //   });
+  // }
   
   // Only use CORS proxy if:
   // 1. In production AND
@@ -175,32 +175,35 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
     ? { method: 'GET' }
     : options;
 
-  // Enhanced debug logging
-  if (process.env.NODE_ENV === 'production') {
-    console.log('🚀 Fetch Details:', {
-      usingBackendProxy,
-      useProxy,
-      fetchUrl,
-      actualUrlForLogging: actualUrl,
-      requestMethod: options.method || 'GET',
-      hasAuthHeader: !!(options.headers as any)?.['Authorization']
-    });
-  }
+  // Enhanced debug logging (comment back in to view fetch details)
+  // if (process.env.NODE_ENV === 'production') {
+  //   console.log('🚀 Fetch Details:', {
+  //     usingBackendProxy,
+  //     useProxy,
+  //     fetchUrl,
+  //     actualUrlForLogging: actualUrl,
+  //     requestMethod: options.method || 'GET',
+  //     hasAuthHeader: !!(options.headers as any)?.['Authorization']
+  //   });
+  // }
 
   try {
-    console.log('Attempting API request with primary URL:', actualUrl);
-    console.log('📍 Actual fetch URL:', fetchUrl);
-    
-    if (usingBackendProxy) {
-      console.log('✅ Using backend proxy - request will go to:', fetchUrl);
-    }
-    
+    // console.log('Attempting API request with primary URL:', actualUrl);
+    // console.log('📍 Actual fetch URL:', fetchUrl);
+    //
+    // if (usingBackendProxy) {
+    //   console.log('✅ Using backend proxy - request will go to:', fetchUrl);
+    // }
+    //
     const response = await fetch(fetchUrl, requestOptions);
-    
+    //
+    // if (response.ok) {
+    //   if (usingBackendProxy) {
+    //     console.log('✅ Backend proxy request succeeded');
+    //   }
+    //   return response;
+    // }
     if (response.ok) {
-      if (usingBackendProxy) {
-        console.log('✅ Backend proxy request succeeded');
-      }
       return response;
     }
     
@@ -230,14 +233,14 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
     for (const proxy of FALLBACK_PROXIES) {
       try {
         const fallbackUrl = `${proxy}${encodeURIComponent(urlForRequest)}`;
-        console.log('Trying fallback proxy:', fallbackUrl);
+        // console.log('Trying fallback proxy:', fallbackUrl);
         const fallbackOpts = useProxy && (options.method === 'GET' || options.method === undefined)
           ? { method: 'GET' }
           : { ...options, headers: { ...options.headers, 'Origin': window.location.origin } };
         const response = await fetch(fallbackUrl, fallbackOpts);
         
         if (response.ok) {
-          console.log('Fallback proxy succeeded');
+          // console.log('Fallback proxy succeeded');
           return response;
         }
       } catch (fallbackError) {
@@ -288,6 +291,16 @@ const buildSearchParams = (params: SearchParams): URLSearchParams => {
   return searchParams;
 };
 
+/** Extract a single numeric price from API value (number or RateInfo-like object). */
+const numericPrice = (value: any): number | undefined => {
+  if (typeof value === 'number') return value;
+  if (value && typeof value === 'object') {
+    const n = value.rate_in_requested_currency ?? value.rate ?? value.total_to_book_in_requested_currency ?? value.total_to_book;
+    return typeof n === 'number' ? n : undefined;
+  }
+  return undefined;
+};
+
 /**
  * Transforms API response data into Hotel objects
  */
@@ -298,8 +311,8 @@ const transformApiDataToHotels = (apiData: any[]): Hotel[] => {
       id: item.id || index + 1,
       name: item.text || 'Unknown Hotel',
       location: item.location || 'Unknown Location',
-      rating: Math.floor(Math.random() * 3) + 3, // Random rating between 3-5
-      price: Math.floor(Math.random() * 200) + 100, // Random price between 100-300
+      rating: item.rating ?? undefined,
+      price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
       image: `/assets/img/rooms/${(index % 8) + 1}.jpg`, // Cycle through available images
       amenities: ['WiFi', 'Pool', 'Restaurant'], // Default amenities
       description: `Experience luxury and comfort at ${item.text}. Located in ${item.location}, this hotel offers world-class amenities and exceptional service.`,
@@ -340,10 +353,10 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
   
   // Log the actual API URL (without proxy) for clarity
   const actualUrl = getActualApiUrl(url);
-  console.log('Making API request to:', actualUrl);
-  console.log('Environment:', process.env.NODE_ENV);
-  console.log('API Base URL:', API_BASE_URL);
-  
+  // console.log('Making API request to:', actualUrl);
+  // console.log('Environment:', process.env.NODE_ENV);
+  // console.log('API Base URL:', API_BASE_URL);
+  //
   try {
     const response = await makeApiRequest(url, {
       method: 'GET',
@@ -353,20 +366,20 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
         'Authorization': `Bearer ${API_TOKEN}`,
       },
     });
-    
-    console.log('API Response Status:', response.status);
-    console.log('API Response Status Text:', response.statusText);
-    console.log('API Response URL:', response.url);
-    console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
-    
+    //
+    // console.log('API Response Status:', response.status);
+    // console.log('API Response Status Text:', response.statusText);
+    // console.log('API Response URL:', response.url);
+    // console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error Response Body:', errorText);
+      // console.error('API Error Response Body:', errorText);
       throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
     }
-    
+    //
     const data = await response.json();
-    console.log('API Response Data:', data);
+    // console.log('API Response Data:', data);
     
     // Handle API auth error (proxy can't send Bearer; API only accepts Bearer header)
     if (data && (data.error === 'authentication' || data.message === 'Unauthenticated.')) {
@@ -396,7 +409,7 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
       // Hotels array format
       hotels = transformApiDataToHotels(data.hotels);
     } else {
-      console.warn('Unexpected API response format:', data);
+      // console.warn('Unexpected API response format:', data);
       hotels = [];
     }
     
@@ -418,9 +431,9 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
  */
 export const searchHotelsByQuery = async (query: string, limit: number = 20): Promise<Hotel[]> => {
   try {
-    console.log('searchHotelsByQuery called with:', { query, limit });
+    // console.log('searchHotelsByQuery called with:', { query, limit });
     const response = await searchHotels({ query, limit });
-    console.log('searchHotelsByQuery response:', response);
+    // console.log('searchHotelsByQuery response:', response);
     return response.data || [];
   } catch (error) {
     console.error('searchHotelsByQuery error:', error);
@@ -433,7 +446,7 @@ export const searchHotelsByQuery = async (query: string, limit: number = 20): Pr
  */
 export const searchHotelsAdvanced = async (params: SearchParams): Promise<Hotel[]> => {
   const response = await searchHotels(params);
-  console.log('searchHotelsAdvanced response:', response);
+  // console.log('searchHotelsAdvanced response:', response);
   return response.data || [];
 };
 
@@ -443,11 +456,11 @@ export const searchHotelsAdvanced = async (params: SearchParams): Promise<Hotel[
 export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
   const url = `${API_BASE_URL}/hotels/${hotelId}`;
   
-  console.log('Fetching hotel details for ID:', hotelId);
+  // console.log('Fetching hotel details for ID:', hotelId);
   // Log the actual API URL (without proxy) for clarity
   const actualUrl = getActualApiUrl(url);
-  console.log('Hotel details URL:', actualUrl);
-  
+  // console.log('Hotel details URL:', actualUrl);
+  //
   try {
     const response = await makeApiRequest(url, {
       method: 'GET',
@@ -457,18 +470,18 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
         'Authorization': `Bearer ${API_TOKEN}`,
       },
     });
-    
-    console.log('Hotel details response status:', response.status);
-    console.log('Hotel details response URL:', response.url);
-    
+    //
+    // console.log('Hotel details response status:', response.status);
+    // console.log('Hotel details response URL:', response.url);
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Hotel details error response:', errorText);
+      // console.error('Hotel details error response:', errorText);
       throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
     }
-    
+    //
     const data = await response.json();
-    console.log('Hotel details response data:', data);
+    // console.log('Hotel details response data:', data);
     
     // Handle API auth error (e.g. missing/invalid token, or proxy stripped headers)
     if (data && (data.error === 'authentication' || data.message === 'Unauthenticated.')) {
@@ -512,9 +525,9 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
       videos: hotelData.videos || [],
       links: hotelData.links,
       
-      // Legacy fields for backward compatibility (using fallback values)
-      rating: hotelData.rating || Math.floor(Math.random() * 3) + 3,
-      price: hotelData.price || Math.floor(Math.random() * 200) + 100,
+      // Legacy fields for backward compatibility (no fake fallbacks for price/rating)
+      rating: hotelData.rating ?? undefined,
+      price: numericPrice(hotelData.price) ?? numericPrice(hotelData.min_price) ?? numericPrice(hotelData.lowest_rate) ?? undefined,
       image: hotelData.images && hotelData.images.length > 0 ? hotelData.images[0].url : undefined,
       available: true,
       distance: hotelData.distance || `${Math.floor(Math.random() * 10) + 1} km from city center`,
@@ -536,8 +549,8 @@ export const testApiConnectivity = async (): Promise<{ success: boolean; message
     const testUrl = `${API_BASE_URL}/search?query=test&limit=1`;
     // Log the actual API URL (without proxy) for clarity
     const actualTestUrl = getActualApiUrl(testUrl);
-    console.log('Testing API connectivity with URL:', actualTestUrl);
-    
+    // console.log('Testing API connectivity with URL:', actualTestUrl);
+    //
     const response = await makeApiRequest(testUrl, {
       method: 'GET',
       headers: {
@@ -546,10 +559,10 @@ export const testApiConnectivity = async (): Promise<{ success: boolean; message
         'Authorization': `Bearer ${API_TOKEN}`,
       },
     });
-    
-    console.log('Test response status:', response.status);
-    console.log('Test response URL:', response.url);
-    
+    //
+    // console.log('Test response status:', response.status);
+    // console.log('Test response URL:', response.url);
+    //
     if (!response.ok) {
       return {
         success: false,
@@ -580,10 +593,10 @@ export const testSampleUrl = async (): Promise<{ success: boolean; message: stri
     const sampleUrl = `${API_BASE_URL}/search?query=Philippines&limit=20`;
     // Log the actual API URL (without proxy) for clarity
     const actualSampleUrl = getActualApiUrl(sampleUrl);
-    console.log('Testing with sample URL:', actualSampleUrl);
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('API Base URL:', API_BASE_URL);
-    
+    // console.log('Testing with sample URL:', actualSampleUrl);
+    // console.log('Environment:', process.env.NODE_ENV);
+    // console.log('API Base URL:', API_BASE_URL);
+    //
     const response = await makeApiRequest(sampleUrl, {
       method: 'GET',
       headers: {
@@ -592,22 +605,22 @@ export const testSampleUrl = async (): Promise<{ success: boolean; message: stri
         'Authorization': `Bearer ${API_TOKEN}`,
       },
     });
-    
-    console.log('Sample URL response status:', response.status);
-    console.log('Sample URL response URL:', response.url);
-    console.log('Sample URL response headers:', Object.fromEntries(response.headers.entries()));
-    
+    //
+    // console.log('Sample URL response status:', response.status);
+    // console.log('Sample URL response URL:', response.url);
+    // console.log('Sample URL response headers:', Object.fromEntries(response.headers.entries()));
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Error response body:', errorText);
+      // console.error('Error response body:', errorText);
       return {
         success: false,
         message: `Sample URL test failed with status: ${response.status} - ${response.statusText}. Response: ${errorText}`
       };
     }
-    
+    //
     const data = await response.json();
-    console.log('Sample URL test response data:', data);
+    // console.log('Sample URL test response data:', data);
     return {
       success: true,
       message: 'Sample URL test successful',
@@ -628,8 +641,8 @@ export const testSampleUrl = async (): Promise<{ success: boolean; message: stri
 export const testApiEndpoint = async (): Promise<{ success: boolean; message: string; data?: any }> => {
   try {
     const testUrl = `${API_BASE_URL}/search`;
-    console.log('Testing API endpoint:', testUrl);
-    
+    // console.log('Testing API endpoint:', testUrl);
+    //
     const response = await makeApiRequest(testUrl, {
       method: 'GET',
       headers: {
@@ -638,21 +651,21 @@ export const testApiEndpoint = async (): Promise<{ success: boolean; message: st
         'Authorization': `Bearer ${API_TOKEN}`,
       },
     });
-    
-    console.log('Endpoint test response status:', response.status);
-    console.log('Endpoint test response URL:', response.url);
-    
+    //
+    // console.log('Endpoint test response status:', response.status);
+    // console.log('Endpoint test response URL:', response.url);
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Endpoint test error response:', errorText);
+      // console.error('Endpoint test error response:', errorText);
       return {
         success: false,
         message: `Endpoint test failed with status: ${response.status} - ${response.statusText}. Response: ${errorText}`
       };
     }
-    
+    //
     const data = await response.json();
-    console.log('Endpoint test response data:', data);
+    // console.log('Endpoint test response data:', data);
     return {
       success: true,
       message: 'API endpoint is accessible',
@@ -671,8 +684,8 @@ export const testApiEndpoint = async (): Promise<{ success: boolean; message: st
  * Fetch hotel details for multiple hotels in parallel
  */
 export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]> => {
-  console.log('Fetching hotel details for batch:', hotelIds);
-  
+  // console.log('Fetching hotel details for batch:', hotelIds);
+  //
   try {
     // Fetch all hotel details in parallel
     const hotelPromises = hotelIds.map(id => getHotelDetails(id));
@@ -691,7 +704,7 @@ export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]>
       console.warn('Some hotel details failed to fetch:', failedHotels);
     }
     
-    console.log(`Successfully fetched ${successfulHotels.length} out of ${hotelIds.length} hotel details`);
+    // console.log(`Successfully fetched ${successfulHotels.length} out of ${hotelIds.length} hotel details`);
     return successfulHotels;
   } catch (error) {
     console.error('getHotelDetailsBatch error:', error);
@@ -704,8 +717,8 @@ export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]>
  */
 export const searchHotelsByInspiration = async (inspirationId: number, perPage: number = 20): Promise<Hotel[]> => {
   const url = `${API_BASE_URL}/hotels?inspiration_id=${inspirationId}&per_page=${perPage}`;
-  console.log('Fetching hotels by inspiration ID:', inspirationId);
-
+  // console.log('Fetching hotels by inspiration ID:', inspirationId);
+  //
   try {
     const response = await makeApiRequest(url, { method: 'GET' });
 
@@ -748,8 +761,8 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
   
   // Log the actual API URL (without proxy) for clarity
   const actualUrl = getActualApiUrl(url);
-  console.log('Making enhanced API request to:', actualUrl);
-  
+  // console.log('Making enhanced API request to:', actualUrl);
+  //
   try {
     const response = await makeApiRequest(url, {
       method: 'GET',
@@ -759,18 +772,18 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
         'Authorization': `Bearer ${API_TOKEN}`,
       },
     });
-    
-    console.log('API Response Status:', response.status);
-    console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
-    
+    //
+    // console.log('API Response Status:', response.status);
+    // console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Error Response:', errorText);
+      // console.error('API Error Response:', errorText);
       throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
     }
-    
+    //
     const data = await response.json();
-    console.log('API Response Data:', data);
+    // console.log('API Response Data:', data);
     
     // Handle API error responses
     if (!data.success && data.success !== undefined) {
@@ -790,7 +803,7 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
       // Hotels array format
       hotels = transformApiDataToHotels(data.hotels);
     } else {
-      console.warn('API response does not contain expected data array:', data);
+      // console.warn('API response does not contain expected data array:', data);
       hotels = [];
     }
     
@@ -813,8 +826,8 @@ export const searchHotelsEnhanced = async (params: SearchParams): Promise<Search
  */
 export const sendBookingEmail = async (bookingDetails: BookingDetails): Promise<BookingResponse> => {
   try {
-    console.log('Sending booking email with details:', bookingDetails);
-    
+    // console.log('Sending booking email with details:', bookingDetails);
+    //
     // Try EmailJS first (if configured)
     try {
       const emailjsResult = await sendBookingEmailViaEmailJS(bookingDetails);
@@ -854,8 +867,8 @@ export const sendBookingEmail = async (bookingDetails: BookingDetails): Promise<
  */
 export const submitBookingForm = async (bookingDetails: BookingDetails): Promise<BookingResponse> => {
   try {
-    console.log('Submitting booking form with details:', bookingDetails);
-    
+    // console.log('Submitting booking form with details:', bookingDetails);
+    //
     // Generate a unique booking ID
     const bookingId = `BK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
@@ -877,12 +890,12 @@ export const submitBookingForm = async (bookingDetails: BookingDetails): Promise
     
     // For demonstration, we'll simulate the form submission
     // In a real implementation, you would submit to a service like Formspree
-    console.log('Form data prepared:', Object.fromEntries(formData.entries()));
-    
+    // console.log('Form data prepared:', Object.fromEntries(formData.entries()));
+    //
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    console.log('Booking form submitted successfully');
+    //
+    // console.log('Booking form submitted successfully');
     
     return {
       success: true,
@@ -904,14 +917,14 @@ export const submitBookingForm = async (bookingDetails: BookingDetails): Promise
  */
 export const checkHotelAvailability = async (params: AvailabilityParams): Promise<AvailabilityResponse[]> => {
   const url = `${API_BASE_URL}/hotels/availability`;
-  
-  console.log('Checking hotel availability with params:', params);
-  
+  //
+  // console.log('Checking hotel availability with params:', params);
+  //
   try {
     // Log the actual API URL (without proxy) for clarity
     const actualApiUrl = `${getActualApiBaseUrl()}/hotels/availability`;
-    console.log('Availability API URL:', actualApiUrl);
-    
+    // console.log('Availability API URL:', actualApiUrl);
+    //
     const response = await makeApiRequest(url, {
       method: 'POST',
       headers: {
@@ -921,18 +934,18 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
       },
       body: JSON.stringify(params),
     });
-    
-    console.log('Availability response status:', response.status);
-    
+    //
+    // console.log('Availability response status:', response.status);
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Availability error response:', errorText);
+      // console.error('Availability error response:', errorText);
       throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
     }
-    
+    //
     const data = await response.json();
-    console.log('Availability response data:', data);
-    
+    // console.log('Availability response data:', data);
+    //
     // The API returns an array of availability responses
     if (Array.isArray(data)) {
       return data;
@@ -987,9 +1000,9 @@ export interface BookingRequest {
 
 export const submitBooking = async (bookingData: BookingRequest): Promise<BookingResponse> => {
   const url = `${API_BASE_URL}/hotels/bookings`;
-  
-  console.log('Submitting booking with data:', bookingData);
-  
+  //
+  // console.log('Submitting booking with data:', bookingData);
+  //
   try {
     // Check if user is authenticated
     if (!isAuthenticated()) {
@@ -1012,8 +1025,8 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
     
     // Log the actual API URL (without proxy) for clarity
     const actualApiUrl = `${getActualApiBaseUrl()}/hotels/bookings`;
-    console.log('Booking API URL:', actualApiUrl);
-    
+    // console.log('Booking API URL:', actualApiUrl);
+    //
     // Validate rateIndex is provided
     if (!bookingData.rateIndex || bookingData.rateIndex.trim() === '') {
       throw new Error('Rate index is required. Please select a valid room type from the availability check.');
@@ -1053,9 +1066,9 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
     if (bookingData.referralCode && bookingData.referralCode.trim() !== '') {
       requestBody.referral_code = bookingData.referralCode.trim();
     }
-    
-    console.log('Booking request body:', JSON.stringify(requestBody, null, 2));
-    
+    //
+    // console.log('Booking request body:', JSON.stringify(requestBody, null, 2));
+    //
     const response = await makeApiRequest(url, {
       method: 'POST',
       headers: {
@@ -1065,12 +1078,12 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
       },
       body: JSON.stringify(requestBody),
     });
-    
-    console.log('Booking response status:', response.status);
-    
+    //
+    // console.log('Booking response status:', response.status);
+    //
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Booking error response:', errorText);
+      // console.error('Booking error response:', errorText);
       
       // Try to parse error response for better error messages
       try {
@@ -1130,10 +1143,10 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
       
       throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
     }
-    
+    //
     const data = await response.json();
-    console.log('Booking response data:', data);
-    
+    // console.log('Booking response data:', data);
+    //
     // Handle API error responses
     if (!data.success && data.success !== undefined) {
       return {

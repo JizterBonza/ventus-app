@@ -47,8 +47,8 @@ export const sendBookingEmailViaEmailJS = async (bookingDetails: BookingDetails)
       templateParams
     );
 
-    console.log('EmailJS response:', response);
-    
+    // console.log('EmailJS response:', response);
+    //
     if (response.status === 200) {
       return {
         success: true,

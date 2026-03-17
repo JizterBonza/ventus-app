@@ -12,7 +12,7 @@ module.exports = function(app) {
         console.log('Proxying API request:', req.method, req.url);
       },
       onProxyRes: (proxyRes, req, res) => {
-        console.log('API proxy response status:', proxyRes.statusCode);
+        // console.log('API proxy response status:', proxyRes.statusCode);
       },
       onError: (err, req, res) => {
         console.error('API proxy error:', err);
@@ -36,7 +36,7 @@ module.exports = function(app) {
         console.log('Proxying request:', req.method, req.url);
       },
       onProxyRes: (proxyRes, req, res) => {
-        console.log('Proxy response status:', proxyRes.statusCode);
+        // console.log('Proxy response status:', proxyRes.statusCode);
       },
       onError: (err, req, res) => {
         console.error('Proxy error:', err);

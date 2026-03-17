@@ -35,7 +35,7 @@ const Booking: React.FC = () => {
   }, [hotelId]);
 
   const handleBookingSuccess = (response: any) => {
-    console.log('Booking successful:', response);
+    // console.log('Booking successful:', response);
     // You can add additional success handling here
     // For example, redirect to a confirmation page
   };
