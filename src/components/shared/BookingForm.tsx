@@ -357,14 +357,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
     initialRooms,
     availabilityResult = null,
 }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
+    const defaultGuestName = user ? `${user.firstName} ${user.lastName}`.trim() : "";
+    const defaultGuestEmail = user?.email || "";
     const [formData, setFormData] = useState({
         startDate: startDate || "",
         endDate: endDate || "",
         sessionId: sessionId || "",
         rateIndex: rateIndex || "",
-        guestName: "",
-        guestEmail: "",
+        guestName: defaultGuestName,
+        guestEmail: defaultGuestEmail,
         paypalPayment: {
             orderId: undefined,
             payerId: undefined,
@@ -444,6 +446,28 @@ const BookingForm: React.FC<BookingFormProps> = ({
             }));
         }
     }, [sessionId, rateIndex, startDate, endDate, initialRooms, availabilityResult]);
+
+    // Pre-fill guest details from logged-in user without overriding manual edits.
+    useEffect(() => {
+        if (!isAuthenticated || !user) {
+            return;
+        }
+
+        setFormData((prev) => {
+            const shouldPrefillName = !prev.guestName.trim();
+            const shouldPrefillEmail = !prev.guestEmail.trim();
+
+            if (!shouldPrefillName && !shouldPrefillEmail) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                guestName: shouldPrefillName ? defaultGuestName : prev.guestName,
+                guestEmail: shouldPrefillEmail ? defaultGuestEmail : prev.guestEmail,
+            };
+        });
+    }, [isAuthenticated, user, defaultGuestName, defaultGuestEmail]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
@@ -1027,8 +1051,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     endDate: "",
                     sessionId: "",
                     rateIndex: "",
-                    guestName: "",
-                    guestEmail: "",
+                    guestName: defaultGuestName,
+                    guestEmail: defaultGuestEmail,
                     paypalPayment: {
                         orderId: undefined,
                         payerId: undefined,
