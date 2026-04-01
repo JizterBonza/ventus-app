@@ -70,7 +70,6 @@ const HotelDetail: React.FC = () => {
         start_date: string;
         end_date: string;
         adults: number;
-        children: Array<{ age: number }>;
     } | null>(null);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     /** "Starting from" price from availability API (today/tomorrow, visitor currency). Independent of Check Availability. */
@@ -986,7 +985,7 @@ const HotelDetail: React.FC = () => {
                                 endDate={availabilityFormData?.end_date || ""}
                                 initialRooms={availabilityFormData ? [{
                                     adults: availabilityFormData.adults,
-                                    children: availabilityFormData.children
+                                    children: []
                                 }] : undefined}
                                 rateIndex={(() => {
                                     // Extract rate_index from the first available rate in the first room type

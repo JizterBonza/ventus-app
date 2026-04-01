@@ -35,7 +35,6 @@ interface AvailabilityResultWithFormData extends AvailabilityResponse {
         start_date: string;
         end_date: string;
         adults: number;
-        children: Array<{ age: number }>;
     };
 }
 
@@ -44,10 +43,6 @@ interface CheckAvailabilityProps {
     hotelName: string;
     className?: string;
     onAvailabilityResult?: (result: AvailabilityResultWithFormData) => void;
-}
-
-interface ChildAge {
-    age: number;
 }
 
 const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
@@ -62,7 +57,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         end_date: "",
         currency: getCurrencyFromLocale(),
         adults: 2,
-        children: [] as ChildAge[],
     });
 
     // Set default currency from user's location (IP-based, so VPN/location changes are reflected)
@@ -99,31 +93,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         setFormData((prev) => ({
             ...prev,
             [name]: name === "adults" ? parseInt(value) || 0 : value,
-        }));
-    };
-
-    const handleChildAgeChange = (index: number, age: number) => {
-        setFormData((prev) => {
-            const newChildren = [...prev.children];
-            newChildren[index] = { age };
-            return {
-                ...prev,
-                children: newChildren,
-            };
-        });
-    };
-
-    const addChild = () => {
-        setFormData((prev) => ({
-            ...prev,
-            children: [...prev.children, { age: 5 }],
-        }));
-    };
-
-    const removeChild = (index: number) => {
-        setFormData((prev) => ({
-            ...prev,
-            children: prev.children.filter((_, i) => i !== index),
         }));
     };
 
@@ -171,7 +140,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                 rooms: [
                     {
                         adults: formData.adults,
-                        children: formData.children.length > 0 ? formData.children : undefined,
                     },
                 ],
             };
@@ -188,7 +156,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         start_date: formData.start_date,
                         end_date: formData.end_date,
                         adults: formData.adults,
-                        children: formData.children,
                     },
                 };
                 onAvailabilityResult?.(resultWithFormData);
@@ -290,43 +257,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                             max="20"
                             required
                         />
-                        </div>
-                        <div className="form-column-inner">
-                        <label className="form-label">
-                            Children (Optional)
-                        </label>
-                        <div className="children-inputs">
-                            {formData.children.map((child, index) => (
-                                <div key={index} className="d-flex align-items-center mb-2">
-                                    <label className="me-2" style={{ minWidth: "80px" }}>
-                                        Child {index + 1} Age:
-                                    </label>
-                                    <input
-                                        type="number"
-                                        className="form-control me-2"
-                                        value={child.age}
-                                        onChange={(e) => handleChildAgeChange(index, parseInt(e.target.value) || 0)}
-                                        min="0"
-                                        max="17"
-                                        style={{ maxWidth: "100px" }}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-danger"
-                                        onClick={() => removeChild(index)}
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                            ))}
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={addChild}
-                            >
-                                + Add Child
-                            </button>
-                        </div>
                         </div>
                    
                 </div>
