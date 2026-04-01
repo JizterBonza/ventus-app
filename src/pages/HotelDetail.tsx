@@ -814,7 +814,7 @@ const HotelDetail: React.FC = () => {
                                                 ))}
                                             </div>
                                         )}
-                                        <a href="#check-availability" className="btn btn-primary">Check Availability</a>
+                                        <a href="#check-availability" className="btn btn-primary">Book Now</a>
                                     </div>
                                 </div>
                             ) : null
