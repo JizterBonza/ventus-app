@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSearch } from "../../hooks/useSearch";
-import { SearchParams, Hotel } from "../../types/search";
+import { SearchParams } from "../../types/search";
 import { searchHotelsByQuery } from "../../utils/api";
 import "./SearchBar.css";
 
 interface SearchBarNewProps {
     onSearch?: () => void;
+}
+
+interface LocationSuggestion {
+    id: string;
+    type: "city" | "hotel";
+    title: string;
+    subtitle?: string;
+    value: string;
 }
 
 const COOKIE_KEYS = {
@@ -153,7 +161,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
     });
     const [hovered, setHovered] = useState<Date | null>(null);
     const [showGuestDropdown, setShowGuestDropdown] = useState(false);
-    const [suggestions, setSuggestions] = useState<Hotel[]>([]);
+    const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
@@ -197,6 +205,12 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
+    const extractCityName = (hotelLocation?: string): string => {
+        if (!hotelLocation) return "";
+        const [city = ""] = hotelLocation.split(",");
+        return city.trim();
+    };
+
     // Debounced predictive search suggestions
     useEffect(() => {
         const q = location.trim();
@@ -209,9 +223,37 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
             setSuggestionsLoading(true);
             setShowSuggestions(true);
             try {
-                const results = await searchHotelsByQuery(q, 5);
-                setSuggestions(results);
-                setShowSuggestions(results.length > 0);
+                const hotels = await searchHotelsByQuery(q, 5);
+
+                const citySuggestions: LocationSuggestion[] = Array.from(
+                    new Map(
+                        hotels
+                            .map((hotel) => extractCityName(hotel.location))
+                            .filter(Boolean)
+                            .map((city) => [
+                                city.toLowerCase(),
+                                {
+                                    id: `city-${city.toLowerCase().replace(/\s+/g, "-")}`,
+                                    type: "city" as const,
+                                    title: city,
+                                    subtitle: "City",
+                                    value: city,
+                                },
+                            ])
+                    ).values()
+                );
+
+                const hotelSuggestions: LocationSuggestion[] = hotels.map((hotel) => ({
+                    id: `hotel-${hotel.id}`,
+                    type: "hotel",
+                    title: hotel.name,
+                    subtitle: hotel.location,
+                    value: hotel.name,
+                }));
+
+                const mergedSuggestions = [...citySuggestions, ...hotelSuggestions];
+                setSuggestions(mergedSuggestions);
+                setShowSuggestions(mergedSuggestions.length > 0);
             } catch {
                 setSuggestions([]);
                 setShowSuggestions(false);
@@ -305,19 +347,24 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                                 {suggestionsLoading ? (
                                     <div className="search-result-item search-result-loading">Searching...</div>
                                 ) : (
-                                    suggestions.map((hotel) => (
+                                    suggestions.map((suggestion) => (
                                         <div
-                                            key={hotel.id}
+                                            key={suggestion.id}
                                             className="search-result-item"
                                             onClick={() => {
-                                                setLocation(hotel.name);
+                                                setLocation(suggestion.value);
                                                 setShowSuggestions(false);
                                             }}
                                             onMouseDown={(e) => e.preventDefault()}
                                         >
                                             <div className="result-info">
-                                                <h6>{hotel.name}</h6>
-                                                {hotel.location && <p>{hotel.location}</p>}
+                                                <h6>
+                                                    {suggestion.title}
+                                                    <span className={`search-suggestion-type ${suggestion.type}`}>
+                                                        {suggestion.type === "city" ? "City" : "Hotel"}
+                                                    </span>
+                                                </h6>
+                                                {suggestion.subtitle && <p>{suggestion.subtitle}</p>}
                                             </div>
                                         </div>
                                     ))

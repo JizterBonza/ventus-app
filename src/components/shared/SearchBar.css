@@ -88,6 +88,10 @@
   font-size: 14px;
   font-weight: 600;
   color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .result-info p {
@@ -100,6 +104,26 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--gold);
+}
+
+.search-suggestion-type {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.search-suggestion-type.city {
+  color: #1f6feb;
+  background: rgba(31, 111, 235, 0.1);
+}
+
+.search-suggestion-type.hotel {
+  color: #8250df;
+  background: rgba(130, 80, 223, 0.1);
 }
 
 /* Loading spinner styles */
