@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { AvailabilityParams, AvailabilityResponse, RateInfo } from "../../types/search";
+import { AvailabilityParams, AvailabilityResponse, Rate, RateInfo } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -36,6 +36,7 @@ interface AvailabilityResultWithFormData extends AvailabilityResponse {
         end_date: string;
         adults: number;
     };
+    selectedRateIndex?: string;
 }
 
 interface CheckAvailabilityProps {
@@ -86,7 +87,14 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
     const [isChecking, setIsChecking] = useState(false);
     const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResponse | null>(null);
+    const [selectedRateIndex, setSelectedRateIndex] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
+    const roomImageFallbacks = [
+        "/assets/img/rooms/1.jpg",
+        "/assets/img/rooms/2.jpg",
+        "/assets/img/rooms/3.jpg",
+        "/assets/img/rooms/4.jpg",
+    ];
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -130,6 +138,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         setIsChecking(true);
         setError(null);
         setAvailabilityResult(null);
+        setSelectedRateIndex("");
 
         try {
             const params: AvailabilityParams = {
@@ -149,16 +158,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             if (results && results.length > 0) {
                 const result = results[0];
                 setAvailabilityResult(result);
-                // Pass the result with form data to parent component
-                const resultWithFormData: AvailabilityResultWithFormData = {
-                    ...result,
-                    formData: {
-                        start_date: formData.start_date,
-                        end_date: formData.end_date,
-                        adults: formData.adults,
-                    },
-                };
-                onAvailabilityResult?.(resultWithFormData);
+                const defaultRateIndex = getFirstAvailableRateIndex(result);
+                setSelectedRateIndex(defaultRateIndex);
+                emitAvailabilityResult(result, defaultRateIndex);
             } else {
                 setError("No availability data returned");
             }
@@ -193,6 +195,113 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
         // Handle rate as number
         return `${currency ?? defaultCurrency} ${rate}`;
+    };
+
+    const getRoomTypeImage = (roomType: Record<string, any>, index: number): string => {
+        const directKeys = ["image", "image_url", "photo", "photo_url", "thumbnail_url"];
+        for (const key of directKeys) {
+            const value = roomType[key];
+            if (typeof value === "string" && value.trim() !== "") {
+                return value;
+            }
+        }
+
+        const collectionKeys = ["images", "photos", "gallery"];
+        for (const key of collectionKeys) {
+            const value = roomType[key];
+            if (Array.isArray(value) && value.length > 0) {
+                const first = value[0];
+                if (typeof first === "string" && first.trim() !== "") {
+                    return first;
+                }
+                if (first && typeof first === "object") {
+                    const objectUrl = first.url ?? first.image_url ?? first.thumbnail_url ?? first.photo_url;
+                    if (typeof objectUrl === "string" && objectUrl.trim() !== "") {
+                        return objectUrl;
+                    }
+                }
+            }
+        }
+
+        return roomImageFallbacks[index % roomImageFallbacks.length];
+    };
+
+    const getRoomTypeFeatures = (roomType: Record<string, any>): string[] => {
+        const featureSet = new Set<string>();
+        const addFeature = (value: unknown) => {
+            if (typeof value === "string" && value.trim() !== "") {
+                featureSet.add(value.trim());
+            }
+        };
+
+        const toArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+        toArray(roomType.features).forEach(addFeature);
+        toArray(roomType.amenities).forEach(addFeature);
+        toArray(roomType.additional_benefits).forEach(addFeature);
+
+        if (Array.isArray(roomType.rates)) {
+            roomType.rates.forEach((rate: Record<string, any>) => {
+                toArray(rate?.additional_benefits).forEach(addFeature);
+            });
+        }
+
+        return Array.from(featureSet);
+    };
+
+    const getRateValueAndCurrency = (
+        rate: Rate | Record<string, any>,
+        fallbackCurrency: string
+    ): { value: number | null; currency: string } => {
+        const value =
+            rate?.rate_in_requested_currency ??
+            rate?.rate ??
+            rate?.total_to_book_in_requested_currency ??
+            rate?.total_to_book;
+        const currency =
+            rate?.requested_currency_code ??
+            rate?.currency_code ??
+            fallbackCurrency;
+        return { value: typeof value === "number" ? value : null, currency };
+    };
+
+    const normalizeRateIndex = (value: unknown): string | null => {
+        if (value === undefined || value === null) return null;
+        if (typeof value === "number") return String(value);
+        if (typeof value === "string" && value.trim() !== "") return value.trim();
+        return null;
+    };
+
+    const getFirstAvailableRateIndex = (result: AvailabilityResponse): string => {
+        for (const roomType of result.room_types || []) {
+            if (Array.isArray(roomType.rates) && roomType.rates.length > 0) {
+                for (const rate of roomType.rates) {
+                    const normalized = normalizeRateIndex(rate.rate_index);
+                    if (normalized) return normalized;
+                }
+            }
+            const legacy = normalizeRateIndex(roomType.rate_index);
+            if (legacy) return legacy;
+        }
+        return "";
+    };
+
+    const emitAvailabilityResult = (result: AvailabilityResponse, chosenRateIndex: string) => {
+        const resultWithFormData: AvailabilityResultWithFormData = {
+            ...result,
+            formData: {
+                start_date: formData.start_date,
+                end_date: formData.end_date,
+                adults: formData.adults,
+            },
+            selectedRateIndex: chosenRateIndex || undefined,
+        };
+        onAvailabilityResult?.(resultWithFormData);
+    };
+
+    const handleSelectRate = (rateIndexValue: string) => {
+        if (!availabilityResult || !rateIndexValue) return;
+        setSelectedRateIndex(rateIndexValue);
+        emitAvailabilityResult(availabilityResult, rateIndexValue);
     };
 
     return (
@@ -346,10 +455,10 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                     )}
 
                     {isAuthenticated && availabilityResult.lowest_rate !== null && (
-                        <div className="card mt-3">
-                            <div className="card-body" style={{ color: '#fff' }}>
-                                <h5 className="card-title" style={{ color: '#fff' }}>Pricing</h5>
-                                <p className="card-text" style={{ color: '#fff' }}>
+                        <div className="card mt-3 availability-pricing-card">
+                            <div className="card-body">
+                                <h5 className="card-title">Pricing</h5>
+                                <p className="card-text">
                                     <strong>Lowest Rate:</strong> {formatRate(availabilityResult.lowest_rate, availabilityResult.default_currency || undefined, formData.currency) || 'N/A'}
                                 </p>
                             </div>
@@ -357,28 +466,119 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                     )}
 
                     {availabilityResult.room_types && availabilityResult.room_types.length > 0 && (
-                        <div className="card mt-3">
-                            <div className="card-body" style={{ color: '#fff' }}>
-                                <h5 className="card-title" style={{ color: '#fff' }}>Available Room Types</h5>
+                        <div className="card mt-3 availability-room-types-card">
+                            <div className="card-body">
+                                <h5 className="card-title">Available Room Types</h5>
                                 <div className="room-types-list">
                                     {availabilityResult.room_types.map((roomType, index) => {
                                         const formattedRate = formatRate(roomType.rate, roomType.currency, formData.currency);
+                                        const roomImage = getRoomTypeImage(roomType as Record<string, any>, index);
+                                        const roomFeatures = getRoomTypeFeatures(roomType as Record<string, any>);
+                                        const roomRates =
+                                            Array.isArray(roomType.rates) && roomType.rates.length > 0
+                                                ? roomType.rates
+                                                : roomType.rate !== undefined && roomType.rate !== null
+                                                  ? [{ title: "Standard Rate", ...((typeof roomType.rate === "object" ? roomType.rate : { rate: roomType.rate })) }]
+                                                  : [];
                                         return (
-                                            <div key={index} className="room-type-item mb-3 p-3 border rounded" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.2)', color: '#fff' }}>
+                                            <div key={index} className="room-type-item">
+                                                <div className="room-type-image-wrap">
+                                                    <img
+                                                        src={roomImage}
+                                                        alt={roomType.name || `Room Type ${index + 1}`}
+                                                        className="room-type-image"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.src = roomImageFallbacks[index % roomImageFallbacks.length];
+                                                        }}
+                                                    />
+                                                </div>
                                                 {roomType.name && (
-                                                    <h6 className="mb-2" style={{ color: '#fff' }}>{roomType.name}</h6>
+                                                    <h6 className="room-type-name">{roomType.name}</h6>
                                                 )}
                                                 {roomType.description && (
-                                                    <p className="small mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{roomType.description}</p>
+                                                    <p className="room-type-description">{roomType.description}</p>
                                                 )}
-                                                <div className="d-flex justify-content-between align-items-center">
+                                                {roomFeatures.length > 0 && (
+                                                    <div className="room-type-features">
+                                                        <small className="room-type-features-label">Features</small>
+                                                        <div className="room-type-features-list">
+                                                            {roomFeatures.map((feature) => (
+                                                                <span key={`${index}-${feature}`} className="room-type-feature-tag">
+                                                                    {feature}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {roomRates.length > 0 && (
+                                                    <div className="room-type-rates">
+                                                        <small className="room-type-features-label">Rates</small>
+                                                        <div className="room-type-rates-list">
+                                                            {roomRates.map((rate, rateIndex) => {
+                                                                const { value, currency } = getRateValueAndCurrency(
+                                                                    rate as Rate,
+                                                                    roomType.currency ?? availabilityResult.default_currency ?? formData.currency
+                                                                );
+                                                                const rateTitle = (rate as Rate).title || `Rate ${rateIndex + 1}`;
+                                                                const cancellationPolicy =
+                                                                    typeof (rate as Record<string, any>).cancellation_policy === "string"
+                                                                        ? (rate as Record<string, any>).cancellation_policy
+                                                                        : null;
+                                                                const resolvedRateIndex =
+                                                                    normalizeRateIndex((rate as Rate).rate_index) ??
+                                                                    normalizeRateIndex(roomType.rate_index);
+                                                                const isSelected = !!resolvedRateIndex && selectedRateIndex === resolvedRateIndex;
+                                                                return (
+                                                                    <div
+                                                                        key={`${index}-rate-${rateIndex}`}
+                                                                        className={`room-type-rate-item ${isSelected ? "room-type-rate-item--selected" : ""}`}
+                                                                    >
+                                                                        <span className="room-type-rate-title">{rateTitle}</span>
+                                                                        {isAuthenticated ? (
+                                                                            <span className="room-type-rate-value">
+                                                                                {value !== null ? `${currency} ${value.toLocaleString()}` : "Price not available"}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="room-type-rate-value">Login to view price</span>
+                                                                        )}
+                                                                        {resolvedRateIndex && (
+                                                                            <label className={`room-type-rate-checkbox ${isSelected ? "is-checked" : ""}`}>
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={isSelected}
+                                                                                    onChange={(e) => {
+                                                                                        if (e.target.checked) {
+                                                                                            handleSelectRate(resolvedRateIndex);
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                            </label>
+                                                                        )}
+                                                                        {cancellationPolicy && (
+                                                                            <p className="room-type-rate-policy mb-0">
+                                                                                Cancellation Policy: {cancellationPolicy}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {selectedRateIndex && (
+                                                            <p className="room-type-selected-rate mb-0">
+                                                                Selected Rate Index: <strong>{selectedRateIndex}</strong>
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <div className="room-type-footer">
                                                     {roomType.max_occupancy && (
-                                                        <span className="badge bg-secondary me-2">
+                                                        <span className="room-type-occupancy">
                                                             Max Occupancy: {roomType.max_occupancy}
                                                         </span>
                                                     )}
                                                     {isAuthenticated && formattedRate && (
-                                                        <strong style={{ color: '#fff' }}>
+                                                        <strong className="room-type-rate">
                                                             {formattedRate}
                                                         </strong>
                                                     )}
