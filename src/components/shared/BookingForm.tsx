@@ -34,6 +34,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
     const [submitMessage, setSubmitMessage] = useState("");
+    const [roomConstraintMessage, setRoomConstraintMessage] = useState("");
+    const [roomConstraintMessage, setRoomConstraintMessage] = useState("");
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -472,6 +474,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
     const [submitMessage, setSubmitMessage] = useState("");
+    const [roomConstraintMessage, setRoomConstraintMessage] = useState("");
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -480,13 +483,23 @@ const BookingForm: React.FC<BookingFormProps> = ({
             [name]: value,
         }));
     };
+
+    const cloneRoomConfig = (room: RoomData): RoomData => ({
+        adults: room.adults,
+        children: room.children.map((child) => ({ age: child.age })),
+    });
+
+    const syncRoomsToPrimary = (primaryRoom: RoomData, roomCount: number): RoomData[] => {
+        return Array.from({ length: roomCount }, () => cloneRoomConfig(primaryRoom));
+    };
     
     // Calculate booking total from availability result
     const calculateBookingTotal = (): number => {
         if (!availabilityResult || !formData.rateIndex) {
             return 0;
         }
-        
+        let baseAmount = 0;
+
         // Find the selected rate
         for (const roomType of availabilityResult.room_types || []) {
             if (roomType.rates && roomType.rates.length > 0) {
@@ -497,7 +510,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         ?? selectedRate.rate_in_requested_currency 
                         ?? selectedRate.rate 
                         ?? 0;
-                    return typeof amount === 'number' ? amount : 0;
+                    baseAmount = typeof amount === 'number' ? amount : 0;
+                    break;
                 }
             }
             // Fallback to legacy rate_index
@@ -505,10 +519,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 const rateValue = typeof roomType.rate === 'object' 
                     ? roomType.rate?.total_to_book_in_requested_currency ?? roomType.rate?.total_to_book ?? roomType.rate?.rate ?? 0
                     : roomType.rate ?? 0;
-                return typeof rateValue === 'number' ? rateValue : 0;
+                baseAmount = typeof rateValue === 'number' ? rateValue : 0;
+                break;
             }
         }
-        return 0;
+
+        const roomCount = Math.max(formData.rooms.length, 1);
+        return baseAmount * roomCount;
     };
 
     // Currency from the selected rate (same as Room Type display)
@@ -849,85 +866,120 @@ const BookingForm: React.FC<BookingFormProps> = ({
         field: "adults" | "children",
         value: number | Array<{ age: number }>
     ) => {
+        if (roomIndex !== 0) return;
+
         setFormData((prev) => {
-            const newRooms = [...prev.rooms];
+            const primaryRoom = cloneRoomConfig(prev.rooms[0] || { adults: 1, children: [] });
             if (field === "adults") {
-                newRooms[roomIndex] = {
-                    ...newRooms[roomIndex],
-                    adults: value as number,
-                };
+                primaryRoom.adults = value as number;
             } else {
-                newRooms[roomIndex] = {
-                    ...newRooms[roomIndex],
-                    children: value as Array<{ age: number }>,
-                };
+                primaryRoom.children = (value as Array<{ age: number }>).map((child) => ({ age: child.age }));
             }
+
+            const nextRoomCount = primaryRoom.children.length > 0 ? 1 : prev.rooms.length;
+            if (primaryRoom.children.length > 0 && prev.rooms.length > 1) {
+                setRoomConstraintMessage("Only one room can be booked when children are included.");
+            } else {
+                setRoomConstraintMessage("");
+            }
+
             return {
                 ...prev,
-                rooms: newRooms,
+                rooms: syncRoomsToPrimary(primaryRoom, Math.max(1, nextRoomCount)),
             };
         });
     };
 
     const addChild = (roomIndex: number) => {
+        if (roomIndex !== 0) return;
+
         setFormData((prev) => {
-            const newRooms = [...prev.rooms];
-            newRooms[roomIndex] = {
-                ...newRooms[roomIndex],
-                children: [...newRooms[roomIndex].children, { age: 0 }],
-            };
+            const primaryRoom = cloneRoomConfig(prev.rooms[0] || { adults: 1, children: [] });
+            primaryRoom.children = [...primaryRoom.children, { age: 0 }];
+            setRoomConstraintMessage(
+                prev.rooms.length > 1
+                    ? "Only one room can be booked when children are included."
+                    : ""
+            );
+
             return {
                 ...prev,
-                rooms: newRooms,
+                rooms: syncRoomsToPrimary(primaryRoom, 1),
             };
         });
     };
 
     const removeChild = (roomIndex: number, childIndex: number) => {
+        if (roomIndex !== 0) return;
+
         setFormData((prev) => {
-            const newRooms = [...prev.rooms];
-            newRooms[roomIndex] = {
-                ...newRooms[roomIndex],
-                children: newRooms[roomIndex].children.filter((_, idx) => idx !== childIndex),
-            };
+            const primaryRoom = cloneRoomConfig(prev.rooms[0] || { adults: 1, children: [] });
+            primaryRoom.children = primaryRoom.children.filter((_, idx) => idx !== childIndex);
+            if (primaryRoom.children.length === 0) {
+                setRoomConstraintMessage("");
+            }
+
             return {
                 ...prev,
-                rooms: newRooms,
+                rooms: syncRoomsToPrimary(primaryRoom, Math.max(1, prev.rooms.length)),
             };
         });
     };
 
     const updateChildAge = (roomIndex: number, childIndex: number, age: number) => {
+        if (roomIndex !== 0) return;
+
         setFormData((prev) => {
-            const newRooms = [...prev.rooms];
-            newRooms[roomIndex] = {
-                ...newRooms[roomIndex],
-                children: newRooms[roomIndex].children.map((child, idx) =>
-                    idx === childIndex ? { age } : child
-                ),
-            };
+            const primaryRoom = cloneRoomConfig(prev.rooms[0] || { adults: 1, children: [] });
+            primaryRoom.children = primaryRoom.children.map((child, idx) => (idx === childIndex ? { age } : child));
+
             return {
                 ...prev,
-                rooms: newRooms,
+                rooms: syncRoomsToPrimary(primaryRoom, Math.max(1, prev.rooms.length)),
             };
         });
     };
 
     const addRoom = () => {
-        setFormData((prev) => ({
-            ...prev,
-            rooms: [...prev.rooms, { adults: 1, children: [] }],
-        }));
+        setFormData((prev) => {
+            const primaryRoom = cloneRoomConfig(prev.rooms[0] || { adults: 1, children: [] });
+            if (primaryRoom.children.length > 0) {
+                setRoomConstraintMessage("Only one room can be booked when children are included.");
+                return prev;
+            }
+
+            setRoomConstraintMessage("");
+            return {
+                ...prev,
+                rooms: syncRoomsToPrimary(primaryRoom, prev.rooms.length + 1),
+            };
+        });
     };
 
     const removeRoom = (roomIndex: number) => {
         if (formData.rooms.length > 1) {
-            setFormData((prev) => ({
-                ...prev,
-                rooms: prev.rooms.filter((_, idx) => idx !== roomIndex),
-            }));
+            setFormData((prev) => {
+                const primaryRoom = cloneRoomConfig(prev.rooms[0] || { adults: 1, children: [] });
+                const nextCount = Math.max(1, prev.rooms.filter((_, idx) => idx !== roomIndex).length);
+                return {
+                    ...prev,
+                    rooms: syncRoomsToPrimary(primaryRoom, nextCount),
+                };
+            });
         }
     };
+
+    useEffect(() => {
+        const hasChildren = formData.rooms.some((room) => room.children.length > 0);
+        if (hasChildren && formData.rooms.length > 1) {
+            const primaryRoom = cloneRoomConfig(formData.rooms[0] || { adults: 1, children: [] });
+            setFormData((prev) => ({
+                ...prev,
+                rooms: syncRoomsToPrimary(primaryRoom, 1),
+            }));
+            setRoomConstraintMessage("Only one room can be booked when children are included.");
+        }
+    }, [formData.rooms]);
 
     const validateForm = (): boolean => {
         if (!formData.startDate) {
@@ -1000,6 +1052,23 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 setSubmitMessage(`Room ${i + 1} must have at least 1 adult`);
                 return false;
             }
+        }
+
+        const firstRoom = formData.rooms[0];
+        const hasChildren = formData.rooms.some((room) => room.children.length > 0);
+        if (hasChildren && formData.rooms.length > 1) {
+            setSubmitMessage("Only one room can be booked when children are included.");
+            return false;
+        }
+        const allRoomsIdentical = formData.rooms.every((room) => {
+            if (!firstRoom) return true;
+            if (room.adults !== firstRoom.adults) return false;
+            if (room.children.length !== firstRoom.children.length) return false;
+            return room.children.every((child, idx) => child.age === firstRoom.children[idx]?.age);
+        });
+        if (!allRoomsIdentical) {
+            setSubmitMessage("All rooms must use identical configurations.");
+            return false;
         }
         return true;
     };
@@ -1292,54 +1361,25 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         </div>
                     </div>
                 </div>
-                <div className="d-grid form-row">  <h5 className="mt-5" style={{ borderTop: '1px solid #000', paddingTop: '40px' }}>Payment Method</h5></div>
-              
-                {calculateBookingTotal() > 0 && (
-                    <div className="d-grid form-row">
-                            <div className="bg-light rounded p-3 mb-3">
-                                <div className="d-flex justify-content-between small mb-2">
-                                    <span>Booking total</span>
-                                    <span>{getSelectedRateCurrency()} {formatBookingAmount(calculateBookingTotal())}</span>
-                                </div>
-                                <div className="d-flex justify-content-between pt-2 border-top">
-                                    <span className="fw-semibold">Amount to pay</span>
-                                    <span className="fw-semibold">{getSelectedRateCurrency()} {formatBookingAmount(calculateBookingTotal())}</span>
-                                </div>
-                            </div>
-                    </div>
-                )}
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                        <div className="form-column-inner">
-                          
-                            {paypalApproved ? (
-                                <div className="alert alert-success">
-                                    <i className="fa fa-check-circle me-2"></i>
-                                    PayPal payment approved. Order ID: {formData.paypalPayment.orderId}
-                                </div>
-                            ) : (
-                                <div 
-                                    id="paypal-button-container" 
-                                    ref={paypalContainerRef}
-                                    style={{ minHeight: '50px' }}
-                                ></div>
-                            )}
-                            <small className="text-muted d-block mt-2">
-                                You will be redirected to PayPal to complete your payment.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
                 <div className="d-grid form-row rooms-section">
                     <div className="form-column">
                         <div className="form-column-inner">
+                            <small className="text-muted d-block mb-2">
+                                Multiple rooms must match Room 1 (room type/rate plan, adults, and children).
+                            </small>
+                            {roomConstraintMessage && (
+                                <div className="alert alert-warning mb-3">
+                                    <i className="fa fa-exclamation-triangle me-1"></i>
+                                    {roomConstraintMessage}
+                                </div>
+                            )}
                             <div className="d-flex justify-content-between align-items-center mb-3 flex-dir-col">
                                 <h5 className="mt-3 mb-0">Rooms *</h5>
                                 <button
                                     type="button"
                                     className="btn btn-sm btn-outline-primary"
                                     onClick={addRoom}
+                                    disabled={formData.rooms[0]?.children.length > 0}
                                 >
                                     + Add Room
                                 </button>
@@ -1372,6 +1412,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                             handleRoomChange(roomIndex, "adults", parseInt(e.target.value) || 1)
                                         }
                                         min="1"
+                                        disabled={roomIndex !== 0}
                                         required
                                     />
                                     <div className="d-flex justify-content-between align-items-center mb-2">
@@ -1380,6 +1421,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                             type="button"
                                             className="btn btn-sm btn-primary"
                                             onClick={() => addChild(roomIndex)}
+                                            disabled={roomIndex !== 0}
                                         >
                                          Add Child
                                         </button>
@@ -1396,12 +1438,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                                 }
                                                 min="0"
                                                 max="17"
+                                                disabled={roomIndex !== 0}
                                                 style={{ marginRight: '0.5rem' }}
                                             />
                                             <button
                                                 type="button"
                                                 className="btn btn-sm btn-outline-danger"
                                                 onClick={() => removeChild(roomIndex, childIndex)}
+                                                disabled={roomIndex !== 0}
                                               
                                             >
                                                 Remove
@@ -1410,6 +1454,44 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                     ))}
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="d-grid form-row"><h5 className="mt-5" style={{ borderTop: '1px solid #000', paddingTop: '40px' }}>Payment Method</h5></div>
+              
+                {calculateBookingTotal() > 0 && (
+                    <div className="d-grid form-row">
+                            <div className="bg-light rounded p-3 mb-3">
+                                <div className="d-flex justify-content-between small mb-2">
+                                    <span>Booking total</span>
+                                    <span>{getSelectedRateCurrency()} {formatBookingAmount(calculateBookingTotal())}</span>
+                                </div>
+                                <div className="d-flex justify-content-between pt-2 border-top">
+                                    <span className="fw-semibold">Amount to pay</span>
+                                    <span className="fw-semibold">{getSelectedRateCurrency()} {formatBookingAmount(calculateBookingTotal())}</span>
+                                </div>
+                            </div>
+                    </div>
+                )}
+                <div className="d-grid form-row">
+                    <div className="form-column">
+                        <div className="form-column-inner">
+                            {paypalApproved ? (
+                                <div className="alert alert-success">
+                                    <i className="fa fa-check-circle me-2"></i>
+                                    PayPal payment approved. Order ID: {formData.paypalPayment.orderId}
+                                </div>
+                            ) : (
+                                <div
+                                    id="paypal-button-container"
+                                    ref={paypalContainerRef}
+                                    style={{ minHeight: '50px' }}
+                                ></div>
+                            )}
+                            <small className="text-muted d-block mt-2">
+                                You will be redirected to PayPal to complete your payment.
+                            </small>
                         </div>
                     </div>
                 </div>
