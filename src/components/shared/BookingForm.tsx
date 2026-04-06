@@ -477,6 +477,33 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const [submitMessage, setSubmitMessage] = useState("");
     const [roomConstraintMessage, setRoomConstraintMessage] = useState("");
 
+    /**
+     * `total_to_book` from availability is already for the full quote (all rooms in that request).
+     * We must not multiply by room count again. When the user edits room count after the quote,
+     * we prorate against the number of rooms that quote covered.
+     */
+    const [roomsQuotedForAvailability, setRoomsQuotedForAvailability] = useState<number | null>(null);
+    const availabilityQuoteKeyRef = useRef<string>("");
+
+    useEffect(() => {
+        if (!availabilityResult) {
+            availabilityQuoteKeyRef.current = "";
+            setRoomsQuotedForAvailability(null);
+            return;
+        }
+        const sid = availabilityResult.session_id && String(availabilityResult.session_id).trim();
+        const key =
+            sid ||
+            `${availabilityResult.hotel_id}-${availabilityResult.opened_at ?? ""}`;
+        if (key !== availabilityQuoteKeyRef.current) {
+            availabilityQuoteKeyRef.current = key;
+            // Prefer prop length — formData.rooms may not have synced yet this tick.
+            const quoted =
+                initialRooms && initialRooms.length > 0 ? initialRooms.length : 1;
+            setRoomsQuotedForAvailability(Math.max(quoted, 1));
+        }
+    }, [availabilityResult, initialRooms]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
@@ -525,8 +552,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
             }
         }
 
-        const roomCount = Math.max(formData.rooms.length, 1);
-        return baseAmount * roomCount;
+        const currentRooms = Math.max(formData.rooms.length, 1);
+        const quotedRooms = roomsQuotedForAvailability ?? currentRooms;
+        const prorate =
+            quotedRooms > 0 ? currentRooms / quotedRooms : 1;
+        return baseAmount * prorate;
     };
 
     // Currency from the selected rate (same as Room Type display)

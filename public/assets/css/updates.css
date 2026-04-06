@@ -298,6 +298,80 @@ body .search-form-section{
     padding: 16px 20px;
     min-width: 220px;
 }
+.le-guest-dropdown--rooms {
+    min-width: 280px;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+    padding-bottom: 12px;
+}
+.le-guest-inline-sep {
+    color: #999;
+    font-size: 12px;
+    margin: 0 2px;
+}
+.le-guest-inline-suffix {
+    font-size: 11px;
+    color: #666;
+    margin-left: 2px;
+    font-family: 'Lato', sans-serif;
+}
+.le-room-slot {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.le-room-slot:last-of-type {
+    border-bottom: none;
+    margin-bottom: 8px;
+    padding-bottom: 0;
+}
+.le-room-slot-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.le-room-slot-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #222;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-family: 'Lato', sans-serif;
+}
+.le-room-remove {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    color: #666;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: 'Lato', sans-serif;
+}
+.le-room-remove:hover {
+    color: #111;
+}
+.le-add-room {
+    width: 100%;
+    background: #fff;
+    color: #222;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    margin-bottom: 12px;
+}
+.le-add-room:hover:not(:disabled) {
+    border-color: #999;
+    background: #fafafa;
+}
+.le-add-room:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 .le-guest-row {
     display: flex;
     align-items: center;

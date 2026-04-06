@@ -9,6 +9,9 @@ import {
     getCookie,
     parseSearchDate,
     dateToStorageString,
+    parseSearchRoomSlotsJson,
+    legacyGuestsAndRoomsToSearchSlots,
+    type SearchRoomSlot,
 } from "../../utils/searchSession";
 import "./SearchBar.css";
 
@@ -131,8 +134,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
     const [checkOut, setCheckOut] = useState<Date | null>(() => {
         const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return d;
     });
-    const [adults, setAdults] = useState(1);
-    const [rooms, setRooms] = useState(1);
+    const [roomSlots, setRoomSlots] = useState<SearchRoomSlot[]>([{ adults: 1, children: 0 }]);
     const [showCalendar, setShowCalendar] = useState(false);
     const [selectingCheckIn, setSelectingCheckIn] = useState(true);
     const [calendarBase, setCalendarBase] = useState(() => {
@@ -156,16 +158,27 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         const urlCheckOut = urlSearchParams.get("checkOut");
         const urlGuests = urlSearchParams.get("guests");
         const urlRooms = urlSearchParams.get("rooms");
+        const urlRoomSlots = urlSearchParams.get("roomSlots");
 
         if (urlLoc) setLocation(urlLoc);
         const ci = parseDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
         if (ci) setCheckIn(ci); // only override default if a saved value exists
         if (co) setCheckOut(co);
-        const g = parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1");
-        const r = parseInt(urlRooms || getCookie(SEARCH_SESSION_COOKIES.ROOMS) || "1");
-        if (!isNaN(g)) setAdults(g);
-        if (!isNaN(r)) setRooms(r);
+
+        const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
+        const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
+        if (fromUrl && fromUrl.length > 0) {
+            setRoomSlots(fromUrl);
+        } else if (fromCookie && fromCookie.length > 0) {
+            setRoomSlots(fromCookie);
+        } else {
+            const g = parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10);
+            const r = parseInt(urlRooms || getCookie(SEARCH_SESSION_COOKIES.ROOMS) || "1", 10);
+            if (!isNaN(g) && !isNaN(r)) {
+                setRoomSlots(legacyGuestsAndRoomsToSearchSlots(g, r));
+            }
+        }
     }, [urlSearchParams]);
 
     // Close dropdowns on outside click
@@ -287,6 +300,48 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         month: calendarBase.month === 11 ? 0 : calendarBase.month + 1,
     };
 
+    const totalAdults = roomSlots.reduce((s, r) => s + r.adults, 0);
+    const totalChildren = roomSlots.reduce((s, r) => s + r.children, 0);
+    const roomCount = roomSlots.length;
+
+    const MAX_SEARCH_ROOMS = 10;
+
+    const bumpRoomAdults = (roomIndex: number, delta: number) => {
+        setRoomSlots((prev) =>
+            prev.map((r, i) =>
+                i === roomIndex
+                    ? { ...r, adults: Math.max(1, Math.min(20, r.adults + delta)) }
+                    : r
+            )
+        );
+    };
+
+    const bumpRoomChildren = (roomIndex: number, delta: number) => {
+        setRoomSlots((prev) =>
+            prev.map((r, i) =>
+                i === roomIndex
+                    ? { ...r, children: Math.max(0, Math.min(10, r.children + delta)) }
+                    : r
+            )
+        );
+    };
+
+    const addAnotherRoom = () => {
+        setRoomSlots((prev) =>
+            prev.length >= MAX_SEARCH_ROOMS ? prev : [...prev, { adults: 1, children: 0 }]
+        );
+    };
+
+    const removeRoomAt = (index: number) => {
+        setRoomSlots((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+    };
+
+    const persistGuestSession = () => {
+        setCookie(SEARCH_SESSION_COOKIES.GUESTS, String(totalAdults));
+        setCookie(SEARCH_SESSION_COOKIES.ROOMS, String(roomCount));
+        setCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS, JSON.stringify(roomSlots));
+    };
+
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         const q = location || "hotels";
@@ -294,9 +349,11 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         if (location) urlParams.set("location", location);
         if (checkIn) urlParams.set("checkIn", toStorageStr(checkIn));
         if (checkOut) urlParams.set("checkOut", toStorageStr(checkOut));
-        if (adults !== 1) urlParams.set("guests", String(adults));
-        if (rooms !== 1) urlParams.set("rooms", String(rooms));
+        urlParams.set("roomSlots", JSON.stringify(roomSlots));
+        if (totalAdults !== 1) urlParams.set("guests", String(totalAdults));
+        if (roomCount !== 1) urlParams.set("rooms", String(roomCount));
 
+        persistGuestSession();
         navigate(`/search-results?${urlParams.toString()}`);
 
         const params: SearchParams = { query: q, limit: 20 };
@@ -422,40 +479,100 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
 
                     <div className="le-divider" />
 
-                    {/* Guests & Rooms */}
+                    {/* Guests & Rooms (per room: adults, children; add another room) */}
                     <div className="le-field le-field-guests" ref={guestRef}>
                         <div className="le-guest-display" onClick={() => setShowGuestDropdown(!showGuestDropdown)}>
-                            <svg width="13" height="16" viewBox="0 0 16 19" fill="none">
+                            <svg width="13" height="16" viewBox="0 0 16 19" fill="none" aria-hidden>
                                 <path d="M7.91134 0C5.48352 0 3.50717 1.9543 3.50717 4.3486C3.50717 6.74213 5.4843 8.69197 7.91134 8.69197C10.3392 8.69197 12.3208 6.74213 12.3208 4.3486C12.3208 1.95507 10.3392 0 7.91134 0ZM7.91134 1.15384C9.70658 1.15384 11.1508 2.57811 11.1508 4.3486C11.1508 6.11905 9.70661 7.53813 7.91134 7.53813C6.11607 7.53813 4.67342 6.11818 4.67342 4.3486C4.67342 2.57814 6.11616 1.15384 7.91134 1.15384ZM7.91134 9.22504C3.53853 9.22504 0 12.7146 0 17.0272V17.8868C0.000731246 18.0397 0.0628864 18.1861 0.173299 18.2942C0.283717 18.4017 0.432164 18.4623 0.587914 18.4615C0.909662 18.4608 1.16998 18.2041 1.17144 17.8868V17.0272C1.17144 13.3341 4.16663 10.3789 7.91139 10.3789C11.6561 10.3789 14.6527 13.3343 14.6527 17.0272V17.8868C14.6535 18.0397 14.7156 18.1861 14.8253 18.2942C14.9357 18.4017 15.0849 18.4623 15.2399 18.4615C15.5617 18.4608 15.8227 18.2041 15.8242 17.8868V17.0272C15.8242 12.7147 12.285 9.22504 7.91206 9.22504H7.91134Z" fill="#666" />
                             </svg>
-                            <span className="le-guest-num">{adults}</span>
-                            <span className="" />
-                            {/* Bed icon */}
-                            <svg width="18" height="14" viewBox="0 0 24 18" fill="none">
+                            <span className="le-guest-num">{totalAdults}</span>
+                            {totalChildren > 0 && (
+                                <>
+                                    <span className="le-guest-inline-sep" aria-hidden>·</span>
+                                    <span className="le-guest-num">{totalChildren}</span>
+                                    <span className="le-guest-inline-suffix">ch</span>
+                                </>
+                            )}
+                            <svg width="18" height="14" viewBox="0 0 24 18" fill="none" aria-hidden>
                                 <path d="M22 8V2C22 0.9 21.1 0 20 0H4C2.9 0 2 0.9 2 2V8C0.9 8 0 8.9 0 10V16H1.33L2 18H3L3.67 16H20.33L21 18H22L22.67 16H24V10C24 8.9 23.1 8 22 8ZM4 2H20V8H14V6C14 4.9 13.1 4 12 4H8C6.9 4 6 4.9 6 6V8H4V2ZM12 8H8V6H12V8ZM2 14V10H22V14H2Z" fill="#666" />
                             </svg>
-                            <span className="le-guest-num">{rooms}</span>
+                            <span className="le-guest-num">{roomCount}</span>
                         </div>
 
                         {showGuestDropdown && (
-                            <div className="le-guest-dropdown">
-                                <div className="le-guest-row">
-                                    <span>Adults</span>
-                                    <div className="le-counter">
-                                        <button type="button" onClick={() => setAdults(Math.max(1, adults - 1))}>−</button>
-                                        <span>{adults}</span>
-                                        <button type="button" onClick={() => setAdults(Math.min(10, adults + 1))}>+</button>
+                            <div className="le-guest-dropdown le-guest-dropdown--rooms">
+                                {roomSlots.map((slot, roomIndex) => (
+                                    <div key={roomIndex} className="le-room-slot">
+                                        <div className="le-room-slot-head">
+                                            <span className="le-room-slot-title">
+                                                Room {roomIndex + 1}
+                                            </span>
+                                            {roomSlots.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="le-room-remove"
+                                                    onClick={() => removeRoomAt(roomIndex)}
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="le-guest-row">
+                                            <span>Adults</span>
+                                            <div className="le-counter">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => bumpRoomAdults(roomIndex, -1)}
+                                                >
+                                                    −
+                                                </button>
+                                                <span>{slot.adults}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => bumpRoomAdults(roomIndex, 1)}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="le-guest-row">
+                                            <span>Children</span>
+                                            <div className="le-counter">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => bumpRoomChildren(roomIndex, -1)}
+                                                >
+                                                    −
+                                                </button>
+                                                <span>{slot.children}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => bumpRoomChildren(roomIndex, 1)}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="le-guest-row">
-                                    <span>Rooms</span>
-                                    <div className="le-counter">
-                                        <button type="button" onClick={() => setRooms(Math.max(1, rooms - 1))}>−</button>
-                                        <span>{rooms}</span>
-                                        <button type="button" onClick={() => setRooms(Math.min(10, rooms + 1))}>+</button>
-                                    </div>
-                                </div>
-                                <button type="button" className="le-guest-done" onClick={() => { setShowGuestDropdown(false); setCookie(SEARCH_SESSION_COOKIES.GUESTS, String(adults)); setCookie(SEARCH_SESSION_COOKIES.ROOMS, String(rooms)); }}>Done</button>
+                                ))}
+                                <button
+                                    type="button"
+                                    className="le-add-room"
+                                    onClick={addAnotherRoom}
+                                    disabled={roomSlots.length >= MAX_SEARCH_ROOMS}
+                                >
+                                    Add another room
+                                </button>
+                                <button
+                                    type="button"
+                                    className="le-guest-done"
+                                    onClick={() => {
+                                        setShowGuestDropdown(false);
+                                        persistGuestSession();
+                                    }}
+                                >
+                                    Done
+                                </button>
                             </div>
                         )}
                     </div>

@@ -10,6 +10,10 @@ import {
     dateToStorageString,
     getDefaultSearchDateStrings,
     getTodayLocalDateString,
+    parseSearchRoomSlotsJson,
+    searchRoomSlotsToAvailabilityRooms,
+    searchRoomSlotsToBookingInitialRooms,
+    type SearchRoomSlot,
 } from "../../utils/searchSession";
 
 const SUPPORTED_CURRENCIES = ["PHP", "USD", "EUR", "GBP", "JPY", "AUD", "SGD"] as const;
@@ -44,6 +48,8 @@ interface AvailabilityResultWithFormData extends AvailabilityResponse {
         start_date: string;
         end_date: string;
         adults: number;
+        /** When set (from header search per-room guests), pre-fills the booking form. */
+        initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     };
     selectedRateIndex?: string;
 }
@@ -72,24 +78,48 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         };
     });
 
-    // Match header search: same check-in/out and guests from URL (e.g. after search) and session cookies
+    /** Per-room adults/children from the header search; when set, availability uses full `rooms` array. */
+    const [searchRoomSlots, setSearchRoomSlots] = useState<SearchRoomSlot[] | null>(null);
+
+    // Match header search: dates, guests, and optional per-room `roomSlots` from URL / cookies
     useEffect(() => {
         const urlCheckIn = urlSearchParams.get("checkIn");
         const urlCheckOut = urlSearchParams.get("checkOut");
         const urlGuests = urlSearchParams.get("guests");
+        const urlRoomSlots = urlSearchParams.get("roomSlots");
 
         const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
 
-        setFormData((prev) => ({
-            ...prev,
-            ...(ci ? { start_date: dateToStorageString(ci) } : {}),
-            ...(co ? { end_date: dateToStorageString(co) } : {}),
-            adults: (() => {
+        const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
+        const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
+        const slots: SearchRoomSlot[] | null =
+            fromUrl && fromUrl.length > 0
+                ? fromUrl
+                : fromCookie && fromCookie.length > 0
+                  ? fromCookie
+                  : null;
+
+        if (slots && slots.length > 0) {
+            setSearchRoomSlots(slots);
+        } else {
+            setSearchRoomSlots(null);
+        }
+
+        setFormData((prev) => {
+            const next: typeof prev = {
+                ...prev,
+                ...(ci ? { start_date: dateToStorageString(ci) } : {}),
+                ...(co ? { end_date: dateToStorageString(co) } : {}),
+            };
+            if (slots && slots.length > 0) {
+                next.adults = slots.reduce((s, r) => s + r.adults, 0);
+            } else {
                 const g = parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10);
-                return !isNaN(g) ? g : prev.adults;
-            })(),
-        }));
+                if (!isNaN(g)) next.adults = g;
+            }
+            return next;
+        });
     }, [urlSearchParams]);
 
     // Set default currency from user's location (IP-based, so VPN/location changes are reflected)
@@ -130,6 +160,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        if (name === "adults") {
+            setSearchRoomSlots(null);
+        }
         setFormData((prev) => ({
             ...prev,
             [name]: name === "adults" ? parseInt(value) || 0 : value,
@@ -173,16 +206,17 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         setSelectedRateIndex("");
 
         try {
+            const roomsPayload =
+                searchRoomSlots && searchRoomSlots.length > 0
+                    ? searchRoomSlotsToAvailabilityRooms(searchRoomSlots)
+                    : [{ adults: formData.adults }];
+
             const params: AvailabilityParams = {
                 hotel_id: hotelId,
                 start_date: formData.start_date,
                 end_date: formData.end_date,
                 currency: formData.currency,
-                rooms: [
-                    {
-                        adults: formData.adults,
-                    },
-                ],
+                rooms: roomsPayload,
             };
 
             const results = await checkHotelAvailability(params);
@@ -316,12 +350,17 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     };
 
     const emitAvailabilityResult = (result: AvailabilityResponse, chosenRateIndex: string) => {
+        const initialRooms =
+            searchRoomSlots && searchRoomSlots.length > 0
+                ? searchRoomSlotsToBookingInitialRooms(searchRoomSlots)
+                : undefined;
         const resultWithFormData: AvailabilityResultWithFormData = {
             ...result,
             formData: {
                 start_date: formData.start_date,
                 end_date: formData.end_date,
                 adults: formData.adults,
+                ...(initialRooms ? { initialRooms } : {}),
             },
             selectedRateIndex: chosenRateIndex || undefined,
         };

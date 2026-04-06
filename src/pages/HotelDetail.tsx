@@ -71,6 +71,7 @@ const HotelDetail: React.FC = () => {
         start_date: string;
         end_date: string;
         adults: number;
+        initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     } | null>(null);
     const [selectedAvailabilityRateIndex, setSelectedAvailabilityRateIndex] = useState<string | undefined>(undefined);
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
@@ -982,10 +983,13 @@ const HotelDetail: React.FC = () => {
                                 sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
                                 startDate={availabilityFormData?.start_date || ""}
                                 endDate={availabilityFormData?.end_date || ""}
-                                initialRooms={availabilityFormData ? [{
-                                    adults: availabilityFormData.adults,
-                                    children: []
-                                }] : undefined}
+                                initialRooms={
+                                    availabilityFormData
+                                        ? availabilityFormData.initialRooms ?? [
+                                              { adults: availabilityFormData.adults, children: [] },
+                                          ]
+                                        : undefined
+                                }
                                 rateIndex={selectedAvailabilityRateIndex || (() => {
                                     // Extract rate_index from the first available rate in the first room type
                                     if (availabilityResult?.room_types && availabilityResult.room_types.length > 0) {
