@@ -320,6 +320,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { BookingResponse, AvailabilityResponse } from "../../types/search";
 import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { getTodayLocalDateString } from "../../utils/searchSession";
 
 interface BookingFormProps {
     hotelId: number;
@@ -1179,7 +1180,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 name="startDate"
                                 value={formData.startDate}
                                 onChange={handleInputChange}
-                                min={new Date().toISOString().split("T")[0]}
+                                min={getTodayLocalDateString()}
                                 required
                             />
                         </div>
@@ -1194,7 +1195,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 name="endDate"
                                 value={formData.endDate}
                                 onChange={handleInputChange}
-                                min={formData.startDate || new Date().toISOString().split("T")[0]}
+                                min={formData.startDate || getTodayLocalDateString()}
                                 required
                             />
                         </div>

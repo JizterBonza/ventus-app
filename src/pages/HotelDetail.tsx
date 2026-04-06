@@ -10,6 +10,7 @@ import Footer from "../components/layout/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import SearchBarNew from "../components/shared/SearchBarNew";
 import { isFavourite, toggleFavourite } from "../utils/favouritesService";
+import { getDefaultSearchDateStrings } from "../utils/searchSession";
 
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
@@ -257,11 +258,7 @@ const HotelDetail: React.FC = () => {
         const controller = new AbortController();
         (async () => {
             try {
-                const today = new Date();
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                const start_date = today.toISOString().split("T")[0];
-                const end_date = tomorrow.toISOString().split("T")[0];
+                const { start_date, end_date } = getDefaultSearchDateStrings();
                 const currency = await getVisitorCurrency();
                 if (cancelled) return;
                 const results = await checkHotelAvailability({

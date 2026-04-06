@@ -4,6 +4,7 @@ import { useSearch } from "../hooks/useSearch";
 import { Hotel, RateInfo } from "../types/search";
 import { getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
+import { getDefaultSearchDateStrings } from "../utils/searchSession";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -221,11 +222,7 @@ const SearchResults: React.FC = () => {
         }
         let cancelled = false;
         setLoadingStartingFromPrices(true);
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const start_date = today.toISOString().split("T")[0];
-        const end_date = tomorrow.toISOString().split("T")[0];
+        const { start_date, end_date } = getDefaultSearchDateStrings();
 
         (async () => {
             try {

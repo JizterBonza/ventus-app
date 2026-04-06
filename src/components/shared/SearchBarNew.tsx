@@ -3,6 +3,13 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSearch } from "../../hooks/useSearch";
 import { SearchParams } from "../../types/search";
 import { searchHotelsByQuery } from "../../utils/api";
+import {
+    SEARCH_SESSION_COOKIES,
+    setCookie,
+    getCookie,
+    parseSearchDate,
+    dateToStorageString,
+} from "../../utils/searchSession";
 import "./SearchBar.css";
 
 interface SearchBarNewProps {
@@ -17,34 +24,7 @@ interface LocationSuggestion {
     value: string;
 }
 
-const COOKIE_KEYS = {
-    CHECK_IN: "ventus_check_in",
-    CHECK_OUT: "ventus_check_out",
-    GUESTS: "ventus_guests",
-    ROOMS: "ventus_rooms",
-};
-
-const setCookie = (name: string, value: string, days = 30) => {
-    const date = new Date();
-    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-    document.cookie = `${name}=${encodeURIComponent(value)};expires=${date.toUTCString()};path=/`;
-};
-
-const getCookie = (name: string): string | null => {
-    const nameEQ = `${name}=`;
-    for (let c of document.cookie.split(";")) {
-        c = c.trim();
-        if (c.indexOf(nameEQ) === 0)
-            return decodeURIComponent(c.substring(nameEQ.length));
-    }
-    return null;
-};
-
-const parseDate = (str: string): Date | null => {
-    if (!str) return null;
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? null : d;
-};
+const parseDate = parseSearchDate;
 
 const formatDisplay = (date: Date | null): string => {
     if (!date) return "";
@@ -55,7 +35,7 @@ const formatDisplay = (date: Date | null): string => {
     });
 };
 
-const toStorageStr = (date: Date): string => date.toISOString().split("T")[0];
+const toStorageStr = dateToStorageString;
 
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -178,12 +158,12 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         const urlRooms = urlSearchParams.get("rooms");
 
         if (urlLoc) setLocation(urlLoc);
-        const ci = parseDate(urlCheckIn || getCookie(COOKIE_KEYS.CHECK_IN) || "");
-        const co = parseDate(urlCheckOut || getCookie(COOKIE_KEYS.CHECK_OUT) || "");
+        const ci = parseDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
+        const co = parseDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
         if (ci) setCheckIn(ci); // only override default if a saved value exists
         if (co) setCheckOut(co);
-        const g = parseInt(urlGuests || getCookie(COOKIE_KEYS.GUESTS) || "1");
-        const r = parseInt(urlRooms || getCookie(COOKIE_KEYS.ROOMS) || "1");
+        const g = parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1");
+        const r = parseInt(urlRooms || getCookie(SEARCH_SESSION_COOKIES.ROOMS) || "1");
         if (!isNaN(g)) setAdults(g);
         if (!isNaN(r)) setRooms(r);
     }, [urlSearchParams]);
@@ -275,17 +255,17 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
             setCheckIn(d);
             setCheckOut(null);
             setSelectingCheckIn(false);
-            setCookie(COOKIE_KEYS.CHECK_IN, toStorageStr(d));
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d));
         } else {
             if (checkIn && d <= checkIn) {
                 setCheckIn(d);
                 setCheckOut(null);
-                setCookie(COOKIE_KEYS.CHECK_IN, toStorageStr(d));
+                setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d));
             } else {
                 setCheckOut(d);
                 setSelectingCheckIn(true);
                 setShowCalendar(false);
-                setCookie(COOKIE_KEYS.CHECK_OUT, toStorageStr(d));
+                setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(d));
             }
         }
     };
@@ -383,22 +363,22 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
 
                         {/* Check-in */}
                         <div className="le-date-group" onClick={() => { setShowCalendar(true); setSelectingCheckIn(true); }}>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); const d = shiftDate(checkIn, -1); setCheckIn(d); setCookie(COOKIE_KEYS.CHECK_IN, toStorageStr(d)); }}>‹</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); const d = shiftDate(checkIn, -1); setCheckIn(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d)); }}>‹</button>
                             <span className={`le-date-text ${!checkIn ? "placeholder" : ""} ${!checkOut && showCalendar && !selectingCheckIn ? "active" : ""} ${showCalendar && selectingCheckIn ? "active" : ""}`}>
                                 {checkIn ? formatDisplay(checkIn) : "Check-in"}
                             </span>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); const d = shiftDate(checkIn, 1); setCheckIn(d); setCookie(COOKIE_KEYS.CHECK_IN, toStorageStr(d)); }}>›</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); const d = shiftDate(checkIn, 1); setCheckIn(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d)); }}>›</button>
                         </div>
 
                         <span className="le-date-sep">|</span>
 
                         {/* Check-out */}
                         <div className="le-date-group" onClick={() => { setShowCalendar(true); setSelectingCheckIn(false); }}>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) { const d = shiftDate(checkOut, -1); setCheckOut(d); setCookie(COOKIE_KEYS.CHECK_OUT, toStorageStr(d)); } }}>‹</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) { const d = shiftDate(checkOut, -1); setCheckOut(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(d)); } }}>‹</button>
                             <span className={`le-date-text ${!checkOut ? "placeholder" : ""} ${showCalendar && !selectingCheckIn ? "active" : ""}`}>
                                 {checkOut ? formatDisplay(checkOut) : "Check-out"}
                             </span>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) { const d = shiftDate(checkOut, 1); setCheckOut(d); setCookie(COOKIE_KEYS.CHECK_OUT, toStorageStr(d)); } }}>›</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) { const d = shiftDate(checkOut, 1); setCheckOut(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(d)); } }}>›</button>
                         </div>
 
                         {/* Calendar dropdown */}
@@ -475,7 +455,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                                         <button type="button" onClick={() => setRooms(Math.min(10, rooms + 1))}>+</button>
                                     </div>
                                 </div>
-                                <button type="button" className="le-guest-done" onClick={() => { setShowGuestDropdown(false); setCookie(COOKIE_KEYS.GUESTS, String(adults)); setCookie(COOKIE_KEYS.ROOMS, String(rooms)); }}>Done</button>
+                                <button type="button" className="le-guest-done" onClick={() => { setShowGuestDropdown(false); setCookie(SEARCH_SESSION_COOKIES.GUESTS, String(adults)); setCookie(SEARCH_SESSION_COOKIES.ROOMS, String(rooms)); }}>Done</button>
                             </div>
                         )}
                     </div>

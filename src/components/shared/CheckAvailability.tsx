@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate, RateInfo } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+    SEARCH_SESSION_COOKIES,
+    getCookie,
+    parseSearchDate,
+    dateToStorageString,
+    getDefaultSearchDateStrings,
+    getTodayLocalDateString,
+} from "../../utils/searchSession";
 
 const SUPPORTED_CURRENCIES = ["PHP", "USD", "EUR", "GBP", "JPY", "AUD", "SGD"] as const;
 
@@ -53,12 +62,35 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     onAvailabilityResult,
 }) => {
     const { isAuthenticated } = useAuth();
-    const [formData, setFormData] = useState({
-        start_date: "",
-        end_date: "",
-        currency: getCurrencyFromLocale(),
-        adults: 2,
+    const [urlSearchParams] = useSearchParams();
+    const [formData, setFormData] = useState(() => {
+        const dates = getDefaultSearchDateStrings();
+        return {
+            ...dates,
+            currency: getCurrencyFromLocale(),
+            adults: 1,
+        };
     });
+
+    // Match header search: same check-in/out and guests from URL (e.g. after search) and session cookies
+    useEffect(() => {
+        const urlCheckIn = urlSearchParams.get("checkIn");
+        const urlCheckOut = urlSearchParams.get("checkOut");
+        const urlGuests = urlSearchParams.get("guests");
+
+        const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
+        const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
+
+        setFormData((prev) => ({
+            ...prev,
+            ...(ci ? { start_date: dateToStorageString(ci) } : {}),
+            ...(co ? { end_date: dateToStorageString(co) } : {}),
+            adults: (() => {
+                const g = parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10);
+                return !isNaN(g) ? g : prev.adults;
+            })(),
+        }));
+    }, [urlSearchParams]);
 
     // Set default currency from user's location (IP-based, so VPN/location changes are reflected)
     useEffect(() => {
@@ -173,9 +205,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         }
     };
 
-    const getMinDate = () => {
-        return new Date().toISOString().split("T")[0];
-    };
+    const getMinDate = () => getTodayLocalDateString();
 
     const getMinEndDate = () => {
         return formData.start_date || getMinDate();
