@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate, RateInfo } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
@@ -9,7 +9,6 @@ import {
     parseSearchDate,
     dateToStorageString,
     getDefaultSearchDateStrings,
-    getTodayLocalDateString,
     parseSearchRoomSlotsJson,
     searchRoomSlotsToAvailabilityRooms,
     searchRoomSlotsToBookingInitialRooms,
@@ -61,6 +60,27 @@ interface CheckAvailabilityProps {
     onAvailabilityResult?: (result: AvailabilityResultWithFormData) => void;
 }
 
+function normalizeRateIndex(value: unknown): string | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value === "number") return String(value);
+    if (typeof value === "string" && value.trim() !== "") return value.trim();
+    return null;
+}
+
+function getFirstAvailableRateIndex(result: AvailabilityResponse): string {
+    for (const roomType of result.room_types || []) {
+        if (Array.isArray(roomType.rates) && roomType.rates.length > 0) {
+            for (const rate of roomType.rates) {
+                const normalized = normalizeRateIndex(rate.rate_index);
+                if (normalized) return normalized;
+            }
+        }
+        const legacy = normalizeRateIndex(roomType.rate_index);
+        if (legacy) return legacy;
+    }
+    return "";
+}
+
 const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     hotelId,
     hotelName,
@@ -80,6 +100,13 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
     /** Per-room adults/children from the header search; when set, availability uses full `rooms` array. */
     const [searchRoomSlots, setSearchRoomSlots] = useState<SearchRoomSlot[] | null>(null);
+
+    /** After first sync from URL/cookies so auto-check does not run with stale default dates before header state applies. */
+    const [searchHydrated, setSearchHydrated] = useState(false);
+
+    const fetchSeqRef = useRef(0);
+    const onAvailabilityResultRef = useRef(onAvailabilityResult);
+    onAvailabilityResultRef.current = onAvailabilityResult;
 
     // Match header search: dates, guests, and optional per-room `roomSlots` from URL / cookies
     useEffect(() => {
@@ -120,6 +147,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             }
             return next;
         });
+        setSearchHydrated(true);
     }, [urlSearchParams]);
 
     // Set default currency from user's location (IP-based, so VPN/location changes are reflected)
@@ -158,92 +186,120 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         "/assets/img/rooms/4.jpg",
     ];
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        if (name === "adults") {
-            setSearchRoomSlots(null);
-        }
-        setFormData((prev) => ({
-            ...prev,
-            [name]: name === "adults" ? parseInt(value) || 0 : value,
-        }));
-    };
-
-    const validateForm = (): boolean => {
+    const getValidationError = (): string | null => {
         if (!formData.start_date) {
-            setError("Please select check-in date");
-            return false;
+            return "Please select check-in date";
         }
         if (!formData.end_date) {
-            setError("Please select check-out date");
-            return false;
+            return "Please select check-out date";
         }
         if (formData.start_date >= formData.end_date) {
-            setError("Check-out date must be after check-in date");
-            return false;
+            return "Check-out date must be after check-in date";
         }
         if (formData.adults < 1) {
-            setError("Number of adults must be at least 1");
-            return false;
+            return "Number of adults must be at least 1";
         }
         if (!formData.currency) {
-            setError("Please select a currency");
-            return false;
+            return "Please select a currency";
         }
-        return true;
+        return null;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const emitAvailabilityResult = (result: AvailabilityResponse, chosenRateIndex: string) => {
+        const initialRooms =
+            searchRoomSlots && searchRoomSlots.length > 0
+                ? searchRoomSlotsToBookingInitialRooms(searchRoomSlots)
+                : undefined;
+        const resultWithFormData: AvailabilityResultWithFormData = {
+            ...result,
+            formData: {
+                start_date: formData.start_date,
+                end_date: formData.end_date,
+                adults: formData.adults,
+                ...(initialRooms ? { initialRooms } : {}),
+            },
+            selectedRateIndex: chosenRateIndex || undefined,
+        };
+        onAvailabilityResultRef.current?.(resultWithFormData);
+    };
 
-        if (!validateForm()) {
+    // Auto-run availability using header search (URL + cookies), after hydration from the same source.
+    useEffect(() => {
+        if (!searchHydrated || !hotelId) {
             return;
         }
 
+        const validationError = getValidationError();
+        if (validationError) {
+            setError(validationError);
+            setAvailabilityResult(null);
+            setSelectedRateIndex("");
+            setIsChecking(false);
+            return;
+        }
+
+        const seq = ++fetchSeqRef.current;
         setIsChecking(true);
         setError(null);
         setAvailabilityResult(null);
         setSelectedRateIndex("");
 
-        try {
-            const roomsPayload =
-                searchRoomSlots && searchRoomSlots.length > 0
-                    ? searchRoomSlotsToAvailabilityRooms(searchRoomSlots)
-                    : [{ adults: formData.adults }];
+        const roomsPayload =
+            searchRoomSlots && searchRoomSlots.length > 0
+                ? searchRoomSlotsToAvailabilityRooms(searchRoomSlots)
+                : [{ adults: formData.adults }];
 
-            const params: AvailabilityParams = {
-                hotel_id: hotelId,
-                start_date: formData.start_date,
-                end_date: formData.end_date,
-                currency: formData.currency,
-                rooms: roomsPayload,
-            };
+        const params: AvailabilityParams = {
+            hotel_id: hotelId,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            currency: formData.currency,
+            rooms: roomsPayload,
+        };
 
-            const results = await checkHotelAvailability(params);
-            
-            if (results && results.length > 0) {
-                const result = results[0];
-                setAvailabilityResult(result);
-                const defaultRateIndex = getFirstAvailableRateIndex(result);
-                setSelectedRateIndex(defaultRateIndex);
-                emitAvailabilityResult(result, defaultRateIndex);
-            } else {
-                setError("No availability data returned");
+        let cancelled = false;
+        (async () => {
+            try {
+                const results = await checkHotelAvailability(params);
+                if (cancelled || seq !== fetchSeqRef.current) {
+                    return;
+                }
+                if (results && results.length > 0) {
+                    const result = results[0];
+                    setAvailabilityResult(result);
+                    const defaultRateIndex = getFirstAvailableRateIndex(result);
+                    setSelectedRateIndex(defaultRateIndex);
+                    emitAvailabilityResult(result, defaultRateIndex);
+                } else {
+                    setError("No availability data returned");
+                }
+            } catch (err) {
+                if (cancelled || seq !== fetchSeqRef.current) {
+                    return;
+                }
+                const errorMessage = err instanceof Error ? err.message : "Failed to check availability";
+                setError(errorMessage);
+                console.error("Error checking availability:", err);
+            } finally {
+                if (!cancelled && seq === fetchSeqRef.current) {
+                    setIsChecking(false);
+                }
             }
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to check availability";
-            setError(errorMessage);
-            console.error("Error checking availability:", err);
-        } finally {
-            setIsChecking(false);
-        }
-    };
+        })();
 
-    const getMinDate = () => getTodayLocalDateString();
-
-    const getMinEndDate = () => {
-        return formData.start_date || getMinDate();
-    };
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        searchHydrated,
+        hotelId,
+        formData.start_date,
+        formData.end_date,
+        formData.adults,
+        formData.currency,
+        searchRoomSlots,
+        urlSearchParams,
+    ]);
 
     const formatRate = (rate: number | RateInfo | undefined, currency: string | undefined, defaultCurrency: string): string | null => {
         if (rate === undefined || rate === null) {
@@ -328,45 +384,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         return { value: typeof value === "number" ? value : null, currency };
     };
 
-    const normalizeRateIndex = (value: unknown): string | null => {
-        if (value === undefined || value === null) return null;
-        if (typeof value === "number") return String(value);
-        if (typeof value === "string" && value.trim() !== "") return value.trim();
-        return null;
-    };
-
-    const getFirstAvailableRateIndex = (result: AvailabilityResponse): string => {
-        for (const roomType of result.room_types || []) {
-            if (Array.isArray(roomType.rates) && roomType.rates.length > 0) {
-                for (const rate of roomType.rates) {
-                    const normalized = normalizeRateIndex(rate.rate_index);
-                    if (normalized) return normalized;
-                }
-            }
-            const legacy = normalizeRateIndex(roomType.rate_index);
-            if (legacy) return legacy;
-        }
-        return "";
-    };
-
-    const emitAvailabilityResult = (result: AvailabilityResponse, chosenRateIndex: string) => {
-        const initialRooms =
-            searchRoomSlots && searchRoomSlots.length > 0
-                ? searchRoomSlotsToBookingInitialRooms(searchRoomSlots)
-                : undefined;
-        const resultWithFormData: AvailabilityResultWithFormData = {
-            ...result,
-            formData: {
-                start_date: formData.start_date,
-                end_date: formData.end_date,
-                adults: formData.adults,
-                ...(initialRooms ? { initialRooms } : {}),
-            },
-            selectedRateIndex: chosenRateIndex || undefined,
-        };
-        onAvailabilityResult?.(resultWithFormData);
-    };
-
     const handleSelectRate = (rateIndexValue: string) => {
         if (!availabilityResult || !rateIndexValue) return;
         setSelectedRateIndex(rateIndexValue);
@@ -376,117 +393,25 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     return (
         <div className={`global-form ${className}`}>
             <div className="text-center">
-                <h2>Check Availability</h2>
+                <h2>Availability</h2>
                 <p className="text-muted mb-0">Hotel: {hotelName}</p>
+                <p className="text-muted small mb-0 mt-2">
+                    Using dates and guests from your search above.
+                </p>
             </div>
-            <form className="form slim" onSubmit={handleSubmit}>
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                        <div className="form-column-inner">
-                            <label htmlFor="start_date" className="form-label">
-                                Check-in Date *
-                            </label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                id="start_date"
-                                name="start_date"
-                                value={formData.start_date}
-                                onChange={handleInputChange}
-                                min={getMinDate()}
-                                required
-                            />
-                        </div>
-                        <div className="form-column-inner">
-                             <label htmlFor="end_date" className="form-label">
-                            Check-out Date *
-                            </label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                id="end_date"
-                                name="end_date"
-                                value={formData.end_date}
-                                onChange={handleInputChange}
-                                min={getMinEndDate()}
-                                required
-                            />
-                        </div>
-                    </div>
 
+            {isChecking && (
+                <div className="d-flex align-items-center justify-content-center gap-2 my-4" aria-live="polite">
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                    <span>Checking availability…</span>
                 </div>
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                       
-                    
+            )}
 
-                    <div className="form-column-inner">
-                        <label htmlFor="adults" className="form-label">
-                            Number of Adults *
-                        </label>
-                        <input
-                            type="number"
-                            className="form-control"
-                            id="adults"
-                            name="adults"
-                            value={formData.adults}
-                            onChange={handleInputChange}
-                            min="1"
-                            max="20"
-                            required
-                        />
-                        </div>
-                   
+            {error && (
+                <div className="alert alert-danger my-3" role="alert">
+                    {error}
                 </div>
-                    
-                </div>
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                        <div className="form-column-inner">
-                                    <label htmlFor="currency" className="form-label">
-                                    Currency *
-                                </label>
-                                <select
-                                    className="form-select"
-                                    id="currency"
-                                    name="currency"
-                                    value={formData.currency}
-                                    onChange={handleInputChange}
-                                    required
-                                >
-                                    <option value="PHP">PHP (Philippine Peso)</option>
-                                    <option value="USD">USD (US Dollar)</option>
-                                    <option value="EUR">EUR (Euro)</option>
-                                    <option value="GBP">GBP (British Pound)</option>
-                                    <option value="JPY">JPY (Japanese Yen)</option>
-                                    <option value="AUD">AUD (Australian Dollar)</option>
-                                    <option value="SGD">SGD (Singapore Dollar)</option>
-                                </select>
-                            </div>
-                    </div>
-                </div>
-                <div className="d-grid">
-                    {error && (
-                        <div className="alert alert-danger mb-3">
-                            {error}
-                        </div>
-                    )}
-                    <button type="submit" className="btn btn-primary btn-lg" disabled={isChecking}>
-                        {isChecking ? (
-                            <>
-                                <span
-                                    className="spinner-border spinner-border-sm me-2"
-                                    role="status"
-                                    aria-hidden="true"
-                                ></span>
-                                Checking Availability...
-                            </>
-                        ) : (
-                            "Check Availability"
-                        )}
-                    </button>
-                </div>
-            </form>
+            )}
 
             {availabilityResult && (
                 <div className="availability-results mt-4">
