@@ -1721,6 +1721,28 @@ input:-internal-autofill-selected:active {
 .global-form .d-grid .btn{
     width: 100%;
 }
+/* Inline actions in booking room rows (header Remove, Add Child, etc.) */
+/* Note: rooms-section is on the same element as d-grid, not a child — use .global-form .rooms-section */
+.global-form .rooms-section .d-flex .btn.btn-sm{
+    width: auto;
+}
+/* Remove uses outline-secondary; global style.css uses white text for dark heroes — invisible on white room cards */
+.global-form .rooms-section .btn-outline-secondary{
+    --bs-btn-color: #000;
+    --bs-btn-border-color: #000;
+    color: #000 !important;
+    border-color: #000 !important;
+    background-color: transparent !important;
+}
+.global-form .rooms-section .btn-outline-secondary:hover{
+    --bs-btn-hover-color: #fff;
+    color: #fff !important;
+    border-color: var(--gold) !important;
+    background-color: var(--gold) !important;
+}
+.global-form .rooms-section .btn-outline-secondary:after{
+    display: none !important;
+}
 .global-form .form label{
     line-height: 1;
 }

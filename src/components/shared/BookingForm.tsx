@@ -1428,7 +1428,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                                 type="button"
                                                 className="btn btn-sm btn-outline-secondary"
                                                 onClick={() => removeRoom(roomIndex)}
-                                                style={{ fontSize: '14px', padding: '0.25rem 0.75rem' }}
+                                                style={{ fontSize: '14px', padding: '0.25rem 0.75rem' , marginRight: '0px'}}
                                             >
                                                 Remove
                                             </button>
