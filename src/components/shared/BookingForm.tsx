@@ -1404,11 +1404,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                     {roomConstraintMessage}
                                 </div>
                             )}
-                            <div className="d-flex justify-content-between align-items-center mb-3 flex-dir-col">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
                                 <h5 className="mt-3 mb-0">Rooms *</h5>
                                 <button
                                     type="button"
                                     className="btn btn-sm btn-outline-primary"
+                                    style={{ margin: '0px'}}
                                     onClick={addRoom}
                                     disabled={formData.rooms[0]?.children.length > 0}
                                 >
@@ -1447,10 +1448,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                         required
                                     />
                                     <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <label className="form-label mb-0" style={{ minWidth: '150px' }}>Children (Age)</label>
+                                        <label className="form-label mb-0" style={{ minWidth: '150px' , marginBottom: '0px'}}>Children (Age)</label>
                                         <button
                                             type="button"
                                             className="btn btn-sm btn-primary"
+                                            style={{ margin: '0px'}}
                                             onClick={() => addChild(roomIndex)}
                                             disabled={roomIndex !== 0}
                                         >
