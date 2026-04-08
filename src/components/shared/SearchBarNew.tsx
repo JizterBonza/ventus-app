@@ -29,6 +29,10 @@ interface LocationSuggestion {
 
 const parseDate = parseSearchDate;
 
+/** Person icon path (viewBox 0 0 16 19) — shared by adults and smaller children indicator */
+const GUEST_PERSON_SVG_PATH =
+    "M7.91134 0C5.48352 0 3.50717 1.9543 3.50717 4.3486C3.50717 6.74213 5.4843 8.69197 7.91134 8.69197C10.3392 8.69197 12.3208 6.74213 12.3208 4.3486C12.3208 1.95507 10.3392 0 7.91134 0ZM7.91134 1.15384C9.70658 1.15384 11.1508 2.57811 11.1508 4.3486C11.1508 6.11905 9.70661 7.53813 7.91134 7.53813C6.11607 7.53813 4.67342 6.11818 4.67342 4.3486C4.67342 2.57814 6.11616 1.15384 7.91134 1.15384ZM7.91134 9.22504C3.53853 9.22504 0 12.7146 0 17.0272V17.8868C0.000731246 18.0397 0.0628864 18.1861 0.173299 18.2942C0.283717 18.4017 0.432164 18.4623 0.587914 18.4615C0.909662 18.4608 1.16998 18.2041 1.17144 17.8868V17.0272C1.17144 13.3341 4.16663 10.3789 7.91139 10.3789C11.6561 10.3789 14.6527 13.3343 14.6527 17.0272V17.8868C14.6535 18.0397 14.7156 18.1861 14.8253 18.2942C14.9357 18.4017 15.0849 18.4623 15.2399 18.4615C15.5617 18.4608 15.8227 18.2041 15.8242 17.8868V17.0272C15.8242 12.7147 12.285 9.22504 7.91206 9.22504H7.91134Z";
+
 const formatDisplay = (date: Date | null): string => {
     if (!date) return "";
     return date.toLocaleDateString("en-GB", {
@@ -483,14 +487,23 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                     <div className="le-field le-field-guests" ref={guestRef}>
                         <div className="le-guest-display" onClick={() => setShowGuestDropdown(!showGuestDropdown)}>
                             <svg width="13" height="16" viewBox="0 0 16 19" fill="none" aria-hidden>
-                                <path d="M7.91134 0C5.48352 0 3.50717 1.9543 3.50717 4.3486C3.50717 6.74213 5.4843 8.69197 7.91134 8.69197C10.3392 8.69197 12.3208 6.74213 12.3208 4.3486C12.3208 1.95507 10.3392 0 7.91134 0ZM7.91134 1.15384C9.70658 1.15384 11.1508 2.57811 11.1508 4.3486C11.1508 6.11905 9.70661 7.53813 7.91134 7.53813C6.11607 7.53813 4.67342 6.11818 4.67342 4.3486C4.67342 2.57814 6.11616 1.15384 7.91134 1.15384ZM7.91134 9.22504C3.53853 9.22504 0 12.7146 0 17.0272V17.8868C0.000731246 18.0397 0.0628864 18.1861 0.173299 18.2942C0.283717 18.4017 0.432164 18.4623 0.587914 18.4615C0.909662 18.4608 1.16998 18.2041 1.17144 17.8868V17.0272C1.17144 13.3341 4.16663 10.3789 7.91139 10.3789C11.6561 10.3789 14.6527 13.3343 14.6527 17.0272V17.8868C14.6535 18.0397 14.7156 18.1861 14.8253 18.2942C14.9357 18.4017 15.0849 18.4623 15.2399 18.4615C15.5617 18.4608 15.8227 18.2041 15.8242 17.8868V17.0272C15.8242 12.7147 12.285 9.22504 7.91206 9.22504H7.91134Z" fill="#666" />
+                                <path d={GUEST_PERSON_SVG_PATH} fill="#666" />
                             </svg>
                             <span className="le-guest-num">{totalAdults}</span>
                             {totalChildren > 0 && (
                                 <>
                                     <span className="le-guest-inline-sep" aria-hidden>·</span>
+                                    <svg
+                                        className="le-guest-inline-icon le-guest-inline-icon--child"
+                                        width="10"
+                                        height="12"
+                                        viewBox="0 0 16 19"
+                                        fill="none"
+                                        aria-hidden
+                                    >
+                                        <path d={GUEST_PERSON_SVG_PATH} fill="#666" />
+                                    </svg>
                                     <span className="le-guest-num">{totalChildren}</span>
-                                    <span className="le-guest-inline-suffix">ch</span>
                                 </>
                             )}
                             <svg width="18" height="14" viewBox="0 0 24 18" fill="none" aria-hidden>
