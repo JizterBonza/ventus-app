@@ -382,7 +382,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
                         {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
                             <div className="search-results-dropdown le-search-suggestions">
                                 {suggestionsLoading ? (
-                                    <div className="search-result-item search-result-loading">Searching...</div>
+                                    <div className="search-result-item search-result-loading" style={{ fontSize: '14px' }}>Searching...</div>
                                 ) : (
                                     suggestions.map((suggestion) => (
                                         <div
