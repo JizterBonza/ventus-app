@@ -1396,7 +1396,18 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     <div className="form-column">
                         <div className="form-column-inner">
                             <small className="text-muted d-block mb-2">
-                                Multiple rooms must match Room 1 (room type/rate plan, adults, and children).
+                                <span className="d-block mb-2">
+                                    <strong>Note:</strong> Only one hotel booking can be made at a time.
+                                </span>
+                                <span className="d-block mb-1">
+                                    <strong>Limitations:</strong>
+                                </span>
+                                <span className="d-block mb-2">
+                                    Multiple rooms will automatically have identical configurations (rate plan, room type, number of adults, etc.).
+                                </span>
+                                <span className="d-block">
+                                    If a room includes children, only one room can be booked at a time. If you need to book multiple rooms with children, please book one room at a time.
+                                </span>
                             </small>
                             {roomConstraintMessage && (
                                 <div className="alert alert-warning mb-3">
