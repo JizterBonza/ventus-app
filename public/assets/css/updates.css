@@ -1626,18 +1626,28 @@ input:-internal-autofill-selected:active {
     .slider-overlay{
         left:15px;
     }
+    /* Slick positions slides by width; margin is set in JS. Do not use flex gap on .slick-track or margin-right: 0 — that breaks mobile layout. */
     .hotel-header-gallery .slick-slide {
-        height: 457px !important;
-        margin-right: 0 !important;
-    }
-    .hotel-header-gallery .slick-track {
-        gap: 20px;
+        min-height: 18rem;
+        height: auto !important;
     }
     .slider-content{
-        max-width: 300px;
+        max-width: min(300px, calc(100vw - 2rem));
     }
     .hotel-header-gallery .slick-slide[data-slick-index="0"] .slider-overlay {
         left: 40px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .hotel-header-gallery .hotel-header-gallery-item img {
+        height: 16rem !important;
+    }
+    .hotel-header-gallery .slick-slide[data-slick-index="0"] .slider-overlay {
+        left: 12px;
+    }
+    .slider-overlay {
+        left: 8px;
     }
 }
 

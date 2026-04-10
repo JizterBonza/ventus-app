@@ -15,6 +15,21 @@ import BannerCTA from "../components/shared/BannerCTA";
 
 declare const $: any;
 
+/**
+ * Home hero Slick uses variableWidth + margin between slides. Do not add CSS `gap` on `.slick-track`
+ * (Slick's transforms ignore it). Values scale with viewport so narrow phones/tablets stay aligned.
+ */
+function getHomeHeroSliderLayout(containerWidth: number) {
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    if (vw <= 480) {
+        return { gap: 12, slideRatio: 0.9, trackMarginRatio: 0.06, firstSlideWidthMul: 1 };
+    }
+    if (vw <= 768) {
+        return { gap: 16, slideRatio: 0.865, trackMarginRatio: 0.1, firstSlideWidthMul: 1 };
+    }
+    return { gap: 30, slideRatio: 0.7, trackMarginRatio: 0.16, firstSlideWidthMul: 1.1 };
+}
+
 const Home: React.FC = () => {
     const navigate = useNavigate();
     const { hotels, loading, error, clearError, searchByQuery } = useSearch();
@@ -262,21 +277,70 @@ const Home: React.FC = () => {
                 // Check if slider exists and is not already initialized
                 if ($hotelHeaderGallery.length > 0 && !$hotelHeaderGallery.hasClass("slick-initialized")) {
                     try {
-                        // Set margin immediately when Slick initializes - register BEFORE .slick() call
-                        $hotelHeaderGallery.on("init", function(event: any, slick: any) {
+                        const setTrackMarginOnly = () => {
                             const containerWidth = $hotelHeaderGallery.width() || 0;
-                            if (containerWidth > 0) {
-                                const track = $hotelHeaderGallery.find(".slick-track");
-                                if (track.length > 0) {
-                                    const isMobile = window.innerWidth <= 768;
-                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16);
-                                    track.css({
-                                        marginLeft: `${negativeMargin}px`
-                                    });
+                            if (containerWidth <= 0) return;
+                            const { trackMarginRatio } = getHomeHeroSliderLayout(containerWidth);
+                            const track = $hotelHeaderGallery.find(".slick-track");
+                            if (track.length > 0) {
+                                track.css({
+                                    marginLeft: `${-Math.round(containerWidth * trackMarginRatio)}px`,
+                                });
+                            }
+                            $hotelHeaderGallery.css({ overflow: "hidden" });
+                        };
+
+                        const applySliderLayout = (runSetPosition: boolean) => {
+                            const containerWidth = $hotelHeaderGallery.width() || 0;
+                            if (containerWidth <= 0) return;
+                            const { gap, slideRatio, trackMarginRatio, firstSlideWidthMul } =
+                                getHomeHeroSliderLayout(containerWidth);
+                            const availableWidth = containerWidth - gap;
+                            const slideWidth = availableWidth * slideRatio;
+
+                            const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
+                            slickSlides.each(function (this: HTMLElement, index: number) {
+                                const $slide = $(this);
+                                const isFirstSlide = index === 0;
+                                const minWidthValue = isFirstSlide ? slideWidth * firstSlideWidthMul : slideWidth;
+                                $slide.css({
+                                    width: `${slideWidth}px`,
+                                    minWidth: `${minWidthValue}px`,
+                                    maxWidth: `${slideWidth}px`,
+                                    marginRight: `${gap}px`,
+                                });
+                            });
+
+                            $hotelHeaderGallery.find(".slick-slide.slick-cloned").each(function (this: HTMLElement) {
+                                const $slide = $(this);
+                                $slide.css({
+                                    width: `${slideWidth}px`,
+                                    minWidth: `${slideWidth}px`,
+                                    maxWidth: `${slideWidth}px`,
+                                    marginRight: `${gap}px`,
+                                });
+                            });
+
+                            const track = $hotelHeaderGallery.find(".slick-track");
+                            if (track.length > 0) {
+                                track.css({
+                                    marginLeft: `${-Math.round(containerWidth * trackMarginRatio)}px`,
+                                });
+                            }
+                            $hotelHeaderGallery.css({ overflow: "hidden" });
+
+                            if (runSetPosition) {
+                                const slickInstance = $hotelHeaderGallery[0]?.slick;
+                                if (slickInstance?.setPosition) {
+                                    slickInstance.setPosition();
                                 }
                             }
+                        };
+
+                        $hotelHeaderGallery.on("init", function () {
+                            applySliderLayout(true);
                         });
-                        
+
                         $hotelHeaderGallery.slick({
                             dots: false,
                             infinite: true,
@@ -291,199 +355,28 @@ const Home: React.FC = () => {
                             speed: 600,
                             cssEase: "ease-in-out",
                         });
-                        
-                        // Hide default Slick arrows if they exist
+
                         $hotelHeaderGallery.siblings(".slick-arrow").hide();
                         $hotelHeaderGallery.find(".slick-arrow").hide();
-                        
-                        // Set slide widths after initialization - current slide 70%, next shows 30%
-                        setTimeout(() => {
-                            const containerWidth = $hotelHeaderGallery.width() || 0;
-                            if (containerWidth > 0) {
-                                const isMobile = window.innerWidth <= 768;
-                                // Current slide: 70% (or 87.5% on mobile to show 1/8 of next)
-                                // Next slide will show 30% (or 12.5% on mobile)
-                                // Add gap between slides (30px to match CSS)
-                                const gap = 30;
-                                const availableWidth = containerWidth - gap;
-                                const currentSlideRatio = isMobile ? 0.875 : 0.70; // 70% desktop, 87.5% mobile
-                                const slideWidth = availableWidth * currentSlideRatio;
-                                
-                                // Apply width to all slides (non-cloned)
-                                const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
-                                slickSlides.each(function(this: HTMLElement, index: number) {
-                                    const $slide = $(this);
-                                    const isFirstSlide = index === 0;
-                                    const minWidthValue = isFirstSlide ? slideWidth * 1.1 : slideWidth; // 10% larger minWidth for first slide
-                                    
-                                    $slide.css({
-                                        width: `${slideWidth}px`,
-                                        minWidth: `${minWidthValue}px`,
-                                        maxWidth: `${slideWidth}px`,
-                                        marginRight: `${gap}px`
-                                    });
-                                });
-                                
-                                // Also apply to cloned slides for infinite mode
-                                $hotelHeaderGallery.find(".slick-slide.slick-cloned").each(function(this: HTMLElement, index: number) {
-                                    const $slide = $(this);
-                                    const slideWidth = availableWidth * currentSlideRatio;
-                                    $slide.css({
-                                        width: `${slideWidth}px`,
-                                        minWidth: `${slideWidth}px`,
-                                        maxWidth: `${slideWidth}px`,
-                                        marginRight: `${gap}px`
-                                    });
-                                });
-                                
-                                // Add negative margin-left to track immediately on first load
-                                const track = $hotelHeaderGallery.find(".slick-track");
-                                if (track.length > 0) {
-                                    const isMobile = window.innerWidth <= 768;
-                                    const negativeMargin = isMobile ? -43 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
-                                    track.css({
-                                        marginLeft: `${negativeMargin}px`
-                                    });
-                                }
-                                
-                                // Ensure overflow is hidden
-                                $hotelHeaderGallery.css({
-                                    overflow: "hidden"
-                                });
-                                
-                                // Force Slick to recalculate
-                                const slickInstance = $hotelHeaderGallery[0]?.slick;
-                                if (slickInstance && slickInstance.setPosition) {
-                                    slickInstance.setPosition();
-                                }
-                            }
-                        }, 100);
-                        
-                        // Also set margin immediately after Slick initializes (backup to ensure it's applied)
-                        setTimeout(() => {
-                            const containerWidth = $hotelHeaderGallery.width() || 0;
-                            if (containerWidth > 0) {
-                                const track = $hotelHeaderGallery.find(".slick-track");
-                                if (track.length > 0) {
-                                    const isMobile = window.innerWidth <= 768;
-                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16);
-                                    track.css({
-                                        marginLeft: `${negativeMargin}px`
-                                    });
-                                }
-                            }
-                        }, 50);
-                        
-                        // Update on resize
-                        let resizeTimer: NodeJS.Timeout;
+
+                        setTimeout(() => applySliderLayout(true), 100);
+                        setTimeout(() => applySliderLayout(true), 50);
+
+                        let resizeTimer: ReturnType<typeof setTimeout>;
                         $(window).on("resize.sliderWidths", () => {
                             clearTimeout(resizeTimer);
-                            resizeTimer = setTimeout(() => {
-                                const containerWidth = $hotelHeaderGallery.width() || 0;
-                                if (containerWidth > 0) {
-                                    const isMobile = window.innerWidth <= 768;
-                                    const gap = 30; // Match CSS gap
-                                    const availableWidth = containerWidth - gap;
-                                    const currentSlideRatio = isMobile ? 0.875 : 0.70; // 70% desktop
-                                    const slideWidth = availableWidth * currentSlideRatio;
-                                    
-                                    // Apply width to all slides (non-cloned)
-                                    const slickSlides = $hotelHeaderGallery.find(".slick-slide:not(.slick-cloned)");
-                                    slickSlides.each(function(this: HTMLElement, index: number) {
-                                        const $slide = $(this);
-                                        const isFirstSlide = index === 0;
-                                        const minWidthValue = isFirstSlide ? slideWidth * 1.1 : slideWidth; // 10% larger minWidth for first slide
-                                        
-                                        $slide.css({
-                                            width: `${slideWidth}px`,
-                                            minWidth: `${minWidthValue}px`,
-                                            maxWidth: `${slideWidth}px`,
-                                            marginRight: `${gap}px`
-                                        });
-                                    });
-                                    
-                                    // Also apply to cloned slides for infinite mode
-                                    $hotelHeaderGallery.find(".slick-slide.slick-cloned").each(function(this: HTMLElement) {
-                                        const $slide = $(this);
-                                        $slide.css({
-                                            width: `${slideWidth}px`,
-                                            minWidth: `${slideWidth}px`,
-                                            maxWidth: `${slideWidth}px`,
-                                            marginRight: `${gap}px`
-                                        });
-                                    });
-                                    
-                                    // Add negative margin-left to track to ensure only 2 images show
-                                    const track = $hotelHeaderGallery.find(".slick-track");
-                                    if (track.length > 0) {
-                                        const isMobile = window.innerWidth <= 768;
-                                        const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
-                                        track.css({
-                                            marginLeft: `${negativeMargin}px`
-                                        });
-                                    }
-                                    
-                                    // Ensure overflow is hidden
-                                    $hotelHeaderGallery.css({
-                                        overflow: "hidden"
-                                    });
-                                    
-                                    const slickInstance = $hotelHeaderGallery[0]?.slick;
-                                    if (slickInstance && slickInstance.setPosition) {
-                                        slickInstance.setPosition();
-                                    }
-                                }
-                            }, 150);
+                            resizeTimer = setTimeout(() => applySliderLayout(true), 150);
                         });
-                        
-                        // Update on slide change
-                        $hotelHeaderGallery.on("afterChange", function(event: any, slick: any, currentSlideIndex: number) {
+
+                        $hotelHeaderGallery.on("afterChange", function (_event: unknown, _slick: unknown, currentSlideIndex: number) {
                             const totalSlides = sliderHotels.length || 12;
                             const realSlideIndex = currentSlideIndex % totalSlides;
                             setCurrentSlide(realSlideIndex);
-                            
-                            // Update track margin on slide change to ensure only 2 images show and prevent left edge from showing
-                            const containerWidth = $hotelHeaderGallery.width() || 0;
-                            if (containerWidth > 0) {
-                                const track = $hotelHeaderGallery.find(".slick-track");
-                                if (track.length > 0) {
-                                    // Use -16% desktop, -52px mobile
-                                    const isMobile = window.innerWidth <= 768;
-                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
-                                    setTimeout(() => {
-                                        track.css({
-                                            marginLeft: `${negativeMargin}px`
-                                        });
-                                    }, 50);
-                                    
-                                    // Also ensure overflow is hidden on the container
-                                    $hotelHeaderGallery.css({
-                                        overflow: "hidden"
-                                    });
-                                }
-                            }
+                            setTimeout(() => setTrackMarginOnly(), 50);
                         });
-                        
-                        // Also update on beforeChange to prevent flicker and left edge showing
-                        $hotelHeaderGallery.on("beforeChange", function(event: any, slick: any, currentSlide: number, nextSlide: number) {
-                            const containerWidth = $hotelHeaderGallery.width() || 0;
-                            if (containerWidth > 0) {
-                                const track = $hotelHeaderGallery.find(".slick-track");
-                                if (track.length > 0) {
-                                    // Set margin immediately before transition to prevent left edge from showing
-                                    const isMobile = window.innerWidth <= 768;
-                                    const negativeMargin = isMobile ? -52 : -(containerWidth * 0.16); // -16% desktop, -52px mobile
-                                    // Apply immediately to prevent left edge from showing
-                                    track.css({
-                                        marginLeft: `${negativeMargin}px`
-                                    });
-                                }
-                                
-                                // Ensure overflow is hidden
-                                $hotelHeaderGallery.css({
-                                    overflow: "hidden"
-                                });
-                            }
+
+                        $hotelHeaderGallery.on("beforeChange", function () {
+                            setTrackMarginOnly();
                         });
 
                         setSliderReady(true);
