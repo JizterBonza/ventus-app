@@ -17,6 +17,8 @@ import "./SearchBar.css";
 
 interface SearchBarNewProps {
     onSearch?: () => void;
+    /** When the URL has no `location` query (e.g. hotel detail page), pre-fill the location field */
+    prefillLocation?: string | null;
 }
 
 interface LocationSuggestion {
@@ -126,7 +128,10 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
     );
 };
 
-const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
+const normalizeLocationDisplay = (raw: string) =>
+    raw.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
+
+const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }) => {
     const [urlSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const { searchAdvanced, loading } = useSearch();
@@ -190,6 +195,13 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
             }
         }
     }, [urlSearchParams]);
+
+    useEffect(() => {
+        const urlLoc = urlSearchParams.get("location");
+        if (urlLoc?.trim()) return;
+        const p = prefillLocation?.trim();
+        if (p) setLocation(normalizeLocationDisplay(p));
+    }, [urlSearchParams, prefillLocation]);
 
     // Close dropdowns on outside click
     useEffect(() => {

@@ -571,7 +571,7 @@ const HotelDetail: React.FC = () => {
         <div className="hotel-detail-page">
             <Header />
             {/* Hero Section */}
-        <SearchBarNew />
+        <SearchBarNew prefillLocation={hotel.name} />
             
             <section className="header-image-container" onClick={() => setShowGallery(true)}>
                     <img
