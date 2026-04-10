@@ -944,8 +944,9 @@ textarea.form-control{
     box-shadow: none;
 }
 .auth-card form button[type="submit"]{
-  height: 53px;
-  text-transform: uppercase;
+    height: 42px;
+    font-size: 14.07px;
+    text-transform: uppercase;
 }
 .btn.show-password-btn:after,
 .auth-card form button[type="submit"]:after{
@@ -1720,6 +1721,8 @@ input:-internal-autofill-selected:active {
 }
 .global-form .d-grid .btn{
     width: 100%;
+    font-size: 14.07px;
+    text-transform: uppercase;
 }
 /* Inline actions in booking room rows (header Remove, Add Child, etc.) */
 /* Note: rooms-section is on the same element as d-grid, not a child — use .global-form .rooms-section */
@@ -1930,6 +1933,8 @@ select.form-control{
     display: flex;
     align-items: center;
     gap: 10px;
+    line-height: 1;
+    margin-top:auto;
 }
 .alert h4{
     font-weight: 300;
@@ -1942,7 +1947,10 @@ select.form-control{
 .room-types-list h6{
     margin-bottom: 0 !important;
 }
-
+small{
+    font-size: 15px;
+    line-height: 1.5;
+}
 @media screen and (max-width: 641px){
    .form .form-column-inner{margin-bottom: 10px;}
 }
