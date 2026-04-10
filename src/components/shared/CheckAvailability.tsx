@@ -6,9 +6,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import {
     SEARCH_SESSION_COOKIES,
     getCookie,
+    setCookie,
     parseSearchDate,
     dateToStorageString,
     getDefaultSearchDateStrings,
+    getTodayLocalDateString,
     parseSearchRoomSlotsJson,
     searchRoomSlotsToAvailabilityRooms,
     searchRoomSlotsToBookingInitialRooms,
@@ -88,7 +90,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     onAvailabilityResult,
 }) => {
     const { isAuthenticated } = useAuth();
-    const [urlSearchParams] = useSearchParams();
+    const [urlSearchParams, setSearchParams] = useSearchParams();
     const [formData, setFormData] = useState(() => {
         const dates = getDefaultSearchDateStrings();
         return {
@@ -179,6 +181,10 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResponse | null>(null);
     const [selectedRateIndex, setSelectedRateIndex] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
+    /** Incremented by "Check again" to re-run availability with the same dates. */
+    const [recheckNonce, setRecheckNonce] = useState(0);
+    /** Editable dates while result is "Not Available"; applied on "Check again" only (no auto-fetch on change). */
+    const [retryDraft, setRetryDraft] = useState<{ start_date: string; end_date: string } | null>(null);
     const roomImageFallbacks = [
         "/assets/img/rooms/1.jpg",
         "/assets/img/rooms/2.jpg",
@@ -203,6 +209,98 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             return "Please select a currency";
         }
         return null;
+    };
+
+    /** Keeps header `SearchBarNew` in sync (URL + cookies). */
+    const persistSearchDatesToUrlAndCookies = (checkIn: string, checkOut: string) => {
+        if (!checkIn || !checkOut) return;
+        setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, checkIn);
+        setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, checkOut);
+        setSearchParams(
+            (prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("checkIn", checkIn);
+                next.set("checkOut", checkOut);
+                return next;
+            },
+            { replace: true }
+        );
+    };
+
+    useEffect(() => {
+        if (availabilityResult && !availabilityResult.is_available) {
+            setRetryDraft({
+                start_date: formData.start_date,
+                end_date: formData.end_date,
+            });
+        } else {
+            setRetryDraft(null);
+        }
+    }, [availabilityResult, formData.start_date, formData.end_date]);
+
+    const handleRetryCheckInChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newStart = e.target.value;
+        setRetryDraft((prev) => {
+            const base = prev ?? { start_date: formData.start_date, end_date: formData.end_date };
+            let end = base.end_date;
+            if (newStart && end && newStart >= end) {
+                const d = parseSearchDate(newStart);
+                if (d) {
+                    const nd = new Date(d);
+                    nd.setDate(nd.getDate() + 1);
+                    end = dateToStorageString(nd);
+                }
+            }
+            return { start_date: newStart, end_date: end };
+        });
+    };
+
+    const handleRetryCheckOutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newEnd = e.target.value;
+        setRetryDraft((prev) => {
+            const base = prev ?? { start_date: formData.start_date, end_date: formData.end_date };
+            let start = base.start_date;
+            let end = newEnd;
+            if (start && end && start >= end) {
+                const d = parseSearchDate(end);
+                if (d) {
+                    const nd = new Date(d);
+                    nd.setDate(nd.getDate() - 1);
+                    start = dateToStorageString(nd);
+                }
+            }
+            return { start_date: start, end_date: end };
+        });
+    };
+
+    const handleCheckAgain = () => {
+        const draft =
+            retryDraft ?? { start_date: formData.start_date, end_date: formData.end_date };
+        if (!draft.start_date) {
+            setError("Please select check-in date");
+            return;
+        }
+        if (!draft.end_date) {
+            setError("Please select check-out date");
+            return;
+        }
+        if (draft.start_date >= draft.end_date) {
+            setError("Check-out date must be after check-in date");
+            return;
+        }
+        setError(null);
+        persistSearchDatesToUrlAndCookies(draft.start_date, draft.end_date);
+        const unchanged =
+            draft.start_date === formData.start_date && draft.end_date === formData.end_date;
+        if (unchanged) {
+            setRecheckNonce((n) => n + 1);
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                start_date: draft.start_date,
+                end_date: draft.end_date,
+            }));
+        }
     };
 
     const emitAvailabilityResult = (result: AvailabilityResponse, chosenRateIndex: string) => {
@@ -299,6 +397,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         formData.currency,
         searchRoomSlots,
         urlSearchParams,
+        recheckNonce,
     ]);
 
     const formatRate = (rate: number | RateInfo | undefined, currency: string | undefined, defaultCurrency: string): string | null => {
@@ -390,6 +489,14 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         emitAvailabilityResult(availabilityResult, rateIndexValue);
     };
 
+    const notAvailableRetryDates =
+        availabilityResult && !availabilityResult.is_available
+            ? (retryDraft ?? {
+                  start_date: formData.start_date,
+                  end_date: formData.end_date,
+              })
+            : null;
+
     return (
         <div className={`global-form ${className}`}>
             <div className="text-center">
@@ -428,6 +535,57 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         </p>
                     </div>
 
+                    {notAvailableRetryDates && (
+                        <div className="card mt-3 availability-retry-dates-card">
+                            <div className="card-body">
+                                <h5 className="card-title" style={{ color: "#fff" }}>Check availability again</h5>
+                                <p className="text-muted small mb-3">
+                                    Choose check-in and check-out, then click <strong>Check again</strong>. Your search bar dates update when you submit.
+                                </p>
+                                <div className="row g-3 align-items-end">
+                                    <div className="col-md-5 col-lg-4">
+                                        <label htmlFor="ca-retry-checkin" className="form-label">
+                                            Check-in
+                                        </label>
+                                        <input
+                                            id="ca-retry-checkin"
+                                            type="date"
+                                            className="form-control"
+                                            min={getTodayLocalDateString()}
+                                            value={notAvailableRetryDates.start_date}
+                                            onChange={handleRetryCheckInChange}
+                                            disabled={isChecking}
+                                        />
+                                    </div>
+                                    <div className="col-md-5 col-lg-4">
+                                        <label htmlFor="ca-retry-checkout" className="form-label">
+                                            Check-out
+                                        </label>
+                                        <input
+                                            id="ca-retry-checkout"
+                                            type="date"
+                                            className="form-control"
+                                            min={notAvailableRetryDates.start_date || getTodayLocalDateString()}
+                                            value={notAvailableRetryDates.end_date}
+                                            onChange={handleRetryCheckOutChange}
+                                            disabled={isChecking}
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-auto d-flex align-items-end pt-2 pt-md-0">
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={handleCheckAgain}
+                                            disabled={isChecking}
+                                        >
+                                            Check again
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {availabilityResult.is_under_refurbishment && (
                         <div className="alert alert-info">
                             <strong>Under Refurbishment</strong>
@@ -448,7 +606,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         </div>
                     )}
 
-                    {isAuthenticated && availabilityResult.lowest_rate !== null && (
+                    {availabilityResult.is_available && isAuthenticated && availabilityResult.lowest_rate !== null && (
                         <div className="card mt-3 availability-pricing-card">
                             <div className="card-body">
                                 <h5 className="card-title">Pricing</h5>
@@ -459,7 +617,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         </div>
                     )}
 
-                    {availabilityResult.room_types && availabilityResult.room_types.length > 0 && (
+                    {availabilityResult.is_available &&
+                        availabilityResult.room_types &&
+                        availabilityResult.room_types.length > 0 && (
                         <div className="card mt-3 availability-room-types-card">
                             <div className="card-body">
                                 <h5 className="card-title">Available Room Types</h5>
@@ -585,7 +745,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         </div>
                     )}
 
-                    {availabilityResult.room_types && availabilityResult.room_types.length === 0 && availabilityResult.is_available && (
+                    {availabilityResult.is_available &&
+                        availabilityResult.room_types &&
+                        availabilityResult.room_types.length === 0 && (
                         <div className="alert alert-info mt-3">
                             <p className="mb-0">Hotel is available but no room types were returned. Please contact the hotel directly for booking.</p>
                         </div>
