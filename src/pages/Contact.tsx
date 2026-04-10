@@ -130,7 +130,6 @@ const Contact: React.FC = () => {
                                         </select>
                                     </div>
                                     <div className="d-grid form-row">
-                                        <div className="form-column">
                                             <label htmlFor="message" className="form-label">
                                                 Message
                                             </label>
@@ -142,9 +141,8 @@ const Contact: React.FC = () => {
                                                 rows={5}
                                                 required
                                             />
-                                        </div>
                                     </div>
-                                    <div className="d-grid">
+                                    <div className="d-grid form-row">
                                         <button type="submit" className="btn btn-primary btn-lg">
                                             Submit
                                         </button>

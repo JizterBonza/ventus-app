@@ -1721,6 +1721,8 @@ input:-internal-autofill-selected:active {
 }
 .global-form .d-grid .btn{
     width: 100%;
+    font-size: 14.07px;
+    text-transform: uppercase;
 }
 /* Inline actions in booking room rows (header Remove, Add Child, etc.) */
 /* Note: rooms-section is on the same element as d-grid, not a child — use .global-form .rooms-section */
