@@ -879,6 +879,8 @@ const HotelDetail: React.FC = () => {
                                     iconSrc = '/assets/img/hotelInfo/positive_impact.svg';
                                 } else if (title.includes('pool')) {
                                     iconSrc = '/assets/img/hotelInfo/pool.svg';
+                                } else if (title.includes('pet') && title.includes('friend')) {
+                                    iconSrc = '/assets/img/hotelInfo/pet_friendly.svg';
                                 } else if (title.includes('activities')) {
                                     iconSrc = '/assets/img/hotelInfo/activity.svg';
                                 } 
