@@ -1947,7 +1947,10 @@ select.form-control{
 .room-types-list h6{
     margin-bottom: 0 !important;
 }
-
+small{
+    font-size: 15px;
+    line-height: 1.5;
+}
 @media screen and (max-width: 641px){
    .form .form-column-inner{margin-bottom: 10px;}
 }
