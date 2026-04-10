@@ -141,7 +141,7 @@ const CookieSettings: React.FC = () => {
                         <p>If you have any questions about our use of cookies or this Cookie Policy, please contact us via:</p>
                         <ul>
                             <li><strong>Website:</strong> <a href="https://www.ventustravel.co.uk" target="_blank" rel="noopener noreferrer">www.ventustravel.co.uk</a></li>
-                            <li><strong>Contact Page:</strong> <a href="/contact-us">www.ventustravel.co.uk/contact-us</a></li>
+                            <li><strong>Contact Page:</strong> <a href="https://www.ventustravel.co.uk/contact-us" target="_blank" rel="noopener noreferrer">www.ventustravel.co.uk/contact-us</a></li>
                         </ul>
                     </div>
 
