@@ -944,8 +944,9 @@ textarea.form-control{
     box-shadow: none;
 }
 .auth-card form button[type="submit"]{
-  height: 53px;
-  text-transform: uppercase;
+    height: 42px;
+    font-size: 14.07px;
+    text-transform: uppercase;
 }
 .btn.show-password-btn:after,
 .auth-card form button[type="submit"]:after{
