@@ -54,7 +54,7 @@ const Footer: React.FC = () => {
                                    Subscribe
                                 </button>
                             </form>
-                            <p>By subscribing, you agree to our Privacy Policy and consent to receive updates from us.</p>
+                            <p>By subscribing, you agree to our <Link to="/privacy-policy">Privacy Policy</Link> and consent to receive updates from us.</p>
                         </div>
 
                     </div>

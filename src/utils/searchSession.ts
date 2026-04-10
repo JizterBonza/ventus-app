@@ -138,7 +138,7 @@ export function getTodayLocalDateString(): string {
     return dateToStorageString(t);
 }
 
-/** Default check-in / check-out (today / tomorrow) matching SearchBarNew initial state. */
+/** Default check-in / check-out (today / next day), aligned with SearchBarNew initial state. */
 export function getDefaultSearchDateStrings(): { start_date: string; end_date: string } {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

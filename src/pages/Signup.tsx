@@ -627,11 +627,11 @@ const Signup: React.FC = () => {
                       />
                       <label className="form-check-label" htmlFor="agreeToTerms">
                         I agree to the{' '}
-                        <Link to="/terms" target="_blank" className="text-decoration-none">
+                        <Link to="/terms-of-service" target="_blank" className="text-decoration-none">
                           Terms and Conditions
                         </Link>{' '}
                         and{' '}
-                        <Link to="/privacy" target="_blank" className="text-decoration-none">
+                        <Link to="/privacy-policy" target="_blank" className="text-decoration-none">
                           Privacy Policy
                         </Link>
                       </label>

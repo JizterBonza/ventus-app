@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import ScrollToTop from "./components/shared/ScrollToTop";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
 import Home from "./pages/Home";
 import HomeBackup from "./pages/HomeBackup";
@@ -51,6 +52,7 @@ function App() {
     return (
         <div className="App">
             <Router>
+                <ScrollToTop />
                 <AuthProvider>
                     <Routes>
                         {/* Public Routes */}

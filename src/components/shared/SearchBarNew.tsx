@@ -133,10 +133,15 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
 
     const [location, setLocation] = useState("");
     const [checkIn, setCheckIn] = useState<Date | null>(() => {
-        const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
     });
     const [checkOut, setCheckOut] = useState<Date | null>(() => {
-        const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return d;
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 1);
+        return d;
     });
     const [roomSlots, setRoomSlots] = useState<SearchRoomSlot[]>([{ adults: 1, children: 0 }]);
     const [showCalendar, setShowCalendar] = useState(false);
@@ -167,7 +172,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
         if (urlLoc) setLocation(urlLoc);
         const ci = parseDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
-        if (ci) setCheckIn(ci); // only override default if a saved value exists
+        if (ci) setCheckIn(ci);
         if (co) setCheckOut(co);
 
         const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;

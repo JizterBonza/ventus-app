@@ -59,16 +59,22 @@ if (!fs.existsSync(buildPath)) {
   });
 } else {
   console.log('Build directory found, serving static files from:', buildPath);
-  
+
+  const isProd = process.env.NODE_ENV === 'production';
+  // Long cache in production only; local `node server.js` should pick up rebuilds without a stale tab fighting 1d cache.
+  const staticMaxAge = isProd ? '1d' : 0;
+
   // Serve static files from the React app build directory
   app.use(express.static(buildPath, {
-    maxAge: '1d',
+    maxAge: staticMaxAge,
     etag: true,
     index: false // Don't serve index.html automatically, we'll handle it in catch-all
   }));
 
   // Catch all handler: send back React's index.html file for any route that doesn't match a static file
   app.get('*', (req, res, next) => {
+    // Revalidate the HTML shell on every load so new builds (new hashed JS/CSS filenames) are picked up instead of a cached index pointing at old chunks.
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(indexPath, (err) => {
       if (err) {
         console.error('Error sending index.html:', err);
