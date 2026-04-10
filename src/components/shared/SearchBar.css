@@ -8,6 +8,22 @@
   position: relative;
 }
 
+/* Match Bootstrap form invalid state + .le-field border from updates.css */
+.le-field-location.le-field--invalid {
+  border-color: var(--bs-danger, #dc3545);
+}
+
+.le-location-error.invalid-feedback {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: calc(100% + 4px);
+  margin-top: 0;
+  width: auto;
+  max-width: none;
+  z-index: 2;
+}
+
 .le-search-suggestions {
   min-width: 100%;
 }

@@ -155,6 +155,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
     const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+    const [locationError, setLocationError] = useState<string | null>(null);
 
     const calendarRef = useRef<HTMLDivElement>(null);
     const guestRef = useRef<HTMLDivElement>(null);
@@ -353,9 +354,16 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
-        const q = location || "hotels";
+        const trimmedLocation = location.trim();
+        if (!trimmedLocation) {
+            setLocationError("Please enter a hotel or destination");
+            return;
+        }
+        setLocationError(null);
+
+        const q = trimmedLocation;
         const urlParams = new URLSearchParams();
-        if (location) urlParams.set("location", location);
+        urlParams.set("location", trimmedLocation);
         if (checkIn) urlParams.set("checkIn", toStorageStr(checkIn));
         if (checkOut) urlParams.set("checkOut", toStorageStr(checkOut));
         urlParams.set("roomSlots", JSON.stringify(roomSlots));
@@ -375,19 +383,33 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch }) => {
             <div className="le-search-bar-wrap">
                 <form onSubmit={handleSearch} className="le-search-bar">
                     {/* Location with predictive suggestions */}
-                    <div className="le-field le-field-location le-field-location-wrap" ref={locationRef}>
+                    <div
+                        className={`le-field le-field-location le-field-location-wrap${locationError ? " le-field--invalid" : ""}`}
+                        ref={locationRef}
+                    >
                         <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
                             <path d="M17.5824 16.6719L12.6399 11.7294C15.1762 8.67284 14.786 4.18553 11.7294 1.64923C8.67284 -0.887071 4.18553 -0.431837 1.64923 2.5597C-0.887071 5.55124 -0.431837 10.1686 2.5597 12.6399C5.22607 14.851 9.06304 14.851 11.7294 12.6399L16.6719 17.5824L17.5824 16.6719ZM1.32406 7.17707C1.32406 3.9254 3.9254 1.32406 7.17707 1.32406C10.4287 1.32406 13.0301 3.9254 13.0301 7.17707C13.0301 10.4287 10.4287 13.0301 7.17707 13.0301C3.9254 13.0301 1.32406 10.4287 1.32406 7.17707Z" fill="#666" />
                         </svg>
                         <input
+                            id="le-search-location"
                             type="text"
                             placeholder="Search a hotel or destination"
                             value={location}
-                            onChange={(e) => setLocation(e.target.value)}
+                            onChange={(e) => {
+                                setLocation(e.target.value);
+                                setLocationError(null);
+                            }}
                             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                            className="le-input"
+                            className={`le-input${locationError ? " is-invalid" : ""}`}
                             autoComplete="off"
+                            aria-invalid={!!locationError}
+                            aria-describedby={locationError ? "le-search-location-error" : undefined}
                         />
+                        {locationError && (
+                            <div id="le-search-location-error" className="invalid-feedback d-block le-location-error" role="alert">
+                                {locationError}
+                            </div>
+                        )}
                         {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
                             <div className="search-results-dropdown le-search-suggestions">
                                 {suggestionsLoading ? (
