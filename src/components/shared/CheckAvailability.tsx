@@ -610,8 +610,48 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         <div className="card mt-3 availability-pricing-card">
                             <div className="card-body">
                                 <h5 className="card-title">Pricing</h5>
-                                <p className="card-text">
-                                    <strong>Lowest Rate:</strong> {formatRate(availabilityResult.lowest_rate, availabilityResult.default_currency || undefined, formData.currency) || 'N/A'}
+                                <p className="card-text mb-1">
+                                    {(() => {
+                                        const lr = availabilityResult.lowest_rate;
+                                        if (typeof lr === "number") {
+                                            return (
+                                                <>
+                                                    <strong>Lowest Rate:</strong> {formData.currency}{" "}
+                                                    {lr.toLocaleString()}
+                                                </>
+                                            );
+                                        }
+                                        if (lr && typeof lr === "object") {
+                                            const reqCur =
+                                                lr.requested_currency_code ?? lr.currency_code ?? formData.currency;
+                                            const val =
+                                                lr.rate_in_requested_currency ??
+                                                lr.rate ??
+                                                lr.total_to_book_in_requested_currency ??
+                                                lr.total_to_book;
+                                            const idx = normalizeRateIndex(lr.rate_index);
+                                            const amount =
+                                                typeof val === "number"
+                                                    ? `${reqCur} ${val.toLocaleString()}`
+                                                    : null;
+                                            return (
+                                                <>
+                                                    <strong>Lowest Rate:</strong> {amount ?? "N/A"}
+                                                    {idx ? (
+                                                        <>
+                                                            <br />
+                                                            <strong>Rate index:</strong> {idx}
+                                                        </>
+                                                    ) : null}
+                                                </>
+                                            );
+                                        }
+                                        return (
+                                            <>
+                                                <strong>Lowest Rate:</strong> N/A
+                                            </>
+                                        );
+                                    })()}
                                 </p>
                             </div>
                         </div>

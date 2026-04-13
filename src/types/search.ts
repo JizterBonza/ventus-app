@@ -129,6 +129,8 @@ export interface RateInfo {
   total_to_book?: number;
   total_to_book_in_requested_currency?: number;
   currency_code?: string;
+  /** When present on aggregated lowest-rate payloads, identifies the underlying rate plan. */
+  rate_index?: number | string;
   is_tax_included?: boolean;
 }
 
