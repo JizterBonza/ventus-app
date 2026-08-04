@@ -307,41 +307,45 @@ const numericPrice = (value: any): number | undefined => {
 const transformApiDataToHotels = (apiData: any[]): Hotel[] => {
   return apiData
     .filter(item => item.type === 'hotel') // Only include hotel items
-    .map((item, index) => ({
-      id: item.id || index + 1,
-      name: item.text || 'Unknown Hotel',
-      location: item.location || 'Unknown Location',
-      rating: item.rating ?? undefined,
-      price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
-      image: `/assets/img/rooms/${(index % 8) + 1}.jpg`, // Cycle through available images
-      amenities: ['WiFi', 'Pool', 'Restaurant'], // Default amenities
-      description: `Experience luxury and comfort at ${item.text}. Located in ${item.location}, this hotel offers world-class amenities and exceptional service.`,
-      available: true,
-      distance: `${Math.floor(Math.random() * 10) + 1} km from city center`,
-      reviewCount: Math.floor(Math.random() * 500) + 50,
-      address: `${item.location}`,
-      phone: '+63 2 1234 5678',
-      email: 'info@example.com',
-      website: 'https://example.com',
-      latitude: 14.5995, // Manila coordinates
-      longitude: 120.9842,
-      
-      // Required fields for new Hotel interface
-      images: [
-        {
-          url: `/assets/img/rooms/${(index % 8) + 1}.jpg`,
-          thumbnail_url: `/assets/img/rooms/${(index % 8) + 1}.jpg`,
-          description: 'Hotel image'
+    .map((item, index) => {
+      const images = Array.isArray(item.images)
+        ? item.images
+            .map((image: any) => typeof image === 'string'
+              ? { url: image, thumbnail_url: image, description: item.text || 'Hotel image' }
+              : image)
+            .filter((image: any) => image?.url)
+        : item.image
+          ? [{ url: item.image, thumbnail_url: item.image, description: item.text || 'Hotel image' }]
+          : [];
+
+      return {
+        id: item.id || index + 1,
+        name: item.text || item.name || 'Unknown Hotel',
+        location: item.location || '',
+        rating: item.rating ?? undefined,
+        price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
+        image: images[0]?.url,
+        amenities: item.amenities || [],
+        description: item.description || '',
+        available: item.available ?? true,
+        distance: item.distance,
+        reviewCount: item.reviewCount,
+        address: item.address,
+        phone: item.phone,
+        email: item.email,
+        website: item.website,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        images,
+        videos: item.videos || [],
+        links: item.links || {
+          self: {
+            href: `${API_BASE_URL}/hotels/${item.id || index + 1}`,
+            method: 'GET'
+          }
         }
-      ],
-      videos: [],
-      links: {
-        self: {
-          href: `https://api-staging.littleemperors.com/v2/hotels/${item.id || index + 1}`,
-          method: 'GET'
-        }
-      }
-    }));
+      };
+    });
 };
 
 /**
