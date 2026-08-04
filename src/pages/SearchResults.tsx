@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel, RateInfo } from "../types/search";
-import { getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
+import { getHotelDetails, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
 import { getDefaultSearchDateStrings } from "../utils/searchSession";
 import { useAuth } from "../contexts/AuthContext";
@@ -30,6 +30,7 @@ const SearchResults: React.FC = () => {
     const [loadingInspiration, setLoadingInspiration] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    const detailsRequestRef = useRef(0);
     /** Starting-from price per hotel id (today/tomorrow, visitor currency). Only when authenticated. */
     const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
@@ -93,15 +94,24 @@ const SearchResults: React.FC = () => {
     const fetchHotelDetails = async (hotelIds: number[]) => {
         if (hotelIds.length === 0) return;
 
-        try {
-            console.log("Fetching detailed information for hotels:", hotelIds);
-            const detailedHotelsData = await getHotelDetailsBatch(hotelIds);
-            setDetailedHotels(detailedHotelsData);
-            console.log("Successfully fetched detailed hotel information:", detailedHotelsData);
-        } catch (error) {
-            console.error("Error fetching hotel details:", error);
-            setDetailedHotels([]);
-        }
+        const requestId = ++detailsRequestRef.current;
+        setDetailedHotels([]);
+
+        await Promise.allSettled(
+            hotelIds.map(async (hotelId) => {
+                const detailedHotel = await getHotelDetails(hotelId);
+                if (detailsRequestRef.current !== requestId) return;
+
+                setDetailedHotels((current) => {
+                    const existingIndex = current.findIndex((hotel) => hotel.id === detailedHotel.id);
+                    if (existingIndex === -1) return [...current, detailedHotel];
+
+                    const next = [...current];
+                    next[existingIndex] = detailedHotel;
+                    return next;
+                });
+            })
+        );
     };
 
     // Apply client-side filtering and sorting to API results
@@ -161,6 +171,7 @@ const SearchResults: React.FC = () => {
             const hotelIds = filtered.map((hotel) => hotel.id);
             fetchHotelDetails(hotelIds);
         } else {
+            detailsRequestRef.current += 1;
             setDetailedHotels([]);
         }
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
