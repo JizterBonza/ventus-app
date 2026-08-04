@@ -204,12 +204,14 @@ const SearchResults: React.FC = () => {
 
         setFilteredHotels(filtered);
 
-        // Fetch detailed information for the filtered hotels
-        if (filtered.length > 0) {
+        // Inspiration responses already contain images and descriptive hotel details.
+        // Avoid immediately re-fetching every hotel one-by-one for those collections.
+        if (filtered.length > 0 && inspirationResults.length === 0) {
             const hotelIds = filtered.map((hotel) => hotel.id);
             fetchHotelDetails(hotelIds);
         } else {
             setDetailedHotels([]);
+            setLoadingDetails(false);
         }
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
 
@@ -441,4 +443,3 @@ const SearchResults: React.FC = () => {
 };
 
 export default SearchResults;
-

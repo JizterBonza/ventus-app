@@ -9,20 +9,18 @@ export const interestCategories: InterestCategory[] = [
         image: "/assets/img/interests/japan.jpg",
         categories: ["Japan", "Culture", "Tradition"],
         location: "Japan",
-        query: "japan",
-        inspirationId:125
+        query: "Japan"
     },
    
     {
         id: "2",
-        title: "Easter Sun",
+        title: "Summer Sun",
         description:
-            "Where we are going for Easter sun.",
+            "Where we are going for summer sun.",
         image: "/assets/img/interests/easter.jpg",
-        categories: ["Easter", "Sun", "Tradition"],
-        location: "Europe",
-        query: "easter",
-        inspirationId:193
+        categories: ["Summer", "Sun", "Italy"],
+        location: "Amalfi Coast, Italy",
+        query: "Amalfi Coast"
     },
     {
         id: "3",
@@ -31,9 +29,8 @@ export const interestCategories: InterestCategory[] = [
             "European City Breaks.",
         image: "/assets/img/interests/citybreaks.jpg",
         categories: ["Europe", "City", "Break"],
-        location: "Europe",
-        query: "europe",
-        inspirationId:60
+        location: "Paris, France",
+        query: "Paris"
     },
     {
         id: "4",
@@ -85,9 +82,9 @@ export const interestCategories: InterestCategory[] = [
             "Travel to exciting destinations in style.",
         image: "/assets/img/interests/train.jpg",
         categories: ["Culture", "Popular"],
-        location: "Europe",
-        query: "train",
-        inspirationId:111
+        location: "Worldwide",
+        externalUrl: "https://www.ventustravel.co.uk/contact-us",
+        ctaLabel: "Plan a Journey"
     },
     
     
@@ -98,20 +95,19 @@ export const interestCategories: InterestCategory[] = [
             "Your home on the water.",
         image: "/assets/img/interests/festive.jpg",
         categories: ["Adventure", "Tradition"],
-        location: "Europe",
-        query: "festive",
-        inspirationId:188
+        location: "Worldwide",
+        externalUrl: "https://www.ventustravel.co.uk/contact-us",
+        ctaLabel: "Plan a Voyage"
     },
     {
         id: "10",
         title: "Hotels with Villas",
         description:
-            "For your own piece of paradis.",
+            "For your own piece of paradise.",
         image: "/assets/img/interests/villa.jpg",
         categories: ["Culture", "Tradition"],
-        location: "Europe",
-        query: "villa",
-        inspirationId:143
+        location: "Maldives",
+        query: "Maldives"
     },
     {
         id: "11",
@@ -131,9 +127,8 @@ export const interestCategories: InterestCategory[] = [
             "Recharge in these urban sanctuaries.",
         image: "/assets/img/interests/cityspa.jpg",
         categories: ["Culture", "Tradition"],
-        location: "Europe",
-        query: "city spa breaks",
-        inspirationId:128
+        location: "London, United Kingdom",
+        query: "London"
     },
     
 ];

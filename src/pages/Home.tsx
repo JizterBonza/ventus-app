@@ -883,18 +883,28 @@ const Home: React.FC = () => {
                     {/* Interest Cards */}
                     <div className="row">
                         {filteredInterests.map((interest) => {
+                            const urlParams = new URLSearchParams();
+                            let searchPath: string | null = null;
+
+                            if (interest.inspirationId) {
+                                urlParams.set("inspirationId", interest.inspirationId.toString());
+                                urlParams.set("title", interest.title);
+                                searchPath = `/search-results?${urlParams.toString()}`;
+                            } else if (interest.query) {
+                                urlParams.set("location", interest.query);
+                                searchPath = `/search-results?${urlParams.toString()}`;
+                            }
+
                             const handleInterestClick = () => {
-                                const urlParams = new URLSearchParams();
-                                if (interest.inspirationId) {
-                                    urlParams.set("inspirationId", interest.inspirationId.toString());
-                                    urlParams.set("title", interest.title);
-                                } else if (interest.query) {
-                                    urlParams.set("location", interest.query);
-                                } else {
+                                if (interest.externalUrl) {
+                                    window.location.assign(interest.externalUrl);
                                     return;
                                 }
-                                navigate(`/search-results?${urlParams.toString()}`);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                                if (searchPath) {
+                                    navigate(searchPath);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
                             };
 
                             return (
@@ -925,18 +935,19 @@ const Home: React.FC = () => {
                                                 {interest.title}
                                             </h4>
                                             <div className="card-description">{interest.description}</div>
-                                            <a
-                                                href="#"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleInterestClick();
-                                                }}
-                                                style={{ cursor: 'pointer' }}
-                                            >
-                                                View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
-<path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
-</svg></a>
+                                            {interest.externalUrl ? (
+                                                <a href={interest.externalUrl}>
+                                                    {interest.ctaLabel || "Find Out More"} <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                                        <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
+                                                    </svg>
+                                                </a>
+                                            ) : searchPath ? (
+                                                <Link to={searchPath} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                                                    {interest.ctaLabel || "View Hotels"} <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                                        <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
+                                                    </svg>
+                                                </Link>
+                                            ) : null}
                                         </div>
                                         
                                     </div>

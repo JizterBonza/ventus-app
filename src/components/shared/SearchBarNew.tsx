@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useSearch } from "../../hooks/useSearch";
-import { SearchParams } from "../../types/search";
 import { searchHotelsByQuery } from "../../utils/api";
 import {
     SEARCH_SESSION_COOKIES,
@@ -134,7 +132,6 @@ const normalizeLocationDisplay = (raw: string) =>
 const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }) => {
     const [urlSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { searchAdvanced, loading } = useSearch();
 
     const [location, setLocation] = useState("");
     const [checkIn, setCheckIn] = useState<Date | null>(() => {
@@ -165,6 +162,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
     const calendarRef = useRef<HTMLDivElement>(null);
     const guestRef = useRef<HTMLDivElement>(null);
     const locationRef = useRef<HTMLDivElement>(null);
+    const locationChangedByUserRef = useRef(false);
 
     // Load from cookies / URL params on mount
     useEffect(() => {
@@ -229,7 +227,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
     // Debounced predictive search suggestions
     useEffect(() => {
         const q = location.trim();
-        if (!q || q.length < 2) {
+        if (!locationChangedByUserRef.current || !q || q.length < 2) {
             setSuggestions([]);
             setShowSuggestions(false);
             return;
@@ -364,7 +362,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         setCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS, JSON.stringify(roomSlots));
     };
 
-    const handleSearch = async (e: React.FormEvent) => {
+    const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         const trimmedLocation = location.trim();
         if (!trimmedLocation) {
@@ -373,7 +371,6 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         }
         setLocationError(null);
 
-        const q = trimmedLocation;
         const urlParams = new URLSearchParams();
         urlParams.set("location", trimmedLocation);
         if (checkIn) urlParams.set("checkIn", toStorageStr(checkIn));
@@ -383,10 +380,8 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         if (roomCount !== 1) urlParams.set("rooms", String(roomCount));
 
         persistGuestSession();
+        locationChangedByUserRef.current = false;
         navigate(`/search-results?${urlParams.toString()}`);
-
-        const params: SearchParams = { query: q, limit: 20 };
-        await searchAdvanced(params);
         if (onSearch) onSearch();
     };
 
@@ -408,6 +403,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
                             placeholder="Search a hotel or destination"
                             value={location}
                             onChange={(e) => {
+                                locationChangedByUserRef.current = true;
                                 setLocation(e.target.value);
                                 setLocationError(null);
                             }}
@@ -432,6 +428,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
                                             key={suggestion.id}
                                             className="search-result-item"
                                             onClick={() => {
+                                                locationChangedByUserRef.current = false;
                                                 setLocation(suggestion.value);
                                                 setShowSuggestions(false);
                                             }}
@@ -633,7 +630,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
 
                     {/* Search button */}
                     <button type="submit" className="le-search-btn">
-                        {loading ? "..." : "Search"}
+                        Search
                     </button>
                 </form>
             </div>

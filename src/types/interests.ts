@@ -7,5 +7,6 @@ export interface InterestCategory {
     location: string;
     query?: string;
     inspirationId?: number;
+    externalUrl?: string;
+    ctaLabel?: string;
 }
-
