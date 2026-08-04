@@ -598,8 +598,9 @@ const Home: React.FC = () => {
                 </div>
             </section>
 
-            {/* Filters and Results */}
-            <section className={`results-section  ${filteredHotels.length > 0 ? "has-results" : ""}`}>
+            {/* This legacy inline-results block should only appear after an on-page search. */}
+            {(loading || Boolean(error) || filteredHotels.length > 0) && (
+                <section className={`results-section  ${filteredHotels.length > 0 ? "has-results" : ""}`}>
                 <div className="container">
                     <div className="row">
                         {/* Filters Sidebar */}
@@ -818,7 +819,8 @@ const Home: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </section>
+                </section>
+            )}
 
             <section id="destinations" className="interests-section">
                 <div className="container">
