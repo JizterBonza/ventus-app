@@ -6,7 +6,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Best of Japan",
         description:
             "From traditional to high-tech.",
-        image: "/assets/img/interests/japan.jpg",
+        image: "/assets/img/interests/japan.webp",
         categories: ["Japan", "Culture", "Tradition"],
         location: "Japan",
         query: "Japan"
@@ -17,7 +17,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Summer Sun",
         description:
             "Where we are going for summer sun.",
-        image: "/assets/img/interests/easter.jpg",
+        image: "/assets/img/interests/easter.webp",
         categories: ["Summer", "Sun", "Italy"],
         location: "Amalfi Coast, Italy",
         query: "Amalfi Coast"
@@ -27,7 +27,7 @@ export const interestCategories: InterestCategory[] = [
         title: "European City Breaks",
         description:
             "European City Breaks.",
-        image: "/assets/img/interests/citybreaks.jpg",
+        image: "/assets/img/interests/citybreaks.webp",
         categories: ["Europe", "City", "Break"],
         location: "Paris, France",
         query: "Paris"
@@ -37,7 +37,7 @@ export const interestCategories: InterestCategory[] = [
         title: "New Openings",
         description:
             "Keep up to date with the hottest hotel openings.",
-        image: "/assets/img/interests/newopenings.jpg",
+        image: "/assets/img/interests/newopenings.webp",
         categories: ["Adventure", "Popular"],
         location: "Indian Ocean",
         query: "new openings",
@@ -47,7 +47,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Wellness Wonders",
         description:
             "Relax the body, mind and soul.",
-        image: "/assets/img/interests/wellnesswonders.jpg",
+        image: "/assets/img/interests/wellnesswonders.webp",
         categories: ["Wellness", "Relax", "Soul"],
         location: "Europe",
         query: "wellness wonders",
@@ -58,7 +58,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Countryside Favourites",
         description:
             "Explore the beautiful English countryside.",
-        image: "/assets/img/interests/countryside.jpg",
+        image: "/assets/img/interests/countryside.webp",
         categories: ["Adventure", "Tradition"],
         location: "Europe",
         query: "countryside",
@@ -69,7 +69,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Best for Families",
         description:
             "For you and your little emperors.",
-        image: "/assets/img/interests/family.jpg",
+        image: "/assets/img/interests/family.webp",
         categories: ["Adventure", "Culture"],
         location: "North Africa",
         query: "family",
@@ -80,7 +80,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Luxury Train Journeys",
         description:
             "Travel to exciting destinations in style.",
-        image: "/assets/img/interests/train.jpg",
+        image: "/assets/img/interests/train.webp",
         categories: ["Culture", "Popular"],
         location: "Worldwide",
         externalUrl: "https://www.ventustravel.co.uk/contact-us",
@@ -93,7 +93,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Yachts & River Cruises",
         description:
             "Your home on the water.",
-        image: "/assets/img/interests/festive.jpg",
+        image: "/assets/img/interests/festive.webp",
         categories: ["Adventure", "Tradition"],
         location: "Worldwide",
         externalUrl: "https://www.ventustravel.co.uk/contact-us",
@@ -104,7 +104,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Hotels with Villas",
         description:
             "For your own piece of paradise.",
-        image: "/assets/img/interests/villa.jpg",
+        image: "/assets/img/interests/villa.webp",
         categories: ["Culture", "Tradition"],
         location: "Maldives",
         query: "Maldives"
@@ -114,7 +114,7 @@ export const interestCategories: InterestCategory[] = [
         title: "Safari",
         description:
             "Take a walk on the wild side.",
-        image: "/assets/img/interests/safari-2.jpg",
+        image: "/assets/img/interests/safari-2.webp",
         categories: ["Culture", "Popular"],
         location: "Europe",
         query: "safari",
@@ -125,7 +125,7 @@ export const interestCategories: InterestCategory[] = [
         title: "City Spa Breaks",
         description:
             "Recharge in these urban sanctuaries.",
-        image: "/assets/img/interests/cityspa.jpg",
+        image: "/assets/img/interests/cityspa.webp",
         categories: ["Culture", "Tradition"],
         location: "London, United Kingdom",
         query: "London"

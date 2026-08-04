@@ -454,7 +454,7 @@ body .search-form-section{
     background-color: var(--black-200);
 }
 .section-cta{
-    background: url('/assets/img/ctaBanner.jpg');
+    background: url('/assets/img/ctaBanner.webp');
     position: relative;
     overflow: hidden;
     background-repeat: no-repeat;

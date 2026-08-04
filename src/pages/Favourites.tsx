@@ -7,68 +7,7 @@ import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import SearchBarNew from '../components/shared/SearchBarNew';
 import BannerCTA from '../components/shared/BannerCTA';
-
-// Component to handle hotel image with fallback
-const HotelImage: React.FC<{ hotel: Hotel; displayHotel: Hotel }> = ({ hotel, displayHotel }) => {
-    const [imageError, setImageError] = useState(false);
-    
-    // Get image URL - prioritize images array, then image property
-    const imageUrl = displayHotel.images && displayHotel.images.length > 0
-        ? displayHotel.images[0].url
-        : displayHotel.image || null;
-    
-    // Fallback images
-    const fallbackImages = [
-        "/assets/img/rooms/1.jpg",
-        "/assets/img/rooms/2.jpg",
-        "/assets/img/rooms/3.jpg",
-        "/assets/img/rooms/4.jpg",
-        "/assets/img/rooms/5.jpg",
-    ];
-    
-    // Only show fallback if no image URL or if image failed to load
-    if (!imageUrl || imageError) {
-        return (
-            <div
-                style={{
-                    width: "100%",
-                    height: "100%",
-                    minHeight: "200px",
-                    backgroundColor: "#28a745",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <img 
-                    src={fallbackImages[hotel.id % fallbackImages.length]} 
-                    alt={displayHotel.name}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        minHeight: "200px",
-                    }}
-                />
-            </div>
-        );
-    }
-    
-    // Always try to render the image if we have a URL
-    return (
-        <img
-            src={imageUrl}
-            alt={displayHotel.name}
-            style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                minHeight: "200px",
-            }}
-            onError={() => setImageError(true)}
-        />
-    );
-};
+import ProgressiveImage from '../components/shared/ProgressiveImage';
 
 const Favourites: React.FC = () => {
     const [favouriteHotels, setFavouriteHotels] = useState<Hotel[]>([]);
@@ -143,7 +82,7 @@ const Favourites: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="hotels-container">
-                                    {favouriteHotels.map((hotel) => {
+                                    {favouriteHotels.map((hotel, index) => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
@@ -158,7 +97,12 @@ const Favourites: React.FC = () => {
                                                         to={`/hotel/${hotel.id}`}
                                                         className="card-image"
                                                     >
-                                                        <HotelImage hotel={hotel} displayHotel={displayHotel} />
+                                                        <ProgressiveImage
+                                                            src={displayHotel.images?.[0]?.url || displayHotel.image}
+                                                            alt={displayHotel.name}
+                                                            priority={index < 3}
+                                                            style={{ minHeight: "262px" }}
+                                                        />
                                                     </Link>
                                                     <div className="card_content">
                                                         <div>
@@ -232,4 +176,3 @@ const Favourites: React.FC = () => {
 };
 
 export default Favourites;
-

@@ -9,55 +9,10 @@ import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SearchBarNew from "../components/shared/SearchBarNew";
+import ProgressiveImage from "../components/shared/ProgressiveImage";
 import Membership from "../components/shared/Membership";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
-
-// Component to handle hotel image with fallback
-const HotelImage: React.FC<{ hotel: Hotel; displayHotel: Hotel }> = ({ hotel, displayHotel }) => {
-    const [imageError, setImageError] = useState(false);
-    
-    // Get image URL - prioritize images array, then image property
-    const imageUrl = displayHotel.images && displayHotel.images.length > 0
-        ? displayHotel.images[0].url
-        : displayHotel.image || null;
-    
-    // Only show fallback if no image URL or if image failed to load
-    if (!imageUrl || imageError) {
-        return (
-            <div
-                style={{
-                    width: "100%",
-                    height: "100%",
-                    minHeight: "200px",
-                    backgroundColor: "#28a745",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <div className="spinner-border text-white" role="status" style={{ width: "3rem", height: "3rem" }}>
-                    <span className="sr-only">Loading...</span>
-                </div>
-            </div>
-        );
-    }
-    
-    // Always try to render the image if we have a URL
-    return (
-        <img
-            src={imageUrl}
-            alt={displayHotel.name}
-            style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                minHeight: "200px",
-            }}
-            onError={() => setImageError(true)}
-        />
-    );
-};
 
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
@@ -72,7 +27,6 @@ const SearchResults: React.FC = () => {
     });
     const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
-    const [loadingDetails, setLoadingDetails] = useState(false);
     const [loadingInspiration, setLoadingInspiration] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -139,7 +93,6 @@ const SearchResults: React.FC = () => {
     const fetchHotelDetails = async (hotelIds: number[]) => {
         if (hotelIds.length === 0) return;
 
-        setLoadingDetails(true);
         try {
             console.log("Fetching detailed information for hotels:", hotelIds);
             const detailedHotelsData = await getHotelDetailsBatch(hotelIds);
@@ -148,8 +101,6 @@ const SearchResults: React.FC = () => {
         } catch (error) {
             console.error("Error fetching hotel details:", error);
             setDetailedHotels([]);
-        } finally {
-            setLoadingDetails(false);
         }
     };
 
@@ -211,7 +162,6 @@ const SearchResults: React.FC = () => {
             fetchHotelDetails(hotelIds);
         } else {
             setDetailedHotels([]);
-            setLoadingDetails(false);
         }
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
 
@@ -308,7 +258,7 @@ const SearchResults: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="hotels-container">
-                                    {filteredHotels.map((hotel) => {
+                                    {filteredHotels.map((hotel, index) => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
@@ -322,17 +272,12 @@ const SearchResults: React.FC = () => {
                                                     <Link
                                                         to={`/hotel/${hotel.id}`}
                                                         className="card-image">
-                                                        <HotelImage hotel={hotel} displayHotel={displayHotel} />
-                                                        {loadingDetails && !detailedHotel && (
-                                                            <div className="loading-overlay" style={{ backgroundColor: "rgba(219, 226, 214, 1)" }}>
-                                                                <div
-                                                                    className="spinner-border spinner-border-sm"
-                                                                    role="status"
-                                                                >
-                                                                    <span className="sr-only">Loading details...</span>
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                        <ProgressiveImage
+                                                            src={displayHotel.images?.[0]?.url || displayHotel.image}
+                                                            alt={displayHotel.name}
+                                                            priority={index < 3}
+                                                            style={{ minHeight: "262px" }}
+                                                        />
                                                     </Link>
                                                     <div 
                                                         className="card_content">

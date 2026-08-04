@@ -7,6 +7,7 @@ import { interestCategories } from "../utils/interestCategories";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SearchBarNew from "../components/shared/SearchBarNew";
+import ProgressiveImage from "../components/shared/ProgressiveImage";
 import PageHeader from "../components/shared/PageHeader";
 
 import Membership from "../components/shared/Membership";
@@ -30,6 +31,26 @@ function getHomeHeroSliderLayout(containerWidth: number) {
     return { gap: 30, slideRatio: 0.7, trackMarginRatio: 0.16, firstSlideWidthMul: 1.1 };
 }
 
+const createFeaturedHotel = (id: number, name: string, location: string, imageUrl: string): Hotel => ({
+    id,
+    name,
+    location,
+    description: "",
+    amenities: [],
+    images: [{ url: imageUrl, thumbnail_url: imageUrl, description: name }],
+    videos: [],
+    links: { self: { href: `/v2/hotels/${id}`, method: "GET" } },
+    image: imageUrl,
+});
+
+const FEATURED_HOTELS: Hotel[] = [
+    createFeaturedHotel(11063, "Passalacqua", "Lake Como, Italy", "/assets/img/featured/passalacqua.webp"),
+    createFeaturedHotel(9665, "Airelles Saint-Tropez, Château de la Messardière", "Saint Tropez, France", "/assets/img/featured/airelles-saint-tropez.webp"),
+    createFeaturedHotel(9679, "La Residencia, A Belmond Hotel", "Mallorca, Spain", "/assets/img/featured/la-residencia.webp"),
+    createFeaturedHotel(10218, "The Maybourne Riviera", "Roquebrune-Cap-Martin, France", "/assets/img/featured/maybourne-riviera.webp"),
+    createFeaturedHotel(11905, "One&Only Kéa Island", "Kea Island, Greece", "/assets/img/featured/oneandonly-kea.webp"),
+];
+
 const Home: React.FC = () => {
     const navigate = useNavigate();
     const { hotels, loading, error, clearError, searchByQuery } = useSearch();
@@ -46,8 +67,8 @@ const Home: React.FC = () => {
     const [sliderReady, setSliderReady] = useState(false);
     const sliderInitializedRef = useRef(false);
     const sliderContainerRef = useRef<HTMLDivElement>(null);
-    const [sliderHotels, setSliderHotels] = useState<Hotel[]>([]);
-    const [loadingSliderHotels, setLoadingSliderHotels] = useState(false);
+    const sliderHotels = FEATURED_HOTELS;
+    const loadingSliderHotels = false;
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
 
@@ -60,36 +81,6 @@ const Home: React.FC = () => {
     const allCategories = Array.from(new Set(interestCategories.flatMap((interest) => interest.categories))).sort();
     const allLocations = Array.from(new Set(interestCategories.map((interest) => interest.location))).sort();
 
-    // Fallback hotel images for when API doesn't provide images
-    const fallbackImages = [
-        "/assets/img/rooms/1.jpg",
-        "/assets/img/rooms/2.jpg",
-        "/assets/img/rooms/3.jpg",
-        "/assets/img/rooms/4.jpg",
-        "/assets/img/rooms/5.jpg",
-        "/assets/img/rooms/6.jpg",
-        "/assets/img/rooms/7.jpg",
-        "/assets/img/rooms/8.jpg",
-    ];
-
-    // Fetch slider hotels on component mount
-    useEffect(() => {
-        const fetchSliderHotels = async () => {
-            const hotelIds = [11063, 9665, 9679, 10218, 11905];
-            setLoadingSliderHotels(true);
-            try {
-                const hotels = await getHotelDetailsBatch(hotelIds);
-                setSliderHotels(hotels);
-                console.log("Slider hotels fetched:", hotels);
-            } catch (error) {
-                console.error("Error fetching slider hotels:", error);
-            } finally {
-                setLoadingSliderHotels(false);
-            }
-        };
-
-        fetchSliderHotels();
-    }, []);
     // Function to fetch detailed hotel information
     const fetchHotelDetails = async (hotelIds: number[]) => {
         if (hotelIds.length === 0) return;
@@ -391,12 +382,13 @@ const Home: React.FC = () => {
             }
         };
 
-        // Wait for DOM to be ready and images to start loading
-        const timer = setTimeout(initSlider, 500);
+        // The ref is available after this effect runs; initialize on the next paint instead
+        // of holding the genuine featured content behind an arbitrary half-second delay.
+        const animationFrame = window.requestAnimationFrame(initSlider);
 
         // Cleanup function to destroy slider when component unmounts or hotels change
         return () => {
-            clearTimeout(timer);
+            window.cancelAnimationFrame(animationFrame);
             // Remove resize event listener
             if (typeof $ !== "undefined") {
                 $(window).off("resize.sliderWidths");
@@ -453,7 +445,7 @@ const Home: React.FC = () => {
 </svg>
                         </button>
                         <span className="slider-counter" style={{ fontSize: "14px", color: "#000", minWidth: "40px", textAlign: "center" }}>
-                            {sliderHotels.length > 0 ? `${currentSlide + 1}/${sliderHotels.length}` : "1/12"}
+                            {sliderHotels.length > 0 ? `${currentSlide + 1}/${sliderHotels.length}` : ""}
                         </span>
                         <button 
                             className="slick-next-custom" 
@@ -525,9 +517,9 @@ const Home: React.FC = () => {
                         </div>
                     ) : sliderHotels.length > 0 ? (
                         sliderHotels.map((hotel, index) => {
-                            const imageUrl = hotel.images && hotel.images.length > 0 
+                            const imageUrl = hotel.images && hotel.images.length > 0
                                 ? hotel.images[0].url 
-                                : hotel.image || fallbackImages[index % fallbackImages.length];
+                                : hotel.image;
                             
                             return (
                                 <Link
@@ -543,19 +535,10 @@ const Home: React.FC = () => {
                                         cursor: "pointer"
                                     }}
                                 >
-                                    <img
+                                    <ProgressiveImage
                                         src={imageUrl}
                                         alt={hotel.name || `Hotel ${index + 1}`}
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            objectFit: "cover",
-                                            display: "block"
-                                        }}
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.src = fallbackImages[index % fallbackImages.length];
-                                        }}
+                                        priority={index === 0}
                                     />
                                     <div className="slider-overlay">
                                         <div className="slider-content">
@@ -567,33 +550,9 @@ const Home: React.FC = () => {
                             );
                         })
                     ) : (
-                        // Fallback to static images if no hotels loaded
-                        [
-                            "/assets/img/slider/1.jpg",
-                            "/assets/img/slider/2.jpg",
-                            "/assets/img/slider/3.jpg",
-                            "/assets/img/slider/4.jpg",
-                            "/assets/img/slider/5.jpg",
-                            "/assets/img/slider/6.jpg",
-                            "/assets/img/slider/7.jpg",
-                        ].map((image, index) => (
-                            <div key={index} className="hotel-header-gallery-item" style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-                                <img
-                                    src={image}
-                                    alt={`Slider ${index + 1}`}
-                                    style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        objectFit: "cover",
-                                        display: "block"
-                                    }}
-                                    onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = fallbackImages[index % fallbackImages.length];
-                                    }}
-                                />
-                            </div>
-                        ))
+                        <div className="hotel-header-gallery-item" style={{ width: "100%", height: "100%" }}>
+                            <ProgressiveImage alt="Featured hotels" priority />
+                        </div>
                     )}
                 </div>
             </section>
@@ -729,19 +688,10 @@ const Home: React.FC = () => {
                                                 >
                                                    {/* <div className="card-overlay">Find out more</div> */} 
                                                     <div className="card-image">
-                                                        <img
-                                                            src={
-                                                                displayHotel.images && displayHotel.images.length > 0
-                                                                    ? displayHotel.images[0].url
-                                                                    : displayHotel.image ||
-                                                                      fallbackImages[hotel.id % fallbackImages.length]
-                                                            }
+                                                        <ProgressiveImage
+                                                            src={displayHotel.images?.[0]?.url || displayHotel.image}
                                                             alt={displayHotel.name}
-                                                            onError={(e) => {
-                                                                const target = e.target as HTMLImageElement;
-                                                                target.src =
-                                                                    fallbackImages[hotel.id % fallbackImages.length];
-                                                            }}
+                                                            style={{ minHeight: "262px" }}
                                                         />
                                                         {loadingDetails && !detailedHotel && (
                                                             <div className="loading-overlay">
@@ -927,7 +877,11 @@ const Home: React.FC = () => {
                                             onClick={handleInterestClick}
                                             style={{ cursor: 'pointer' }}
                                         >
-                                            <img src={interest.image} alt={interest.title} />
+                                            <ProgressiveImage
+                                                src={interest.image}
+                                                alt={interest.title}
+                                                style={{ minHeight: "262px" }}
+                                            />
                                         </div>
                                         <div className="card-content">
                                             <h4 

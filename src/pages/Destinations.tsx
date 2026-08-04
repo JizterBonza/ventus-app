@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import PageHeader from "../components/shared/PageHeader";
+import ProgressiveImage from "../components/shared/ProgressiveImage";
 
 const Search: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
@@ -33,18 +34,6 @@ const Search: React.FC = () => {
     // Extract unique categories and locations
     const allCategories = Array.from(new Set(interestCategories.flatMap((interest) => interest.categories))).sort();
     const allLocations = Array.from(new Set(interestCategories.map((interest) => interest.location))).sort();
-
-    // Fallback hotel images for when API doesn't provide images
-    const fallbackImages = [
-        "/assets/img/rooms/1.jpg",
-        "/assets/img/rooms/2.jpg",
-        "/assets/img/rooms/3.jpg",
-        "/assets/img/rooms/4.jpg",
-        "/assets/img/rooms/5.jpg",
-        "/assets/img/rooms/6.jpg",
-        "/assets/img/rooms/7.jpg",
-        "/assets/img/rooms/8.jpg",
-    ];
 
     useEffect(() => {
         // Handle URL parameters from home page
@@ -351,7 +340,7 @@ const Search: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className={`hotels-container ${viewMode === "grid" ? "row" : ""}`}>
-                                    {filteredHotels.map((hotel) => {
+                                    {filteredHotels.map((hotel, index) => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
@@ -368,30 +357,12 @@ const Search: React.FC = () => {
                                                 >
                                                     <div className="card-overlay">Find out more</div>
                                                     <div className="card-image">
-                                                        <img
-                                                            src={
-                                                                displayHotel.images && displayHotel.images.length > 0
-                                                                    ? displayHotel.images[0].url
-                                                                    : displayHotel.image ||
-                                                                      fallbackImages[hotel.id % fallbackImages.length]
-                                                            }
+                                                        <ProgressiveImage
+                                                            src={displayHotel.images?.[0]?.url || displayHotel.image}
                                                             alt={displayHotel.name}
-                                                            onError={(e) => {
-                                                                const target = e.target as HTMLImageElement;
-                                                                target.src =
-                                                                    fallbackImages[hotel.id % fallbackImages.length];
-                                                            }}
+                                                            priority={index < 3}
+                                                            style={{ minHeight: "262px" }}
                                                         />
-                                                        {loadingDetails && !detailedHotel && (
-                                                            <div className="loading-overlay">
-                                                                <div
-                                                                    className="spinner-border spinner-border-sm"
-                                                                    role="status"
-                                                                >
-                                                                    <span className="sr-only">Loading details...</span>
-                                                                </div>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                     <div className="card-content">
                                                         <h4>{displayHotel.name}</h4>
