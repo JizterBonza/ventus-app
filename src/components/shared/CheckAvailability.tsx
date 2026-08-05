@@ -9,6 +9,8 @@ import {
     setCookie,
     parseSearchDate,
     dateToStorageString,
+    ensureMinimumCheckOutDateString,
+    getMinimumCheckOutDateString,
     getDefaultSearchDateStrings,
     getTodayLocalDateString,
     parseSearchRoomSlotsJson,
@@ -119,6 +121,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
         const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
+        const startDate = ci ? dateToStorageString(ci) : "";
+        const requestedEndDate = co ? dateToStorageString(co) : "";
+        const endDate = ensureMinimumCheckOutDateString(startDate, requestedEndDate);
 
         const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
         const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
@@ -138,8 +143,8 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         setFormData((prev) => {
             const next: typeof prev = {
                 ...prev,
-                ...(ci ? { start_date: dateToStorageString(ci) } : {}),
-                ...(co ? { end_date: dateToStorageString(co) } : {}),
+                ...(startDate ? { start_date: startDate } : {}),
+                ...(endDate ? { end_date: endDate } : {}),
             };
             if (slots && slots.length > 0) {
                 next.adults = slots.reduce((s, r) => s + r.adults, 0);
@@ -149,8 +154,22 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             }
             return next;
         });
+
+        if (startDate && endDate && endDate !== requestedEndDate) {
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, startDate);
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, endDate);
+            setSearchParams(
+                (prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set("checkIn", startDate);
+                    next.set("checkOut", endDate);
+                    return next;
+                },
+                { replace: true }
+            );
+        }
         setSearchHydrated(true);
-    }, [urlSearchParams]);
+    }, [urlSearchParams, setSearchParams]);
 
     // Set default currency from user's location (IP-based, so VPN/location changes are reflected)
     useEffect(() => {
@@ -242,15 +261,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         const newStart = e.target.value;
         setRetryDraft((prev) => {
             const base = prev ?? { start_date: formData.start_date, end_date: formData.end_date };
-            let end = base.end_date;
-            if (newStart && end && newStart >= end) {
-                const d = parseSearchDate(newStart);
-                if (d) {
-                    const nd = new Date(d);
-                    nd.setDate(nd.getDate() + 1);
-                    end = dateToStorageString(nd);
-                }
-            }
+            const end = ensureMinimumCheckOutDateString(newStart, base.end_date);
             return { start_date: newStart, end_date: end };
         });
     };
@@ -259,23 +270,21 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         const newEnd = e.target.value;
         setRetryDraft((prev) => {
             const base = prev ?? { start_date: formData.start_date, end_date: formData.end_date };
-            let start = base.start_date;
-            let end = newEnd;
-            if (start && end && start >= end) {
-                const d = parseSearchDate(end);
-                if (d) {
-                    const nd = new Date(d);
-                    nd.setDate(nd.getDate() - 1);
-                    start = dateToStorageString(nd);
-                }
-            }
-            return { start_date: start, end_date: end };
+            const end = ensureMinimumCheckOutDateString(base.start_date, newEnd);
+            return { start_date: base.start_date, end_date: end };
         });
     };
 
     const handleCheckAgain = () => {
-        const draft =
+        const requestedDraft =
             retryDraft ?? { start_date: formData.start_date, end_date: formData.end_date };
+        const draft = {
+            ...requestedDraft,
+            end_date: ensureMinimumCheckOutDateString(
+                requestedDraft.start_date,
+                requestedDraft.end_date
+            ),
+        };
         if (!draft.start_date) {
             setError("Please select check-in date");
             return;
@@ -565,7 +574,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                             id="ca-retry-checkout"
                                             type="date"
                                             className="form-control"
-                                            min={notAvailableRetryDates.start_date || getTodayLocalDateString()}
+                                            min={getMinimumCheckOutDateString(notAvailableRetryDates.start_date)}
                                             value={notAvailableRetryDates.end_date}
                                             onChange={handleRetryCheckOutChange}
                                             disabled={isChecking}
@@ -799,5 +808,3 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 };
 
 export default CheckAvailability;
-
-

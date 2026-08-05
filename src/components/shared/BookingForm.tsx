@@ -320,7 +320,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { BookingResponse, AvailabilityResponse } from "../../types/search";
 import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
-import { getTodayLocalDateString } from "../../utils/searchSession";
+import {
+    ensureMinimumCheckOutDateString,
+    getMinimumCheckOutDateString,
+    getTodayLocalDateString,
+} from "../../utils/searchSession";
 
 interface BookingFormProps {
     hotelId: number;
@@ -365,7 +369,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const defaultGuestEmail = user?.email || "";
     const [formData, setFormData] = useState({
         startDate: startDate || "",
-        endDate: endDate || "",
+        endDate: ensureMinimumCheckOutDateString(startDate, endDate),
         sessionId: sessionId || "",
         rateIndex: rateIndex || "",
         guestName: defaultGuestName,
@@ -432,11 +436,19 @@ const BookingForm: React.FC<BookingFormProps> = ({
         } else if (rateIndex && rateIndex.trim() !== "") {
             setFormData(prev => ({ ...prev, rateIndex }));
         }
-        if (startDate) {
-            setFormData(prev => ({ ...prev, startDate }));
-        }
-        if (endDate) {
-            setFormData(prev => ({ ...prev, endDate }));
+        if (startDate || endDate) {
+            setFormData(prev => {
+                const nextStartDate = startDate || prev.startDate;
+                const nextEndDate = ensureMinimumCheckOutDateString(
+                    nextStartDate,
+                    endDate || prev.endDate
+                );
+                return {
+                    ...prev,
+                    startDate: nextStartDate,
+                    endDate: nextEndDate,
+                };
+            });
         }
         // Update rooms if initialRooms is provided
         if (initialRooms && initialRooms.length > 0) {
@@ -506,10 +518,25 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormData((prev) => {
+            if (name === "startDate") {
+                return {
+                    ...prev,
+                    startDate: value,
+                    endDate: ensureMinimumCheckOutDateString(value, prev.endDate),
+                };
+            }
+            if (name === "endDate") {
+                return {
+                    ...prev,
+                    endDate: ensureMinimumCheckOutDateString(prev.startDate, value),
+                };
+            }
+            return {
+                ...prev,
+                [name]: value,
+            };
+        });
     };
 
     const cloneRoomConfig = (room: RoomData): RoomData => ({
@@ -1225,7 +1252,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 name="endDate"
                                 value={formData.endDate}
                                 onChange={handleInputChange}
-                                min={formData.startDate || getTodayLocalDateString()}
+                                min={getMinimumCheckOutDateString(formData.startDate)}
                                 required
                             />
                         </div>

@@ -131,6 +131,48 @@ export const dateToStorageString = (date: Date): string => {
     return `${y}-${m}-${d}`;
 };
 
+/** Return a new local calendar date shifted by the requested number of days. */
+export const addSearchDateDays = (date: Date, days: number): Date => {
+    const shifted = new Date(date);
+    shifted.setHours(0, 0, 0, 0);
+    shifted.setDate(shifted.getDate() + days);
+    return shifted;
+};
+
+/**
+ * Keep a stay at a minimum of one night. If check-out is missing, invalid, or
+ * not after check-in, it is moved to the following local calendar day.
+ */
+export const ensureMinimumCheckOutDate = (
+    checkIn: Date | null,
+    checkOut: Date | null
+): Date | null => {
+    if (!checkIn) return checkOut;
+    const minimumCheckOut = addSearchDateDays(checkIn, 1);
+    if (!checkOut || checkOut < minimumCheckOut) return minimumCheckOut;
+    return checkOut;
+};
+
+/** String form of the one-night date guard for native date inputs and API payloads. */
+export const ensureMinimumCheckOutDateString = (checkIn: string, checkOut: string): string => {
+    const parsedCheckIn = parseSearchDate(checkIn);
+    if (!parsedCheckIn) return checkOut;
+    const parsedCheckOut = parseSearchDate(checkOut);
+    const normalized = ensureMinimumCheckOutDate(parsedCheckIn, parsedCheckOut);
+    return normalized ? dateToStorageString(normalized) : checkOut;
+};
+
+/** Earliest valid native date-input value for a given check-in date. */
+export const getMinimumCheckOutDateString = (checkIn: string): string => {
+    const parsedCheckIn = parseSearchDate(checkIn);
+    if (!parsedCheckIn) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return dateToStorageString(addSearchDateDays(today, 1));
+    }
+    return dateToStorageString(addSearchDateDays(parsedCheckIn, 1));
+};
+
 /** Today's date as YYYY-MM-DD in local time (for min= on inputs, etc.). */
 export function getTodayLocalDateString(): string {
     const t = new Date();
@@ -149,4 +191,3 @@ export function getDefaultSearchDateStrings(): { start_date: string; end_date: s
         end_date: dateToStorageString(tomorrow),
     };
 }
-

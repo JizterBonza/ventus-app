@@ -7,6 +7,7 @@ import {
     getCookie,
     parseSearchDate,
     dateToStorageString,
+    ensureMinimumCheckOutDate,
     parseSearchRoomSlotsJson,
     legacyGuestsAndRoomsToSearchSlots,
     type SearchRoomSlot,
@@ -176,8 +177,15 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         if (urlLoc) setLocation(urlLoc);
         const ci = parseDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
-        if (ci) setCheckIn(ci);
-        if (co) setCheckOut(co);
+        const normalizedCheckOut = ensureMinimumCheckOutDate(ci, co);
+        if (ci) {
+            setCheckIn(ci);
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(ci));
+        }
+        if (normalizedCheckOut) {
+            setCheckOut(normalizedCheckOut);
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(normalizedCheckOut));
+        }
 
         const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
         const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
@@ -283,22 +291,35 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         return d;
     };
 
+    const applyCheckInDate = (nextCheckIn: Date) => {
+        const nextCheckOut = ensureMinimumCheckOutDate(nextCheckIn, checkOut);
+        setCheckIn(nextCheckIn);
+        setCheckOut(nextCheckOut);
+        setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(nextCheckIn));
+        if (nextCheckOut) {
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(nextCheckOut));
+        }
+    };
+
+    const applyCheckOutDate = (nextCheckOut: Date) => {
+        const normalizedCheckOut = ensureMinimumCheckOutDate(checkIn, nextCheckOut);
+        setCheckOut(normalizedCheckOut);
+        if (normalizedCheckOut) {
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(normalizedCheckOut));
+        }
+    };
+
     const handleDateSelect = (d: Date) => {
         if (selectingCheckIn) {
-            setCheckIn(d);
-            setCheckOut(null);
+            applyCheckInDate(d);
             setSelectingCheckIn(false);
-            setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d));
         } else {
             if (checkIn && d <= checkIn) {
-                setCheckIn(d);
-                setCheckOut(null);
-                setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d));
+                applyCheckInDate(d);
             } else {
-                setCheckOut(d);
+                applyCheckOutDate(d);
                 setSelectingCheckIn(true);
                 setShowCalendar(false);
-                setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(d));
             }
         }
     };
@@ -371,10 +392,16 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         }
         setLocationError(null);
 
+        const normalizedCheckOut = ensureMinimumCheckOutDate(checkIn, checkOut);
+        if (normalizedCheckOut && normalizedCheckOut !== checkOut) {
+            setCheckOut(normalizedCheckOut);
+            setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(normalizedCheckOut));
+        }
+
         const urlParams = new URLSearchParams();
         urlParams.set("location", trimmedLocation);
         if (checkIn) urlParams.set("checkIn", toStorageStr(checkIn));
-        if (checkOut) urlParams.set("checkOut", toStorageStr(checkOut));
+        if (normalizedCheckOut) urlParams.set("checkOut", toStorageStr(normalizedCheckOut));
         urlParams.set("roomSlots", JSON.stringify(roomSlots));
         if (totalAdults !== 1) urlParams.set("guests", String(totalAdults));
         if (roomCount !== 1) urlParams.set("rooms", String(roomCount));
@@ -460,22 +487,22 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
 
                         {/* Check-in */}
                         <div className="le-date-group" onClick={() => { setShowCalendar(true); setSelectingCheckIn(true); }}>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); const d = shiftDate(checkIn, -1); setCheckIn(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d)); }}>‹</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); applyCheckInDate(shiftDate(checkIn, -1)); }}>‹</button>
                             <span className={`le-date-text ${!checkIn ? "placeholder" : ""} ${!checkOut && showCalendar && !selectingCheckIn ? "active" : ""} ${showCalendar && selectingCheckIn ? "active" : ""}`}>
                                 {checkIn ? formatDisplay(checkIn) : "Check-in"}
                             </span>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); const d = shiftDate(checkIn, 1); setCheckIn(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, toStorageStr(d)); }}>›</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); applyCheckInDate(shiftDate(checkIn, 1)); }}>›</button>
                         </div>
 
                         <span className="le-date-sep">|</span>
 
                         {/* Check-out */}
                         <div className="le-date-group" onClick={() => { setShowCalendar(true); setSelectingCheckIn(false); }}>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) { const d = shiftDate(checkOut, -1); setCheckOut(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(d)); } }}>‹</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) applyCheckOutDate(shiftDate(checkOut, -1)); }}>‹</button>
                             <span className={`le-date-text ${!checkOut ? "placeholder" : ""} ${showCalendar && !selectingCheckIn ? "active" : ""}`}>
                                 {checkOut ? formatDisplay(checkOut) : "Check-out"}
                             </span>
-                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) { const d = shiftDate(checkOut, 1); setCheckOut(d); setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(d)); } }}>›</button>
+                            <button type="button" className="le-date-arrow" onClick={(e) => { e.stopPropagation(); if (checkOut) applyCheckOutDate(shiftDate(checkOut, 1)); }}>›</button>
                         </div>
 
                         {/* Calendar dropdown */}
