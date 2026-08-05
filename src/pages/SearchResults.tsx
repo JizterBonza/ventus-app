@@ -16,7 +16,9 @@ import BannerCTA from "../components/shared/BannerCTA";
 
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
-    const { hotels, loading, error, searchAdvanced, clearError } = useSearch();
+    const currentSearchKey = urlSearchParams.toString();
+    const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location");
+    const { hotels, loading, error, searchAdvanced, clearResults } = useSearch();
     const { isAuthenticated } = useAuth();
     
     const [searchParams, setSearchParams] = useState({
@@ -25,19 +27,62 @@ const SearchResults: React.FC = () => {
         rating: "all",
         sortBy: "recommended",
     });
-    const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingInspiration, setLoadingInspiration] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
+    const [completedSearchKey, setCompletedSearchKey] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const detailsRequestRef = useRef(0);
     /** Starting-from price per hotel id (today/tomorrow, visitor currency). Only when authenticated. */
     const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
+    const filteredHotels = useMemo(() => {
+        let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
+
+        if (searchParams.priceRange !== "all") {
+            filtered = filtered.filter((hotel) => {
+                const price = hotel.price || 0;
+                switch (searchParams.priceRange) {
+                    case "low":
+                        return price < 200;
+                    case "medium":
+                        return price >= 200 && price < 300;
+                    case "high":
+                        return price >= 300;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        if (searchParams.rating !== "all") {
+            const minRating = parseInt(searchParams.rating);
+            filtered = filtered.filter((hotel) => (hotel.rating || 0) >= minRating);
+        }
+
+        switch (searchParams.sortBy) {
+            case "price-low":
+                return [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+            case "price-high":
+                return [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+            case "rating":
+                return [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            case "distance":
+                return [...filtered].sort((a, b) => {
+                    const aDist = parseFloat(a.distance?.split(" ")[0] || "0");
+                    const bDist = parseFloat(b.distance?.split(" ")[0] || "0");
+                    return aDist - bDist;
+                });
+            default:
+                return filtered;
+        }
+    }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
+    const isSearching = loading || loadingInspiration || (hasSearchCriteria && completedSearchKey !== currentSearchKey);
 
     // Handle URL parameters and perform search
     useEffect(() => {
+        let cancelled = false;
         const inspirationId = urlSearchParams.get("inspirationId");
         const location = urlSearchParams.get("location");
         const title = urlSearchParams.get("title");
@@ -51,33 +96,42 @@ const SearchResults: React.FC = () => {
             rating,
             sortBy,
         });
+        clearResults();
+        setInspirationResults([]);
 
         if (inspirationId) {
             // Use the /hotels?inspiration_id endpoint for category cards,
             // falling back to text search if the ID doesn't exist in this environment
-            setInspirationResults([]);
             setLoadingInspiration(true);
             searchHotelsByInspiration(Number(inspirationId), 20)
-                .then((results) => {
+                .then(async (results) => {
+                    if (cancelled) return;
                     if (results.length > 0) {
                         setInspirationResults(results);
                     } else {
                         // Fallback: text search using the title
                         const fallbackQuery = title || "";
                         if (fallbackQuery) {
-                            searchAdvanced({ query: fallbackQuery, limit: 20 });
+                            await searchAdvanced({ query: fallbackQuery, limit: 20 });
                         }
                     }
                 })
-                .catch(() => {
+                .catch(async () => {
+                    if (cancelled) return;
                     // Fallback on error (e.g. ID invalid in staging)
                     const fallbackQuery = title || "";
                     if (fallbackQuery) {
-                        searchAdvanced({ query: fallbackQuery, limit: 20 });
+                        await searchAdvanced({ query: fallbackQuery, limit: 20 });
                     }
                 })
-                .finally(() => setLoadingInspiration(false));
+                .finally(() => {
+                    if (!cancelled) {
+                        setLoadingInspiration(false);
+                        setCompletedSearchKey(currentSearchKey);
+                    }
+                });
         } else if (location) {
+            setLoadingInspiration(false);
             const searchParamsForAPI = {
                 query: location,
                 limit: 20,
@@ -86,9 +140,18 @@ const SearchResults: React.FC = () => {
                 rating: rating !== "all" ? rating : undefined,
                 sortBy: sortBy !== "recommended" ? sortBy : undefined,
             };
-            searchAdvanced(searchParamsForAPI);
+            void searchAdvanced(searchParamsForAPI).finally(() => {
+                if (!cancelled) setCompletedSearchKey(currentSearchKey);
+            });
+        } else {
+            setLoadingInspiration(false);
+            setCompletedSearchKey(currentSearchKey);
         }
-    }, [urlSearchParams, searchAdvanced]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [urlSearchParams, currentSearchKey, searchAdvanced, clearResults]);
 
     // Function to fetch detailed hotel information
     const fetchHotelDetails = async (hotelIds: number[]) => {
@@ -114,67 +177,17 @@ const SearchResults: React.FC = () => {
         );
     };
 
-    // Apply client-side filtering and sorting to API results
+    // Enrich ordinary text-search results progressively. Inspiration responses
+    // already contain the card data and do not need 20 immediate detail calls.
     useEffect(() => {
-        let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
-
-        // Apply price filter
-        if (searchParams.priceRange !== "all") {
-            filtered = filtered.filter((hotel) => {
-                const price = hotel.price || 0;
-                switch (searchParams.priceRange) {
-                    case "low":
-                        return price < 200;
-                    case "medium":
-                        return price >= 200 && price < 300;
-                    case "high":
-                        return price >= 300;
-                    default:
-                        return true;
-                }
-            });
-        }
-
-        // Apply rating filter
-        if (searchParams.rating !== "all") {
-            const minRating = parseInt(searchParams.rating);
-            filtered = filtered.filter((hotel) => (hotel.rating || 0) >= minRating);
-        }
-
-        // Apply sorting
-        switch (searchParams.sortBy) {
-            case "price-low":
-                filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
-                break;
-            case "price-high":
-                filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
-                break;
-            case "rating":
-                filtered = [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-                break;
-            case "distance":
-                filtered = [...filtered].sort((a, b) => {
-                    const aDist = parseFloat(a.distance?.split(" ")[0] || "0");
-                    const bDist = parseFloat(b.distance?.split(" ")[0] || "0");
-                    return aDist - bDist;
-                });
-                break;
-            default:
-                break;
-        }
-
-        setFilteredHotels(filtered);
-
-        // Inspiration responses already contain images and descriptive hotel details.
-        // Avoid immediately re-fetching every hotel one-by-one for those collections.
-        if (filtered.length > 0 && inspirationResults.length === 0) {
-            const hotelIds = filtered.map((hotel) => hotel.id);
+        if (filteredHotels.length > 0 && inspirationResults.length === 0) {
+            const hotelIds = filteredHotels.map((hotel) => hotel.id);
             fetchHotelDetails(hotelIds);
         } else {
             detailsRequestRef.current += 1;
             setDetailedHotels([]);
         }
-    }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
+    }, [filteredHotels, inspirationResults]);
 
     // Fetch "Starting from" prices for each hotel (today/tomorrow, visitor currency). Only when authenticated.
     useEffect(() => {
@@ -251,7 +264,7 @@ const SearchResults: React.FC = () => {
                         {/* Results */}
                         <div className="col-md-12">
                             <div className="results-header">
-                               <p>{filteredHotels.length} results found</p>
+                               <p>{isSearching ? "Searching for hotels…" : `${filteredHotels.length} results found`}</p>
                             </div>
 
                             {error && (
@@ -260,7 +273,7 @@ const SearchResults: React.FC = () => {
                                 </div>
                             )}
 
-                            {(loading || loadingInspiration) ? (
+                            {isSearching ? (
                                 <div className="text-center">
                                     <div className="spinner-border" role="status">
                                         <span className="sr-only">Loading...</span>
@@ -380,7 +393,7 @@ const SearchResults: React.FC = () => {
                                 </div>
                             )}
 
-                            {!loading && filteredHotels.length === 0 && (
+                            {!isSearching && filteredHotels.length === 0 && (
                                 <div className="text-center">
                                     <h4>No hotels found</h4>
                                     <p>Try adjusting your search criteria</p>

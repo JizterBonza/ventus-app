@@ -351,9 +351,18 @@ const transformApiDataToHotels = (apiData: any[]): Hotel[] => {
 /**
  * Makes a search request to the API with authorization
  */
+const HOTEL_SEARCH_MEMORY_TTL_MS = 5 * 60 * 1000;
+const hotelSearchMemoryCache = new Map<string, { response: SearchResponse; expiresAt: number }>();
+
 export const searchHotels = async (params: SearchParams): Promise<SearchResponse> => {
   const searchParams = buildSearchParams(params);
   const url = `${API_BASE_URL}/search?${searchParams.toString()}`;
+  const cacheKey = searchParams.toString();
+  const cachedSearch = hotelSearchMemoryCache.get(cacheKey);
+  if (cachedSearch && cachedSearch.expiresAt > Date.now()) {
+    return cachedSearch.response;
+  }
+  if (cachedSearch) hotelSearchMemoryCache.delete(cacheKey);
   
   // Log the actual API URL (without proxy) for clarity
   const actualUrl = getActualApiUrl(url);
@@ -417,13 +426,18 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
       hotels = [];
     }
     
-    return {
+    const searchResponse = {
       success: true,
       data: hotels,
       total: hotels.length,
       page: 1,
       limit: params.limit || 20
     } as SearchResponse;
+    hotelSearchMemoryCache.set(cacheKey, {
+      response: searchResponse,
+      expiresAt: Date.now() + HOTEL_SEARCH_MEMORY_TTL_MS,
+    });
+    return searchResponse;
   } catch (error) {
     console.error('searchHotels error:', error);
     throw error;
@@ -756,40 +770,102 @@ export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]>
 /**
  * Fetch hotels by inspiration ID using the /hotels endpoint
  */
-export const searchHotelsByInspiration = async (inspirationId: number, perPage: number = 20): Promise<Hotel[]> => {
-  const url = `${API_BASE_URL}/hotels?inspiration_id=${inspirationId}&per_page=${perPage}`;
-  // console.log('Fetching hotels by inspiration ID:', inspirationId);
-  //
+const INSPIRATION_RESULTS_CACHE_TTL_MS = 30 * 60 * 1000;
+const INSPIRATION_RESULTS_STORAGE_PREFIX = 'ventus:inspiration:v1:';
+const inspirationResultsMemoryCache = new Map<string, { hotels: Hotel[]; expiresAt: number }>();
+const inspirationResultsInflight = new Map<string, Promise<Hotel[]>>();
+
+const getInspirationResultsCacheKey = (inspirationId: number, perPage: number) =>
+  `${inspirationId}:${perPage}`;
+
+const readCachedInspirationResults = (cacheKey: string): Hotel[] | null => {
+  const memoryEntry = inspirationResultsMemoryCache.get(cacheKey);
+  if (memoryEntry && memoryEntry.expiresAt > Date.now()) return memoryEntry.hotels;
+  if (memoryEntry) inspirationResultsMemoryCache.delete(cacheKey);
+
+  if (typeof window === 'undefined') return null;
   try {
-    const response = await makeApiRequest(url, { method: 'GET' });
-
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
+    const rawEntry = window.localStorage.getItem(`${INSPIRATION_RESULTS_STORAGE_PREFIX}${cacheKey}`);
+    if (!rawEntry) return null;
+    const storedEntry = JSON.parse(rawEntry) as { hotels?: Hotel[]; expiresAt?: number };
+    if (!Array.isArray(storedEntry.hotels) || !storedEntry.expiresAt || storedEntry.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(`${INSPIRATION_RESULTS_STORAGE_PREFIX}${cacheKey}`);
+      return null;
     }
+    inspirationResultsMemoryCache.set(cacheKey, {
+      hotels: storedEntry.hotels,
+      expiresAt: storedEntry.expiresAt,
+    });
+    return storedEntry.hotels;
+  } catch {
+    return null;
+  }
+};
 
-    const data = await response.json();
-    const items: any[] = data.data || data.content || [];
-    return items.map((item: any) => ({
-      id: item.id,
-      name: item.name || item.text || 'Unknown Hotel',
-      location: item.location || '',
-      description: item.description || '',
-      amenities: item.amenities || [],
-      images: item.images || [],
-      videos: item.videos || [],
-      links: item.links || { self: { href: '', method: 'GET' } },
-      hotel_groups: item.hotel_groups,
-      fun_fact: item.fun_fact,
-      unique_experiences: item.unique_experiences,
-      website: item.website,
-      instagram: item.instagram,
-      benefits: item.benefits,
-      benefits_footnotes: item.benefits_footnotes,
-      hotel_information: item.hotel_information,
-    }));
-  } catch (error) {
-    console.error('searchHotelsByInspiration error:', error);
-    throw error;
+const cacheInspirationResults = (cacheKey: string, hotels: Hotel[]) => {
+  const entry = { hotels, expiresAt: Date.now() + INSPIRATION_RESULTS_CACHE_TTL_MS };
+  inspirationResultsMemoryCache.set(cacheKey, entry);
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`${INSPIRATION_RESULTS_STORAGE_PREFIX}${cacheKey}`, JSON.stringify(entry));
+  } catch {
+    // Storage may be disabled or full; the in-memory cache still works.
+  }
+};
+
+export const searchHotelsByInspiration = async (inspirationId: number, perPage: number = 20): Promise<Hotel[]> => {
+  const cacheKey = getInspirationResultsCacheKey(inspirationId, perPage);
+  const cachedResults = readCachedInspirationResults(cacheKey);
+  if (cachedResults) return cachedResults;
+
+  const inflightRequest = inspirationResultsInflight.get(cacheKey);
+  if (inflightRequest) return inflightRequest;
+
+  const url = `${API_BASE_URL}/hotels?inspiration_id=${inspirationId}&per_page=${perPage}`;
+  const request = (async () => {
+    try {
+      const response = await makeApiRequest(url, { method: 'GET' });
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const items: any[] = data.data || data.content || [];
+      const hotels = items.map((item: any) => {
+        const firstImage = Array.isArray(item.images) ? item.images.find((image: any) => image?.url) : null;
+        const images = firstImage ? [firstImage] : [];
+        return {
+          id: item.id,
+          name: item.name || item.text || 'Unknown Hotel',
+          location: item.location || '',
+          description: item.description || '',
+          amenities: [],
+          images,
+          image: firstImage?.url,
+          videos: [],
+          links: item.links || { self: { href: '', method: 'GET' } },
+          rating: item.rating ?? undefined,
+          price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
+        } as Hotel;
+      });
+      cacheInspirationResults(cacheKey, hotels);
+      return hotels;
+    } catch (error) {
+      console.error('searchHotelsByInspiration error:', error);
+      throw error;
+    }
+  })().finally(() => inspirationResultsInflight.delete(cacheKey));
+
+  inspirationResultsInflight.set(cacheKey, request);
+  return request;
+};
+
+export const prefetchInspirationHotels = async (inspirationId: number, perPage: number = 20): Promise<void> => {
+  try {
+    await searchHotelsByInspiration(inspirationId, perPage);
+  } catch {
+    // Prefetch is opportunistic; the results page will retry and display errors normally.
   }
 };
 

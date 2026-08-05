@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
-import { getHotelDetailsBatch } from "../utils/api";
+import { getHotelDetailsBatch, prefetchInspirationHotels } from "../utils/api";
 import { interestCategories } from "../utils/interestCategories";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -72,6 +72,29 @@ const Home: React.FC = () => {
     const loadingSliderHotels = false;
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
+
+    // Warm inspiration searches quietly after the homepage settles. Requests are
+    // sequential to avoid competing with visible images and are shared with a
+    // click that happens while a prefetch is still running.
+    useEffect(() => {
+        let cancelled = false;
+        const inspirationIds = interestCategories
+            .map((interest) => interest.inspirationId)
+            .filter((id): id is number => typeof id === "number");
+        const timer = window.setTimeout(() => {
+            void (async () => {
+                for (const inspirationId of inspirationIds) {
+                    if (cancelled) break;
+                    await prefetchInspirationHotels(inspirationId, 20);
+                }
+            })();
+        }, 1200);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, []);
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -860,9 +883,20 @@ const Home: React.FC = () => {
                                 }
                             };
 
+                            const handleInterestPrefetch = () => {
+                                if (interest.inspirationId) {
+                                    void prefetchInspirationHotels(interest.inspirationId, 20);
+                                }
+                            };
+
                             return (
                                 <div key={interest.id} className="col-md-4 mb-4">
-                                    <div className="card interest-card">
+                                    <div
+                                        className="card interest-card"
+                                        onMouseEnter={handleInterestPrefetch}
+                                        onFocus={handleInterestPrefetch}
+                                        onTouchStart={handleInterestPrefetch}
+                                    >
                                     {/* 
                                         <div className="card-overlay">Find out more</div>
                                         <div className="card-categories">

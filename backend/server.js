@@ -519,15 +519,15 @@ const getHotelApiCachePolicy = (req) => {
 
   if (path === '/v2/hotels' && requestUrl.searchParams.has('inspiration_id')) {
     return {
-      serverTtlMs: 5 * 60 * 1000,
-      cacheControl: 'public, max-age=120, stale-while-revalidate=300, stale-if-error=3600'
+      serverTtlMs: 30 * 60 * 1000,
+      cacheControl: 'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400'
     };
   }
 
   if (path === '/v2/search') {
     return {
-      serverTtlMs: 2 * 60 * 1000,
-      cacheControl: 'public, max-age=30, stale-while-revalidate=120, stale-if-error=600'
+      serverTtlMs: 5 * 60 * 1000,
+      cacheControl: 'public, max-age=60, stale-while-revalidate=300, stale-if-error=3600'
     };
   }
 
@@ -548,10 +548,41 @@ const storeHotelApiCacheEntry = (key, entry) => {
   hotelApiCache.set(key, entry);
 };
 
+// Inspiration collections include full hotel records even though the results
+// page only needs summary-card fields. Compacting them at the proxy cuts the
+// cached response substantially without changing the hotel detail endpoint.
+const compactInspirationCollection = (data) => {
+  if (!data || !Array.isArray(data.content)) return data;
+  return {
+    ...data,
+    content: data.content.map((hotel) => {
+      const firstImage = Array.isArray(hotel.images)
+        ? hotel.images.find((image) => image && image.url)
+        : null;
+      return {
+        id: hotel.id,
+        name: hotel.name,
+        location: hotel.location,
+        description: hotel.description,
+        images: firstImage ? [firstImage] : [],
+        links: hotel.links,
+        rating: hotel.rating,
+        price: hotel.price,
+        min_price: hotel.min_price,
+        lowest_rate: hotel.lowest_rate,
+      };
+    })
+  };
+};
+
 app.use('/v2', express.json(), async (req, res) => {
   const targetUrl = `${HOTEL_API_BASE}${req.originalUrl}`;
   const cachePolicy = getHotelApiCachePolicy(req);
   const cacheKey = cachePolicy ? getHotelApiCacheKey(req) : null;
+  const requestUrl = new URL(req.originalUrl, 'http://cache.local');
+  const isInspirationCollection = req.method === 'GET' &&
+    requestUrl.pathname.replace(/\/$/, '') === '/v2/hotels' &&
+    requestUrl.searchParams.has('inspiration_id');
 
   if (cacheKey) {
     const cached = hotelApiCache.get(cacheKey);
@@ -585,9 +616,12 @@ app.use('/v2', express.json(), async (req, res) => {
         };
         const proxyRes = await fetch(targetUrl, fetchOptions);
         const contentType = proxyRes.headers.get('content-type') || '';
-        const data = contentType.includes('application/json')
+        let data = contentType.includes('application/json')
           ? await proxyRes.json()
           : await proxyRes.text();
+        if (isInspirationCollection && proxyRes.ok) {
+          data = compactInspirationCollection(data);
+        }
         return {
           status: proxyRes.status,
           contentType: proxyRes.headers.get('content-type') || 'application/json',
@@ -655,6 +689,32 @@ app.listen(PORT, HOST, () => {
   console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`✓ Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`================================`);
+
+  // Warm the homepage inspiration collections after startup so the first user
+  // is not forced to wait for several slow upstream round trips. Run them in
+  // sequence to keep upstream load controlled; in-flight request deduplication
+  // also shares work with a real user request arriving at the same time.
+  const inspirationIds = (process.env.HOTEL_API_PREWARM_INSPIRATIONS || '13,19,50,22,67,32')
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter(Number.isFinite);
+  setTimeout(() => {
+    void (async () => {
+      for (const inspirationId of inspirationIds) {
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:${PORT}/v2/hotels?inspiration_id=${inspirationId}&per_page=20`
+          );
+          await response.arrayBuffer();
+          if (!response.ok) {
+            console.warn(`Inspiration cache warm failed for ${inspirationId}: ${response.status}`);
+          }
+        } catch (error) {
+          console.warn(`Inspiration cache warm failed for ${inspirationId}:`, error.message);
+        }
+      }
+    })();
+  }, 1000);
 });
 
 // Graceful shutdown
