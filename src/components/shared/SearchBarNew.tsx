@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { searchHotelsByQuery } from "../../utils/api";
 import {
     SEARCH_SESSION_COOKIES,
@@ -131,8 +131,9 @@ const normalizeLocationDisplay = (raw: string) =>
     raw.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
 const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }) => {
-    const [urlSearchParams] = useSearchParams();
+    const [urlSearchParams, setUrlSearchParams] = useSearchParams();
     const navigate = useNavigate();
+    const routeLocation = useLocation();
 
     const [location, setLocation] = useState("");
     const [checkIn, setCheckIn] = useState<Date | null>(() => {
@@ -291,6 +292,19 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         return d;
     };
 
+    const syncHotelPageDates = (nextCheckIn: Date | null, nextCheckOut: Date | null) => {
+        if (!routeLocation.pathname.startsWith("/hotel/") || !nextCheckIn || !nextCheckOut) return;
+        setUrlSearchParams(
+            (prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("checkIn", toStorageStr(nextCheckIn));
+                next.set("checkOut", toStorageStr(nextCheckOut));
+                return next;
+            },
+            { replace: true }
+        );
+    };
+
     const applyCheckInDate = (nextCheckIn: Date) => {
         const nextCheckOut = ensureMinimumCheckOutDate(nextCheckIn, checkOut);
         setCheckIn(nextCheckIn);
@@ -299,6 +313,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         if (nextCheckOut) {
             setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(nextCheckOut));
         }
+        syncHotelPageDates(nextCheckIn, nextCheckOut);
     };
 
     const applyCheckOutDate = (nextCheckOut: Date) => {
@@ -307,6 +322,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
         if (normalizedCheckOut) {
             setCookie(SEARCH_SESSION_COOKIES.CHECK_OUT, toStorageStr(normalizedCheckOut));
         }
+        syncHotelPageDates(checkIn, normalizedCheckOut);
     };
 
     const handleDateSelect = (d: Date) => {
