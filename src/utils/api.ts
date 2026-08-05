@@ -457,7 +457,12 @@ export const searchHotelsAdvanced = async (params: SearchParams): Promise<Hotel[
 /**
  * Get hotel details by ID using the hotel details API
  */
-export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
+const HOTEL_DETAILS_MEMORY_TTL_MS = 10 * 60 * 1000;
+const HOTEL_DETAILS_MEMORY_MAX_ENTRIES = 100;
+const hotelDetailsMemoryCache = new Map<number, { hotel: Hotel; expiresAt: number }>();
+const hotelDetailsInflight = new Map<number, Promise<Hotel>>();
+
+const fetchHotelDetails = async (hotelId: number): Promise<Hotel> => {
   const url = `${API_BASE_URL}/hotels/${hotelId}`;
   
   // console.log('Fetching hotel details for ID:', hotelId);
@@ -543,6 +548,38 @@ export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
     console.error('getHotelDetails error:', error);
     throw error;
   }
+};
+
+export const getHotelDetails = async (hotelId: number): Promise<Hotel> => {
+  const cached = hotelDetailsMemoryCache.get(hotelId);
+  if (cached && cached.expiresAt > Date.now()) {
+    hotelDetailsMemoryCache.delete(hotelId);
+    hotelDetailsMemoryCache.set(hotelId, cached);
+    return cached.hotel;
+  }
+  if (cached) hotelDetailsMemoryCache.delete(hotelId);
+
+  const inflight = hotelDetailsInflight.get(hotelId);
+  if (inflight) return inflight;
+
+  const request = fetchHotelDetails(hotelId)
+    .then((hotel) => {
+      if (hotelDetailsMemoryCache.has(hotelId)) hotelDetailsMemoryCache.delete(hotelId);
+      while (hotelDetailsMemoryCache.size >= HOTEL_DETAILS_MEMORY_MAX_ENTRIES) {
+        const oldestHotelId = hotelDetailsMemoryCache.keys().next().value;
+        if (oldestHotelId === undefined) break;
+        hotelDetailsMemoryCache.delete(oldestHotelId);
+      }
+      hotelDetailsMemoryCache.set(hotelId, {
+        hotel,
+        expiresAt: Date.now() + HOTEL_DETAILS_MEMORY_TTL_MS,
+      });
+      return hotel;
+    })
+    .finally(() => hotelDetailsInflight.delete(hotelId));
+
+  hotelDetailsInflight.set(hotelId, request);
+  return request;
 };
 
 /**

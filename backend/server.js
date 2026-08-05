@@ -40,7 +40,8 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['X-Cache', 'Age']
 };
 
 // Middleware
@@ -499,30 +500,123 @@ app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
 // staging frontend can call this backend (same CORS origin) instead of public CORS proxies.
 const HOTEL_API_BASE = process.env.HOTEL_API_BASE || 'https://api-staging.littleemperors.com';
 const HOTEL_API_TOKEN = process.env.HOTEL_API_TOKEN || process.env.REACT_APP_API_TOKEN || '';
+const HOTEL_API_CACHE_MAX_ENTRIES = 300;
+const hotelApiCache = new Map();
+const hotelApiInflight = new Map();
+
+const getHotelApiCachePolicy = (req) => {
+  if (req.method !== 'GET') return null;
+
+  const requestUrl = new URL(req.originalUrl, 'http://cache.local');
+  const path = requestUrl.pathname.replace(/\/$/, '');
+
+  if (/^\/v2\/hotels\/\d+$/.test(path)) {
+    return {
+      serverTtlMs: 15 * 60 * 1000,
+      cacheControl: 'public, max-age=300, stale-while-revalidate=600, stale-if-error=86400'
+    };
+  }
+
+  if (path === '/v2/hotels' && requestUrl.searchParams.has('inspiration_id')) {
+    return {
+      serverTtlMs: 5 * 60 * 1000,
+      cacheControl: 'public, max-age=120, stale-while-revalidate=300, stale-if-error=3600'
+    };
+  }
+
+  if (path === '/v2/search') {
+    return {
+      serverTtlMs: 2 * 60 * 1000,
+      cacheControl: 'public, max-age=30, stale-while-revalidate=120, stale-if-error=600'
+    };
+  }
+
+  return null;
+};
+
+const getHotelApiCacheKey = (req) => {
+  const requestUrl = new URL(req.originalUrl, 'http://cache.local');
+  requestUrl.searchParams.sort();
+  return `${requestUrl.pathname}${requestUrl.search}`;
+};
+
+const storeHotelApiCacheEntry = (key, entry) => {
+  if (hotelApiCache.has(key)) hotelApiCache.delete(key);
+  while (hotelApiCache.size >= HOTEL_API_CACHE_MAX_ENTRIES) {
+    hotelApiCache.delete(hotelApiCache.keys().next().value);
+  }
+  hotelApiCache.set(key, entry);
+};
 
 app.use('/v2', express.json(), async (req, res) => {
   const targetUrl = `${HOTEL_API_BASE}${req.originalUrl}`;
+  const cachePolicy = getHotelApiCachePolicy(req);
+  const cacheKey = cachePolicy ? getHotelApiCacheKey(req) : null;
+
+  if (cacheKey) {
+    const cached = hotelApiCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      hotelApiCache.delete(cacheKey);
+      hotelApiCache.set(cacheKey, cached);
+      return res
+        .status(cached.status)
+        .set('Content-Type', cached.contentType)
+        .set('Cache-Control', cachePolicy.cacheControl)
+        .set('X-Cache', 'HIT')
+        .set('Age', String(Math.floor((Date.now() - cached.cachedAt) / 1000)))
+        .send(cached.data);
+    }
+    if (cached) hotelApiCache.delete(cacheKey);
+  }
+
   const headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
     ...(HOTEL_API_TOKEN && { 'Authorization': `Bearer ${HOTEL_API_TOKEN}` }),
   };
   try {
-    const fetchOptions = {
-      method: req.method,
-      headers,
-      ...(req.method !== 'GET' && req.method !== 'HEAD' && req.body && { body: JSON.stringify(req.body) }),
-    };
-    const proxyRes = await fetch(targetUrl, fetchOptions);
-    const contentType = proxyRes.headers.get('content-type') || '';
-    const data = contentType.includes('application/json')
-      ? await proxyRes.json()
-      : await proxyRes.text();
-    const ct = proxyRes.headers.get('content-type') || 'application/json';
-    res.status(proxyRes.status).set('Content-Type', ct);
-    if (typeof data === 'object') res.json(data);
-    else res.send(data);
+    let upstreamRequest = cacheKey ? hotelApiInflight.get(cacheKey) : null;
+    if (!upstreamRequest) {
+      upstreamRequest = (async () => {
+        const fetchOptions = {
+          method: req.method,
+          headers,
+          ...(req.method !== 'GET' && req.method !== 'HEAD' && req.body && { body: JSON.stringify(req.body) }),
+        };
+        const proxyRes = await fetch(targetUrl, fetchOptions);
+        const contentType = proxyRes.headers.get('content-type') || '';
+        const data = contentType.includes('application/json')
+          ? await proxyRes.json()
+          : await proxyRes.text();
+        return {
+          status: proxyRes.status,
+          contentType: proxyRes.headers.get('content-type') || 'application/json',
+          data
+        };
+      })();
+      if (cacheKey) hotelApiInflight.set(cacheKey, upstreamRequest);
+    }
+
+    const upstream = await upstreamRequest;
+    if (cacheKey) hotelApiInflight.delete(cacheKey);
+
+    if (cacheKey && upstream.status >= 200 && upstream.status < 300) {
+      const cachedAt = Date.now();
+      storeHotelApiCacheEntry(cacheKey, {
+        ...upstream,
+        cachedAt,
+        expiresAt: cachedAt + cachePolicy.serverTtlMs
+      });
+    }
+
+    res
+      .status(upstream.status)
+      .set('Content-Type', upstream.contentType)
+      .set('Cache-Control', cachePolicy ? cachePolicy.cacheControl : 'no-store')
+      .set('X-Cache', cachePolicy ? 'MISS' : 'BYPASS')
+      .send(upstream.data);
   } catch (err) {
+    if (cacheKey) hotelApiInflight.delete(cacheKey);
     console.error('Hotel API proxy error:', err);
     res.status(502).json({
       success: false,
@@ -571,4 +665,3 @@ process.on('SIGTERM', () => {
     process.exit(0);
   });
 });
-
