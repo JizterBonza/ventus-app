@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Navigation from "./Navigation";
 import Breadcrumb from "../shared/Breadcrumb";
 
@@ -29,9 +29,9 @@ const Header: React.FC = () => {
                 <div className="container">
                     {/* Logo */}
                     <div className="logo-wrapper">
-                        <Link className="logo" to="/">
+                        <a className="logo" href="http://ventustravel.co.uk/">
                             <img src="/assets/img/logo.svg" className="logo-img" alt="Ventus Travel" />
-                        </Link>
+                        </a>
                     </div>
 
                     <Navigation />

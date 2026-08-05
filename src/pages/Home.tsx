@@ -45,10 +45,11 @@ const createFeaturedHotel = (id: number, name: string, location: string, imageUr
 
 const FEATURED_HOTELS: Hotel[] = [
     createFeaturedHotel(11063, "Passalacqua", "Lake Como, Italy", "/assets/img/featured/passalacqua.webp"),
-    createFeaturedHotel(9665, "Airelles Saint-Tropez, Château de la Messardière", "Saint Tropez, France", "/assets/img/featured/airelles-saint-tropez.webp"),
     createFeaturedHotel(9679, "La Residencia, A Belmond Hotel", "Mallorca, Spain", "/assets/img/featured/la-residencia.webp"),
     createFeaturedHotel(10218, "The Maybourne Riviera", "Roquebrune-Cap-Martin, France", "/assets/img/featured/maybourne-riviera.webp"),
-    createFeaturedHotel(11905, "One&Only Kéa Island", "Kea Island, Greece", "/assets/img/featured/oneandonly-kea.webp"),
+    createFeaturedHotel(9665, "Airelles Saint-Tropez, Château de la Messardière", "Saint Tropez, France", "/assets/img/featured/airelles-saint-tropez.webp"),
+    createFeaturedHotel(12370, "Treville Positano", "Positano, Italy", "/assets/img/featured/villa-treville-positano.webp"),
+    createFeaturedHotel(8161, "Badrutt's Palace Hotel", "St Moritz, Switzerland", "/assets/img/featured/badrutts-palace.webp"),
 ];
 
 const Home: React.FC = () => {

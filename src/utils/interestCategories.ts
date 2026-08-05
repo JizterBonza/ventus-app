@@ -3,17 +3,6 @@ import { InterestCategory } from "../types/interests";
 export const interestCategories: InterestCategory[] = [
     {
         id: "1",
-        title: "Best of Japan",
-        description:
-            "From traditional to high-tech.",
-        image: "/assets/img/interests/japan.webp",
-        categories: ["Japan", "Culture", "Tradition"],
-        location: "Japan",
-        query: "Japan"
-    },
-   
-    {
-        id: "2",
         title: "Summer Sun",
         description:
             "Where we are going for summer sun.",
@@ -23,7 +12,7 @@ export const interestCategories: InterestCategory[] = [
         query: "Amalfi Coast"
     },
     {
-        id: "3",
+        id: "2",
         title: "European City Breaks",
         description:
             "European City Breaks.",
@@ -33,7 +22,7 @@ export const interestCategories: InterestCategory[] = [
         query: "Paris"
     },
     {
-        id: "4",
+        id: "3",
         title: "New Openings",
         description:
             "Keep up to date with the hottest hotel openings.",
@@ -41,9 +30,10 @@ export const interestCategories: InterestCategory[] = [
         categories: ["Adventure", "Popular"],
         location: "Indian Ocean",
         query: "new openings",
-        inspirationId:13    },
+        inspirationId: 13
+    },
     {
-        id: "5",
+        id: "4",
         title: "Wellness Wonders",
         description:
             "Relax the body, mind and soul.",
@@ -51,10 +41,10 @@ export const interestCategories: InterestCategory[] = [
         categories: ["Wellness", "Relax", "Soul"],
         location: "Europe",
         query: "wellness wonders",
-        inspirationId:19
+        inspirationId: 19
     },
     {
-        id: "6",
+        id: "5",
         title: "Countryside Favourites",
         description:
             "Explore the beautiful English countryside.",
@@ -62,10 +52,10 @@ export const interestCategories: InterestCategory[] = [
         categories: ["Adventure", "Tradition"],
         location: "Europe",
         query: "countryside",
-        inspirationId:50
+        inspirationId: 50
     },
     {
-        id: "7",
+        id: "6",
         title: "Best for Families",
         description:
             "For you and your little emperors.",
@@ -73,10 +63,10 @@ export const interestCategories: InterestCategory[] = [
         categories: ["Adventure", "Culture"],
         location: "North Africa",
         query: "family",
-        inspirationId:22
+        inspirationId: 22
     },
     {
-        id: "8",
+        id: "7",
         title: "Luxury Train Journeys",
         description:
             "Travel to exciting destinations in style.",
@@ -86,11 +76,9 @@ export const interestCategories: InterestCategory[] = [
         externalUrl: "https://www.ventustravel.co.uk/contact-us",
         ctaLabel: "Plan a Journey"
     },
-    
-    
     {
-        id: "9",
-        title: "Yachts & River Cruises",
+        id: "8",
+        title: "Yachts and River Cruises",
         description:
             "Your home on the water.",
         image: "/assets/img/interests/festive.webp",
@@ -100,7 +88,7 @@ export const interestCategories: InterestCategory[] = [
         ctaLabel: "Plan a Voyage"
     },
     {
-        id: "10",
+        id: "9",
         title: "Hotels with Villas",
         description:
             "For your own piece of paradise.",
@@ -110,18 +98,18 @@ export const interestCategories: InterestCategory[] = [
         query: "Maldives"
     },
     {
-        id: "11",
-        title: "Safari",
+        id: "10",
+        title: "Safaris",
         description:
             "Take a walk on the wild side.",
         image: "/assets/img/interests/safari-2.webp",
         categories: ["Culture", "Popular"],
         location: "Europe",
         query: "safari",
-        inspirationId:67
+        inspirationId: 67
     },
     {
-        id: "12",
+        id: "11",
         title: "City Spa Breaks",
         description:
             "Recharge in these urban sanctuaries.",
@@ -130,5 +118,15 @@ export const interestCategories: InterestCategory[] = [
         location: "London, United Kingdom",
         query: "London"
     },
-    
+    {
+        id: "12",
+        title: "Most Booked",
+        description:
+            "Our most popular hotels this month.",
+        image: "/assets/img/interests/most-booked.webp",
+        categories: ["Popular", "Hotels"],
+        location: "Worldwide",
+        query: "most booked",
+        inspirationId: 32
+    },
 ];

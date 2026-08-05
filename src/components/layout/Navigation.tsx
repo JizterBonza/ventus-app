@@ -46,9 +46,9 @@ const Navigation: React.FC = () => {
             <div className={`collapse navbar-collapse ${isMobileMenuOpen ? "show" : ""}`} id="navbar">
                 <ul className="navbar-nav ms-auto">
                     <li className="nav-item">
-                        <Link className="nav-link" to="/">
+                        <a className="nav-link" href="http://ventustravel.co.uk/">
                             Home
-                        </Link>
+                        </a>
                     </li>
                     <li className="nav-item">
                         <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/about-us">
