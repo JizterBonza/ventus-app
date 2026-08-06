@@ -19,6 +19,7 @@ const corsOptions = {
       'https://ventus-app.onrender.com',  // Production frontend
       'https://ventus-app-staging.onrender.com',  // Staging frontend
       'https://ventus-travel-staging.onrender.com',  // Alternative staging frontend
+      'https://destinations.ventustravel.co.uk',  // Public destinations frontend
     ];
     
     // Check if origin matches allowed list
