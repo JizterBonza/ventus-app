@@ -43,6 +43,14 @@
 
 .password-reset-page .password-reset-back {
     margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.password-reset-page .password-reset-back-link {
+    display: inline;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 /* Hotel Details Loading and Contact Info Styles */

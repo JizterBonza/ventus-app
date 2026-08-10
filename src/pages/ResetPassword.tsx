@@ -117,10 +117,10 @@ const ResetPassword: React.FC = () => {
                 )}
 
                 {!isValidating && !isTokenValid && !successMessage && (
-                  <p><Link to="/forgot-password" className="password-reset-back-link">Request a new reset link</Link></p>
+                  <p className="password-reset-back"><Link to="/forgot-password" className="password-reset-back-link">Request a new reset link</Link></p>
                 )}
                 {successMessage && (
-                  <p><Link to="/login" className="password-reset-back-link">Continue to login</Link></p>
+                  <p className="password-reset-back"><Link to="/login" className="password-reset-back-link">Continue to login</Link></p>
                 )}
               </div>
             </div>
