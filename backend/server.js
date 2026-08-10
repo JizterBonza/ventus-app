@@ -165,12 +165,25 @@ const escapeHtml = (value) => String(value)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
-const sendPasswordResetEmail = async ({ to, firstName, resetUrl }) => {
+const getPasswordResetEmailProvider = () => {
+  if (process.env.RESEND_API_KEY && process.env.PASSWORD_RESET_FROM_EMAIL) {
+    return 'resend';
+  }
+
+  if (
+    process.env.EMAILJS_SERVICE_ID &&
+    process.env.EMAILJS_TEMPLATE_ID &&
+    process.env.EMAILJS_PUBLIC_KEY
+  ) {
+    return 'emailjs';
+  }
+
+  return null;
+};
+
+const sendPasswordResetEmailViaResend = async ({ to, firstName, resetUrl }) => {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.PASSWORD_RESET_FROM_EMAIL;
-  if (!apiKey || !from) {
-    throw new Error('Password reset email delivery is not configured');
-  }
 
   const safeName = escapeHtml(firstName || 'there');
   const safeResetUrl = escapeHtml(resetUrl);
@@ -216,6 +229,60 @@ const sendPasswordResetEmail = async ({ to, firstName, resetUrl }) => {
     const providerMessage = await response.text();
     throw new Error(`Password reset email provider returned ${response.status}: ${providerMessage.slice(0, 300)}`);
   }
+};
+
+const sendPasswordResetEmailViaEmailJS = async ({ to, firstName, resetUrl }) => {
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      service_id: process.env.EMAILJS_SERVICE_ID,
+      template_id: process.env.EMAILJS_TEMPLATE_ID,
+      user_id: process.env.EMAILJS_PUBLIC_KEY,
+      template_params: {
+        to_email: to,
+        from_name: 'Ventus Travel',
+        from_email: process.env.PASSWORD_RESET_REPLY_TO || 'daniella@ventustravel.co.uk',
+        booking_id: 'PASSWORD-RESET',
+        hotel_name: 'Ventus Travel password reset',
+        guest_name: firstName || 'Ventus member',
+        guest_email: to,
+        guest_phone: 'Not applicable',
+        check_in_date: 'Link expires in one hour',
+        check_out_date: 'Single use only',
+        number_of_guests: 'Not applicable',
+        number_of_rooms: 'Not applicable',
+        room_type: 'Account security',
+        special_requests: `Reset your password using this secure link: ${resetUrl}`,
+        total_price: 'Not applicable',
+        submitted_at: new Date().toISOString(),
+        reset_url: resetUrl,
+        message: `Reset your Ventus Travel password: ${resetUrl}. This link expires in one hour and can only be used once.`
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const providerMessage = await response.text();
+    throw new Error(`Password reset email provider returned ${response.status}: ${providerMessage.slice(0, 300)}`);
+  }
+};
+
+const sendPasswordResetEmail = async (details) => {
+  const provider = getPasswordResetEmailProvider();
+
+  if (provider === 'resend') {
+    return sendPasswordResetEmailViaResend(details);
+  }
+
+  if (provider === 'emailjs') {
+    return sendPasswordResetEmailViaEmailJS(details);
+  }
+
+  throw new Error('Password reset email delivery is not configured');
 };
 
 // Middleware to verify JWT token
@@ -430,7 +497,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       return res.status(503).json({ success: false, error: 'Password reset is temporarily unavailable.' });
     }
 
-    if (!process.env.RESEND_API_KEY || !process.env.PASSWORD_RESET_FROM_EMAIL) {
+    if (!getPasswordResetEmailProvider()) {
       return res.status(503).json({
         success: false,
         error: 'Password reset email delivery is not configured yet.'
