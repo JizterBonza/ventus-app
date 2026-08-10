@@ -182,6 +182,10 @@ const Login: React.FC = () => {
                   </div>
                 </form>
 
+                <p className="password-reset-link">
+                  Can't remember your password? <Link to="/forgot-password">Reset here</Link>
+                </p>
+
                 {/* Social Login (Optional)
                 <div className="text-center mt-4">
                   <p className="mb-3">Or login with</p>
@@ -234,4 +238,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-

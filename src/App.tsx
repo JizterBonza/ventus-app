@@ -16,6 +16,8 @@ import MagazinePost from "./pages/MagazinePost";
 import BuyOuts from "./pages/Buyouts";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Signup from "./pages/Signup";
 import Favourites from "./pages/Favourites";
 import Settings from "./pages/Settings";
@@ -70,6 +72,8 @@ function App() {
                         
                         {/* Authentication Routes */}
                         <Route path="/login" element={<Login />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/signup" element={<Signup />} />
                         
                         {/* Favourites Route */}

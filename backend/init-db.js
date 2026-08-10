@@ -110,11 +110,26 @@ async function initDatabase() {
     // Create index on email for faster lookups
     console.log('Creating index on email...');
     await pool.query('CREATE INDEX idx_users_email ON users(email)');
+
+    console.log('Creating password reset tokens table...');
+    await pool.query(`
+      CREATE TABLE password_reset_tokens (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash CHAR(64) UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query('CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)');
+    await pool.query('CREATE INDEX idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)');
     
     console.log('✓ Database initialized successfully!');
     console.log('\nDatabase schema:');
     console.log('- users table created');
     console.log('- email index created');
+    console.log('- password reset tokens table created');
     console.log('\nReady to accept user registrations!');
     
   } catch (error) {
@@ -156,4 +171,3 @@ async function initDatabase() {
 }
 
 initDatabase();
-

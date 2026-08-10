@@ -415,6 +415,61 @@ export const updateUserPassword = async (currentPassword: string, newPassword: s
 };
 
 /**
+ * Request a one-time password reset email. The backend deliberately returns
+ * the same success message whether or not the address belongs to an account.
+ */
+export const requestPasswordReset = async (email: string): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok
+      ? { success: true, message: data.message }
+      : { success: false, error: data.error || 'Unable to send the reset email' };
+  } catch (error) {
+    console.error('Request password reset error:', error);
+    return { success: false, error: 'Unable to connect to the password reset service' };
+  }
+};
+
+export const validatePasswordResetToken = async (token: string): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/reset-password/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok
+      ? { success: true }
+      : { success: false, error: data.error || 'This reset link is invalid or has expired' };
+  } catch (error) {
+    console.error('Validate password reset token error:', error);
+    return { success: false, error: 'Unable to validate the reset link' };
+  }
+};
+
+export const resetPassword = async (token: string, password: string): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password })
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok
+      ? { success: true, message: data.message }
+      : { success: false, error: data.error || 'Unable to reset the password' };
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return { success: false, error: 'Unable to connect to the password reset service' };
+  }
+};
+
+/**
  * Subscribe user to a plan with optional coupon code
  */
 export const subscribeUser = async (

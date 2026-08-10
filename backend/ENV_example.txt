@@ -32,10 +32,17 @@ PORT=5000
 HOTEL_API_BASE=https://api-staging.littleemperors.com
 HOTEL_API_TOKEN=your_hotel_api_token_here
 
+# Password reset email delivery (Resend)
+# Verify ventustravel.co.uk in Resend before using the sender address below.
+PUBLIC_APP_URL=https://destinations.ventustravel.co.uk
+RESEND_API_KEY=re_your_resend_api_key
+PASSWORD_RESET_FROM_EMAIL=Ventus Travel <daniella@ventustravel.co.uk>
+# Optional address for replies to password reset emails
+PASSWORD_RESET_REPLY_TO=daniella@ventustravel.co.uk
+
 # PayPal Configuration
 # Get these from: https://developer.paypal.com/dashboard/applications/sandbox
 PAYPAL_CLIENT_ID=AfaoowvVXx5dXMEisezXWp4ZQpQm_3lRs-7YmDJc4-dDTFb529Tso9nmdCEF6P6Yn_wwnSpP_z0w10dk
 PAYPAL_SECRET_KEY=EMPNpEciL8qsSBvv4emt4G5EFhhtMjm6lddSMbYoS6jyKMxH8fsXClMwyexbbfg7Q925uNfcF_dEZJZm
 # Set to 'sandbox' for testing, 'live' for production
 PAYPAL_MODE=sandbox
-

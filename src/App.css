@@ -16,6 +16,35 @@
     /* Reset these to avoid conflicts */
 }
 
+.password-reset-link {
+    margin: 14px 0 0;
+    text-align: left;
+    font-size: 15px;
+    color: #1f1f1f;
+}
+
+.password-reset-link a,
+.password-reset-back-link {
+    color: #1f1f1f;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.password-reset-page .auth-card > p {
+    max-width: 520px;
+    margin-left: 0;
+    text-align: left;
+}
+
+.password-reset-page .auth-card form {
+    margin-top: 24px;
+}
+
+.password-reset-page .password-reset-back {
+    margin-top: 18px;
+}
+
 /* Hotel Details Loading and Contact Info Styles */
 .loading-overlay {
     position: absolute;

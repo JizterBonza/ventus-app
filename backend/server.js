@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { createProxyMiddleware } = require('http-proxy-middleware');
@@ -102,6 +103,120 @@ pool.connect((err, client, release) => {
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const PASSWORD_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
+const PASSWORD_RESET_REQUEST_LIMIT = 5;
+const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || 'https://destinations.ventustravel.co.uk').replace(/\/$/, '');
+const passwordResetAttempts = new Map();
+let passwordResetSchemaReady = false;
+
+const ensurePasswordResetSchema = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id BIGSERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash CHAR(64) UNIQUE NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)'
+  );
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)'
+  );
+  passwordResetSchemaReady = true;
+};
+
+const passwordResetRequestIsLimited = (req, email) => {
+  const now = Date.now();
+  const address = req.ip || req.socket.remoteAddress || 'unknown';
+  const emailKey = crypto.createHash('sha256').update(email).digest('hex').slice(0, 16);
+  const key = `${address}:${emailKey}`;
+  const recentAttempts = (passwordResetAttempts.get(key) || []).filter(
+    (timestamp) => now - timestamp < PASSWORD_RESET_REQUEST_WINDOW_MS
+  );
+
+  if (recentAttempts.length >= PASSWORD_RESET_REQUEST_LIMIT) {
+    passwordResetAttempts.set(key, recentAttempts);
+    return true;
+  }
+
+  recentAttempts.push(now);
+  passwordResetAttempts.set(key, recentAttempts);
+
+  if (passwordResetAttempts.size > 2000) {
+    for (const [attemptKey, timestamps] of passwordResetAttempts) {
+      if (!timestamps.some((timestamp) => now - timestamp < PASSWORD_RESET_REQUEST_WINDOW_MS)) {
+        passwordResetAttempts.delete(attemptKey);
+      }
+    }
+  }
+
+  return false;
+};
+
+const escapeHtml = (value) => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const sendPasswordResetEmail = async ({ to, firstName, resetUrl }) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.PASSWORD_RESET_FROM_EMAIL;
+  if (!apiKey || !from) {
+    throw new Error('Password reset email delivery is not configured');
+  }
+
+  const safeName = escapeHtml(firstName || 'there');
+  const safeResetUrl = escapeHtml(resetUrl);
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      ...(process.env.PASSWORD_RESET_REPLY_TO && {
+        reply_to: process.env.PASSWORD_RESET_REPLY_TO
+      }),
+      subject: 'Reset your Ventus Travel password',
+      text: [
+        `Hi ${firstName || 'there'},`,
+        '',
+        'We received a request to reset your Ventus Travel password.',
+        `Reset your password: ${resetUrl}`,
+        '',
+        'This link expires in one hour and can only be used once.',
+        'If you did not request this, you can safely ignore this email.'
+      ].join('\n'),
+      html: `
+        <div style="font-family:Arial,sans-serif;color:#1f1f1f;line-height:1.6;max-width:600px;margin:0 auto">
+          <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:400">Reset your password</h1>
+          <p>Hi ${safeName},</p>
+          <p>We received a request to reset your Ventus Travel password.</p>
+          <p style="margin:28px 0">
+            <a href="${safeResetUrl}" style="display:inline-block;background:#1f1f1f;color:#fff;text-decoration:none;padding:13px 22px">Reset password</a>
+          </p>
+          <p>This link expires in one hour and can only be used once.</p>
+          <p>If you did not request this, you can safely ignore this email.</p>
+        </div>
+      `
+    })
+  });
+
+  if (!response.ok) {
+    const providerMessage = await response.text();
+    throw new Error(`Password reset email provider returned ${response.status}: ${providerMessage.slice(0, 300)}`);
+  }
+};
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -301,6 +416,169 @@ app.post('/api/auth/login', async (req, res) => {
       success: false,
       error: 'Failed to login'
     });
+  }
+});
+
+// Request a one-time password reset link. The response does not reveal whether
+// an account exists for the supplied email address.
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const genericMessage = 'If an account exists for that email, a reset link has been sent.';
+
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!passwordResetSchemaReady) {
+      return res.status(503).json({ success: false, error: 'Password reset is temporarily unavailable.' });
+    }
+
+    if (!process.env.RESEND_API_KEY || !process.env.PASSWORD_RESET_FROM_EMAIL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Password reset email delivery is not configured yet.'
+      });
+    }
+
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, error: 'Enter a valid email address.' });
+    }
+
+    if (passwordResetRequestIsLimited(req, email)) {
+      return res.status(429).json({
+        success: false,
+        error: 'Too many reset requests. Please wait 15 minutes and try again.'
+      });
+    }
+
+    const result = await pool.query(
+      'SELECT id, email, first_name FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ success: true, message: genericMessage });
+    }
+
+    const user = result.rows[0];
+    const rawToken = crypto.randomBytes(32).toString('base64url');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1 OR expires_at < NOW()', [user.id]);
+    await pool.query(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, tokenHash, expiresAt]
+    );
+
+    const resetUrl = new URL('/reset-password', PUBLIC_APP_URL);
+    resetUrl.hash = new URLSearchParams({ token: rawToken }).toString();
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        firstName: user.first_name,
+        resetUrl: resetUrl.toString()
+      });
+    } catch (emailError) {
+      await pool.query('DELETE FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);
+      console.error('Password reset email error:', emailError.message);
+      return res.status(502).json({
+        success: false,
+        error: 'We could not send the reset email. Please try again shortly.'
+      });
+    }
+
+    res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, error: 'Unable to process the reset request.' });
+  }
+});
+
+app.post('/api/auth/reset-password/validate', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!passwordResetSchemaReady) {
+      return res.status(503).json({ success: false, error: 'Password reset is temporarily unavailable.' });
+    }
+
+    const token = typeof req.body.token === 'string' ? req.body.token : '';
+    if (!token || token.length > 200) {
+      return res.status(400).json({ success: false, error: 'Reset link is missing or invalid.' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const result = await pool.query(
+      `SELECT id FROM password_reset_tokens
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()`,
+      [tokenHash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'This reset link is invalid or has expired.' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Validate reset token error:', error);
+    res.status(500).json({ success: false, error: 'Unable to validate the reset link.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  let client;
+
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!passwordResetSchemaReady) {
+      return res.status(503).json({ success: false, error: 'Password reset is temporarily unavailable.' });
+    }
+
+    const token = typeof req.body.token === 'string' ? req.body.token : '';
+    const newPassword = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!token || token.length > 200) {
+      return res.status(400).json({ success: false, error: 'Reset link is missing or invalid.' });
+    }
+    if (newPassword.length < 6 || newPassword.length > 128) {
+      return res.status(400).json({ success: false, error: 'Password must be between 6 and 128 characters.' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const tokenResult = await client.query(
+      `SELECT id, user_id FROM password_reset_tokens
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+       FOR UPDATE`,
+      [tokenHash]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, error: 'This reset link is invalid or has expired.' });
+    }
+
+    const resetToken = tokenResult.rows[0];
+    await client.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, resetToken.user_id]
+    );
+    await client.query(
+      'UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL',
+      [resetToken.user_id]
+    );
+    await client.query('COMMIT');
+
+    res.json({ success: true, message: 'Your password has been reset. You can now log in.' });
+  } catch (error) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, error: 'Unable to reset the password.' });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -684,39 +962,50 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
-  console.log(`=== Backend Server Started ===`);
-  console.log(`✓ Server running on http://${HOST}:${PORT}`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✓ Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
-  console.log(`================================`);
+const startServer = async () => {
+  try {
+    await ensurePasswordResetSchema();
+    console.log('✓ Password reset schema ready');
+  } catch (error) {
+    console.error('Password reset schema initialization failed:', error);
+  }
 
-  // Warm the homepage inspiration collections after startup so the first user
-  // is not forced to wait for several slow upstream round trips. Run them in
-  // sequence to keep upstream load controlled; in-flight request deduplication
-  // also shares work with a real user request arriving at the same time.
-  const inspirationIds = (process.env.HOTEL_API_PREWARM_INSPIRATIONS || '13,19,50,22,67,32')
-    .split(',')
-    .map((value) => Number(value.trim()))
-    .filter(Number.isFinite);
-  setTimeout(() => {
-    void (async () => {
-      for (const inspirationId of inspirationIds) {
-        try {
-          const response = await fetch(
-            `http://127.0.0.1:${PORT}/v2/hotels?inspiration_id=${inspirationId}&per_page=20`
-          );
-          await response.arrayBuffer();
-          if (!response.ok) {
-            console.warn(`Inspiration cache warm failed for ${inspirationId}: ${response.status}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`=== Backend Server Started ===`);
+    console.log(`✓ Server running on http://${HOST}:${PORT}`);
+    console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✓ Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+    console.log(`================================`);
+
+    // Warm the homepage inspiration collections after startup so the first user
+    // is not forced to wait for several slow upstream round trips. Run them in
+    // sequence to keep upstream load controlled; in-flight request deduplication
+    // also shares work with a real user request arriving at the same time.
+    const inspirationIds = (process.env.HOTEL_API_PREWARM_INSPIRATIONS || '13,19,50,22,67,32')
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter(Number.isFinite);
+    setTimeout(() => {
+      void (async () => {
+        for (const inspirationId of inspirationIds) {
+          try {
+            const response = await fetch(
+              `http://127.0.0.1:${PORT}/v2/hotels?inspiration_id=${inspirationId}&per_page=20`
+            );
+            await response.arrayBuffer();
+            if (!response.ok) {
+              console.warn(`Inspiration cache warm failed for ${inspirationId}: ${response.status}`);
+            }
+          } catch (error) {
+            console.warn(`Inspiration cache warm failed for ${inspirationId}:`, error.message);
           }
-        } catch (error) {
-          console.warn(`Inspiration cache warm failed for ${inspirationId}:`, error.message);
         }
-      }
-    })();
-  }, 1000);
-});
+      })();
+    }, 1000);
+  });
+};
+
+void startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
