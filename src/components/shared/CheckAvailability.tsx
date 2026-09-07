@@ -13,7 +13,7 @@ import {
     getMinimumCheckOutDateString,
     getDefaultSearchDateStrings,
     getTodayLocalDateString,
-    parseSearchRoomSlotsJson,
+    resolveSearchRoomSlots,
     searchRoomSlotsToAvailabilityRooms,
     searchRoomSlotsToBookingInitialRooms,
     type SearchRoomSlot,
@@ -112,12 +112,11 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     const onAvailabilityResultRef = useRef(onAvailabilityResult);
     onAvailabilityResultRef.current = onAvailabilityResult;
 
-    // Match header search: dates, guests, and optional per-room `roomSlots` from URL / cookies
+    // Match header search: dates, guests, and per-room `roomSlots` from URL / cookies
+    // (falling back to a legacy total guests/rooms split -- see resolveSearchRoomSlots)
     useEffect(() => {
         const urlCheckIn = urlSearchParams.get("checkIn");
         const urlCheckOut = urlSearchParams.get("checkOut");
-        const urlGuests = urlSearchParams.get("guests");
-        const urlRoomSlots = urlSearchParams.get("roomSlots");
 
         const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
@@ -125,35 +124,15 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         const requestedEndDate = co ? dateToStorageString(co) : "";
         const endDate = ensureMinimumCheckOutDateString(startDate, requestedEndDate);
 
-        const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
-        const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
-        const slots: SearchRoomSlot[] | null =
-            fromUrl && fromUrl.length > 0
-                ? fromUrl
-                : fromCookie && fromCookie.length > 0
-                  ? fromCookie
-                  : null;
+        const slots: SearchRoomSlot[] = resolveSearchRoomSlots(urlSearchParams);
+        setSearchRoomSlots(slots);
 
-        if (slots && slots.length > 0) {
-            setSearchRoomSlots(slots);
-        } else {
-            setSearchRoomSlots(null);
-        }
-
-        setFormData((prev) => {
-            const next: typeof prev = {
-                ...prev,
-                ...(startDate ? { start_date: startDate } : {}),
-                ...(endDate ? { end_date: endDate } : {}),
-            };
-            if (slots && slots.length > 0) {
-                next.adults = slots.reduce((s, r) => s + r.adults, 0);
-            } else {
-                const g = parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10);
-                if (!isNaN(g)) next.adults = g;
-            }
-            return next;
-        });
+        setFormData((prev) => ({
+            ...prev,
+            ...(startDate ? { start_date: startDate } : {}),
+            ...(endDate ? { end_date: endDate } : {}),
+            adults: slots.reduce((s, r) => s + r.adults, 0),
+        }));
 
         if (startDate && endDate && endDate !== requestedEndDate) {
             setCookie(SEARCH_SESSION_COOKIES.CHECK_IN, startDate);

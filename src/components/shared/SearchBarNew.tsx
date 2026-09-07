@@ -18,6 +18,8 @@ interface SearchBarNewProps {
     onSearch?: () => void;
     /** When the URL has no `location` query (e.g. hotel detail page), pre-fill the location field */
     prefillLocation?: string | null;
+    /** Whether a search triggered from this bar is currently in flight (e.g. results page re-searching). Shows a spinner on the Search button so it's obvious a click registered. */
+    isSearching?: boolean;
 }
 
 interface LocationSuggestion {
@@ -130,7 +132,7 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
 const normalizeLocationDisplay = (raw: string) =>
     raw.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
-const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }) => {
+const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, isSearching = false }) => {
     const [urlSearchParams, setUrlSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const routeLocation = useLocation();
@@ -681,8 +683,15 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
                     <div className="le-divider" />
 
                     {/* Search button */}
-                    <button type="submit" className="le-search-btn">
-                        Search
+                    <button type="submit" className="le-search-btn" disabled={isSearching} aria-busy={isSearching}>
+                        {isSearching ? (
+                            <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                                Searching…
+                            </>
+                        ) : (
+                            "Search"
+                        )}
                     </button>
                 </form>
             </div>

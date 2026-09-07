@@ -11,7 +11,7 @@ import {
     parseSearchDate,
     dateToStorageString,
     ensureMinimumCheckOutDateString,
-    parseSearchRoomSlotsJson,
+    resolveSearchRoomSlots,
     searchRoomSlotsToAvailabilityRooms,
 } from "../utils/searchSession";
 import { useAuth } from "../contexts/AuthContext";
@@ -106,8 +106,6 @@ const SearchResults: React.FC = () => {
     const searchDatesAndRooms = useMemo(() => {
         const urlCheckIn = urlSearchParams.get("checkIn");
         const urlCheckOut = urlSearchParams.get("checkOut");
-        const urlGuests = urlSearchParams.get("guests");
-        const urlRoomSlots = urlSearchParams.get("roomSlots");
 
         const defaults = getDefaultSearchDateStrings();
         const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
@@ -116,14 +114,8 @@ const SearchResults: React.FC = () => {
         const requestedEndDate = co ? dateToStorageString(co) : defaults.end_date;
         const end_date = ensureMinimumCheckOutDateString(start_date, requestedEndDate);
 
-        const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
-        const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
-        const slots = fromUrl && fromUrl.length > 0 ? fromUrl : fromCookie && fromCookie.length > 0 ? fromCookie : null;
-
-        const rooms =
-            slots && slots.length > 0
-                ? searchRoomSlotsToAvailabilityRooms(slots)
-                : [{ adults: parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10) || 1 }];
+        const slots = resolveSearchRoomSlots(urlSearchParams);
+        const rooms = searchRoomSlotsToAvailabilityRooms(slots);
 
         return { start_date, end_date, rooms };
     }, [urlSearchParams]);
@@ -316,7 +308,7 @@ const SearchResults: React.FC = () => {
         <div className="search-page">
             <Header />
             {/* Search Form */}
-            <SearchBarNew />
+            <SearchBarNew isSearching={isSearching} />
             <br />
 
             {/* Filters and Results */}
@@ -384,15 +376,10 @@ const SearchResults: React.FC = () => {
                                                                 <h6>{displayHotel.location}
                                                                 </h6>
                                                             )}
-                                                            {hotelAvailability[hotel.id] === false ? (
+                                                            {hotelAvailability[hotel.id] === false && (
                                                                 <p className="hotel-not-available-tag" style={{ color: "#b3311f", fontWeight: 600, margin: "4px 0" }}>
                                                                     <i className="fa fa-exclamation-triangle me-2"></i>
                                                                     Not available for these dates — view hotel to check other dates
-                                                                </p>
-                                                            ) : (
-                                                                <p className="hotel-availability-hint" style={{ color: "#6b7280", fontSize: "0.85rem", margin: "4px 0" }}>
-                                                                    <i className="fa fa-info-circle me-2"></i>
-                                                                    View hotel to check availability for your dates
                                                                 </p>
                                                             )}
                                                             {isAuthenticated && (() => {

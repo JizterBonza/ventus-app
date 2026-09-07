@@ -104,6 +104,24 @@ export const getCookie = (name: string): string | null => {
 };
 
 /**
+ * Resolve the header search bar's per-room adults/children slots for the current search:
+ * URL `roomSlots` first, then the `ventus_room_slots` cookie, then a legacy `guests`/`rooms`
+ * total split evenly across rooms. Centralized so the search results page and the hotel
+ * detail availability check always agree on room composition instead of each guessing.
+ */
+export function resolveSearchRoomSlots(urlSearchParams: URLSearchParams): SearchRoomSlot[] {
+    const fromUrl = parseSearchRoomSlotsJson(urlSearchParams.get("roomSlots"));
+    if (fromUrl && fromUrl.length > 0) return fromUrl;
+
+    const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
+    if (fromCookie && fromCookie.length > 0) return fromCookie;
+
+    const guests = parseInt(urlSearchParams.get("guests") || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10);
+    const rooms = parseInt(urlSearchParams.get("rooms") || getCookie(SEARCH_SESSION_COOKIES.ROOMS) || "1", 10);
+    return legacyGuestsAndRoomsToSearchSlots(isNaN(guests) ? 1 : guests, isNaN(rooms) ? 1 : rooms);
+}
+
+/**
  * Parse YYYY-MM-DD as a calendar date in the user's local timezone.
  * Avoids `new Date("YYYY-MM-DD")` / UTC issues from `toISOString()` round-trips.
  */
