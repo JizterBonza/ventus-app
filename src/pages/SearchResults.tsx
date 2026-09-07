@@ -229,9 +229,20 @@ const SearchResults: React.FC = () => {
         }
     }, [filteredHotels, inspirationResults]);
 
+    /**
+     * Eagerly checking every card's live availability only makes sense for a small,
+     * specific-hotel-style result set (e.g. searching a hotel by name). For a broad
+     * city/location search with many results, firing one availability call per card
+     * is slow (a visible "not available" tag pops in after the fact) and unnecessary
+     * -- the user checks/changes dates on the hotel page itself after clicking in.
+     */
+    const MAX_HOTELS_FOR_EAGER_AVAILABILITY = 3;
+    const shouldCheckAvailability =
+        filteredHotels.length > 0 && filteredHotels.length <= MAX_HOTELS_FOR_EAGER_AVAILABILITY;
+
     // Check real availability (search dates/rooms) for each result, and "Starting from" price when authenticated.
     useEffect(() => {
-        if (filteredHotels.length === 0) {
+        if (!shouldCheckAvailability) {
             setStartingFromPrices({});
             setHotelAvailability({});
             setLoadingStartingFromPrices(false);
@@ -297,7 +308,7 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, hotelIdsKey, searchDatesAndRoomsKey]);
+    }, [isAuthenticated, hotelIdsKey, searchDatesAndRoomsKey, shouldCheckAvailability]);
 
     return (
         <div className="search-page">
