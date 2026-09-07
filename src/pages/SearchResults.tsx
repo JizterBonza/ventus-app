@@ -4,7 +4,16 @@ import { useSearch } from "../hooks/useSearch";
 import { Hotel, RateInfo } from "../types/search";
 import { getHotelDetails, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
-import { getDefaultSearchDateStrings } from "../utils/searchSession";
+import {
+    SEARCH_SESSION_COOKIES,
+    getCookie,
+    getDefaultSearchDateStrings,
+    parseSearchDate,
+    dateToStorageString,
+    ensureMinimumCheckOutDateString,
+    parseSearchRoomSlotsJson,
+    searchRoomSlotsToAvailabilityRooms,
+} from "../utils/searchSession";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -33,9 +42,11 @@ const SearchResults: React.FC = () => {
     const [completedSearchKey, setCompletedSearchKey] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const detailsRequestRef = useRef(0);
-    /** Starting-from price per hotel id (today/tomorrow, visitor currency). Only when authenticated. */
+    /** Starting-from price per hotel id (search dates, visitor currency). Only when authenticated. */
     const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
+    /** Availability per hotel id for the search dates/rooms; false = confirmed not available, undefined = unknown/loading. */
+    const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
     const filteredHotels = useMemo(() => {
         let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
 
@@ -79,6 +90,35 @@ const SearchResults: React.FC = () => {
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
     const isSearching = loading || loadingInspiration || (hasSearchCriteria && completedSearchKey !== currentSearchKey);
+
+    /** Dates + rooms actually selected in the header search (URL, falling back to cookies), for availability checks and hotel links. */
+    const searchDatesAndRooms = useMemo(() => {
+        const urlCheckIn = urlSearchParams.get("checkIn");
+        const urlCheckOut = urlSearchParams.get("checkOut");
+        const urlGuests = urlSearchParams.get("guests");
+        const urlRoomSlots = urlSearchParams.get("roomSlots");
+
+        const defaults = getDefaultSearchDateStrings();
+        const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
+        const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
+        const start_date = ci ? dateToStorageString(ci) : defaults.start_date;
+        const requestedEndDate = co ? dateToStorageString(co) : defaults.end_date;
+        const end_date = ensureMinimumCheckOutDateString(start_date, requestedEndDate);
+
+        const fromUrl = urlRoomSlots ? parseSearchRoomSlotsJson(urlRoomSlots) : null;
+        const fromCookie = parseSearchRoomSlotsJson(getCookie(SEARCH_SESSION_COOKIES.ROOM_SLOTS));
+        const slots = fromUrl && fromUrl.length > 0 ? fromUrl : fromCookie && fromCookie.length > 0 ? fromCookie : null;
+
+        const rooms =
+            slots && slots.length > 0
+                ? searchRoomSlotsToAvailabilityRooms(slots)
+                : [{ adults: parseInt(urlGuests || getCookie(SEARCH_SESSION_COOKIES.GUESTS) || "1", 10) || 1 }];
+
+        return { start_date, end_date, rooms };
+    }, [urlSearchParams]);
+    const searchDatesAndRoomsKey = `${searchDatesAndRooms.start_date}|${searchDatesAndRooms.end_date}|${JSON.stringify(searchDatesAndRooms.rooms)}`;
+    /** Query string to carry over to the hotel detail page so it uses these exact dates/guests instead of guessing from cookies. */
+    const hotelLinkQuery = urlSearchParams.toString();
 
     // Handle URL parameters and perform search
     useEffect(() => {
@@ -189,16 +229,17 @@ const SearchResults: React.FC = () => {
         }
     }, [filteredHotels, inspirationResults]);
 
-    // Fetch "Starting from" prices for each hotel (today/tomorrow, visitor currency). Only when authenticated.
+    // Check real availability (search dates/rooms) for each result, and "Starting from" price when authenticated.
     useEffect(() => {
-        if (!isAuthenticated || filteredHotels.length === 0) {
+        if (filteredHotels.length === 0) {
             setStartingFromPrices({});
+            setHotelAvailability({});
             setLoadingStartingFromPrices(false);
             return;
         }
         let cancelled = false;
         setLoadingStartingFromPrices(true);
-        const { start_date, end_date } = getDefaultSearchDateStrings();
+        const { start_date, end_date, rooms } = searchDatesAndRooms;
 
         (async () => {
             try {
@@ -211,17 +252,19 @@ const SearchResults: React.FC = () => {
                             start_date,
                             end_date,
                             currency,
-                            rooms: [{ adults: 1, children: [] }],
+                            rooms,
                         })
                     )
                 );
                 if (cancelled) return;
-                const next: Record<number, { rate: number; currency: string }> = {};
+                const nextPrices: Record<number, { rate: number; currency: string }> = {};
+                const nextAvailability: Record<number, boolean> = {};
                 results.forEach((settled, index) => {
                     const hotel = filteredHotels[index];
                     if (!hotel || settled.status !== "fulfilled" || !settled.value?.length) return;
                     const first = settled.value[0];
-                    if (!first?.is_available || first.lowest_rate == null) return;
+                    nextAvailability[hotel.id] = !!first?.is_available;
+                    if (!isAuthenticated || !first?.is_available || first.lowest_rate == null) return;
                     const lr = first.lowest_rate;
                     const rateValue =
                         typeof lr === "number"
@@ -235,12 +278,18 @@ const SearchResults: React.FC = () => {
                             ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? first.default_currency ?? currency
                             : first.default_currency ?? currency;
                     if (typeof rateValue === "number") {
-                        next[hotel.id] = { rate: rateValue, currency: currencyCode || "USD" };
+                        nextPrices[hotel.id] = { rate: rateValue, currency: currencyCode || "USD" };
                     }
                 });
-                if (!cancelled) setStartingFromPrices(next);
+                if (!cancelled) {
+                    setStartingFromPrices(nextPrices);
+                    setHotelAvailability(nextAvailability);
+                }
             } catch {
-                if (!cancelled) setStartingFromPrices({});
+                if (!cancelled) {
+                    setStartingFromPrices({});
+                    setHotelAvailability({});
+                }
             } finally {
                 if (!cancelled) setLoadingStartingFromPrices(false);
             }
@@ -248,7 +297,7 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, hotelIdsKey]);
+    }, [isAuthenticated, hotelIdsKey, searchDatesAndRoomsKey]);
 
     return (
         <div className="search-page">
@@ -294,7 +343,7 @@ const SearchResults: React.FC = () => {
                                                 <div
                                                     className="hotel-card">
                                                     <Link
-                                                        to={`/hotel/${hotel.id}`}
+                                                        to={`/hotel/${hotel.id}${hotelLinkQuery ? `?${hotelLinkQuery}` : ""}`}
                                                         className="card-image">
                                                         <ProgressiveImage
                                                             src={displayHotel.images?.[0]?.url || displayHotel.image}
@@ -307,10 +356,10 @@ const SearchResults: React.FC = () => {
                                                         className="card_content">
                                                         <div>
                                                             <h4>
-                                                                <Link 
-                                                                    to={`/hotel/${hotel.id}`}
-                                                                    style={{ 
-                                                                        color: "inherit", 
+                                                                <Link
+                                                                    to={`/hotel/${hotel.id}${hotelLinkQuery ? `?${hotelLinkQuery}` : ""}`}
+                                                                    style={{
+                                                                        color: "inherit",
                                                                         textDecoration: "none",
                                                                         cursor: "pointer"
                                                                     }}
@@ -321,6 +370,12 @@ const SearchResults: React.FC = () => {
                                                             {displayHotel.location && (
                                                                 <h6>{displayHotel.location}
                                                                 </h6>
+                                                            )}
+                                                            {hotelAvailability[hotel.id] === false && (
+                                                                <p className="hotel-not-available-tag" style={{ color: "#b3311f", fontWeight: 600, margin: "4px 0" }}>
+                                                                    <i className="fa fa-exclamation-triangle me-2"></i>
+                                                                    Not available for these dates — try selecting new dates
+                                                                </p>
                                                             )}
                                                             {isAuthenticated && (() => {
                                                                 const priceInfo = startingFromPrices[hotel.id];
@@ -368,9 +423,9 @@ const SearchResults: React.FC = () => {
                                                                 alignItems: "center",
                                                             }}
                                                         >
-                                                            <Link 
+                                                            <Link
                                                             className="btn btn-primary"
-                                                                to={`/hotel/${hotel.id}`}
+                                                                to={`/hotel/${hotel.id}${hotelLinkQuery ? `?${hotelLinkQuery}` : ""}`}
                                                                 style={{ color: "#fff", textDecoration: "none" }}
                                                             >
                                                                 View Hotel{" "}
