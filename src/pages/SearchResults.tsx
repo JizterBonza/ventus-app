@@ -92,7 +92,18 @@ const SearchResults: React.FC = () => {
         }
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
-    const isSearching = loading || loadingInspiration || (hasSearchCriteria && completedSearchKey !== currentSearchKey);
+    /**
+     * True only while the very first batch of availability checks (for the initial 10 cards) is
+     * still running -- not for a later "View More" batch, which shouldn't hide the cards already
+     * on screen. Folded into `isSearching` so cards and their "Not available" tags always appear
+     * together, instead of the tags popping in a moment after the cards render.
+     */
+    const initialAvailabilityLoading = loadingStartingFromPrices && Object.keys(hotelAvailability).length === 0;
+    const isSearching =
+        loading ||
+        loadingInspiration ||
+        (hasSearchCriteria && completedSearchKey !== currentSearchKey) ||
+        initialAvailabilityLoading;
 
     // Start over at 10 whenever the result set itself changes (new search or filter/sort change).
     useEffect(() => {
@@ -120,8 +131,26 @@ const SearchResults: React.FC = () => {
         return { start_date, end_date, rooms };
     }, [urlSearchParams]);
     const searchDatesAndRoomsKey = `${searchDatesAndRooms.start_date}|${searchDatesAndRooms.end_date}|${JSON.stringify(searchDatesAndRooms.rooms)}`;
-    /** Query string to carry over to the hotel detail page so it uses these exact dates/guests instead of guessing from cookies. */
-    const hotelLinkQuery = urlSearchParams.toString();
+    /**
+     * Query string to carry over to the hotel detail page so it uses these exact dates/guests
+     * instead of guessing from cookies. Deliberately excludes `location` (and other search-only
+     * params like sort/filter) -- carrying the original city/search text over would make the
+     * header search bar show "Amalfi" instead of the hotel's own name on the hotel page.
+     */
+    const hotelLinkQuery = useMemo(() => {
+        const params = new URLSearchParams();
+        const checkIn = urlSearchParams.get("checkIn");
+        const checkOut = urlSearchParams.get("checkOut");
+        const roomSlots = urlSearchParams.get("roomSlots");
+        const guests = urlSearchParams.get("guests");
+        const rooms = urlSearchParams.get("rooms");
+        if (checkIn) params.set("checkIn", checkIn);
+        if (checkOut) params.set("checkOut", checkOut);
+        if (roomSlots) params.set("roomSlots", roomSlots);
+        if (guests) params.set("guests", guests);
+        if (rooms) params.set("rooms", rooms);
+        return params.toString();
+    }, [urlSearchParams]);
 
     // Handle URL parameters and perform search
     useEffect(() => {
