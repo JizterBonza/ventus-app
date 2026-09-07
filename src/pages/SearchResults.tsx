@@ -45,8 +45,11 @@ const SearchResults: React.FC = () => {
     /** Starting-from price per hotel id (search dates, visitor currency). Only when authenticated. */
     const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
-    /** Availability per hotel id for the search dates/rooms; false = confirmed not available, undefined = unknown/loading. */
+    /** Availability per hotel id for the search dates/rooms; false = confirmed not available. */
     const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
+    /** How many results are rendered/checked at once; "View More" reveals the next batch of 10.
+     *  Keeps the number of concurrent availability checks bounded so tags never stall on a big city search. */
+    const [visibleCount, setVisibleCount] = useState(10);
     const filteredHotels = useMemo(() => {
         let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
 
@@ -90,6 +93,14 @@ const SearchResults: React.FC = () => {
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
     const isSearching = loading || loadingInspiration || (hasSearchCriteria && completedSearchKey !== currentSearchKey);
+
+    // Start over at 10 whenever the result set itself changes (new search or filter/sort change).
+    useEffect(() => {
+        setVisibleCount(10);
+    }, [hotelIdsKey]);
+
+    const visibleHotels = useMemo(() => filteredHotels.slice(0, visibleCount), [filteredHotels, visibleCount]);
+    const visibleHotelIdsKey = useMemo(() => visibleHotels.map((h) => h.id).join(","), [visibleHotels]);
 
     /** Dates + rooms actually selected in the header search (URL, falling back to cookies), for availability checks and hotel links. */
     const searchDatesAndRooms = useMemo(() => {
@@ -217,32 +228,23 @@ const SearchResults: React.FC = () => {
         );
     };
 
-    // Enrich ordinary text-search results progressively. Inspiration responses
-    // already contain the card data and do not need 20 immediate detail calls.
+    // Enrich the currently visible text-search results progressively. Inspiration responses
+    // already contain the card data and do not need immediate detail calls.
     useEffect(() => {
-        if (filteredHotels.length > 0 && inspirationResults.length === 0) {
-            const hotelIds = filteredHotels.map((hotel) => hotel.id);
+        if (visibleHotels.length > 0 && inspirationResults.length === 0) {
+            const hotelIds = visibleHotels.map((hotel) => hotel.id);
             fetchHotelDetails(hotelIds);
         } else {
             detailsRequestRef.current += 1;
             setDetailedHotels([]);
         }
-    }, [filteredHotels, inspirationResults]);
+    }, [visibleHotels, inspirationResults]);
 
-    /**
-     * Eagerly checking every card's live availability only makes sense for a small,
-     * specific-hotel-style result set (e.g. searching a hotel by name). For a broad
-     * city/location search with many results, firing one availability call per card
-     * is slow (a visible "not available" tag pops in after the fact) and unnecessary
-     * -- the user checks/changes dates on the hotel page itself after clicking in.
-     */
-    const MAX_HOTELS_FOR_EAGER_AVAILABILITY = 3;
-    const shouldCheckAvailability =
-        filteredHotels.length > 0 && filteredHotels.length <= MAX_HOTELS_FOR_EAGER_AVAILABILITY;
-
-    // Check real availability (search dates/rooms) for each result, and "Starting from" price when authenticated.
+    // Check real availability (search dates/rooms) and "Starting from" price for the currently visible
+    // batch only (max 10 at a time -- "View More" reveals the next batch). Keeping the batch small means
+    // every card's tag resolves quickly instead of the whole page waiting on a large city search.
     useEffect(() => {
-        if (!shouldCheckAvailability) {
+        if (visibleHotels.length === 0) {
             setStartingFromPrices({});
             setHotelAvailability({});
             setLoadingStartingFromPrices(false);
@@ -257,7 +259,7 @@ const SearchResults: React.FC = () => {
                 const currency = await getVisitorCurrency();
                 if (cancelled) return;
                 const results = await Promise.allSettled(
-                    filteredHotels.map((hotel) =>
+                    visibleHotels.map((hotel) =>
                         checkHotelAvailability({
                             hotel_id: hotel.id,
                             start_date,
@@ -271,7 +273,7 @@ const SearchResults: React.FC = () => {
                 const nextPrices: Record<number, { rate: number; currency: string }> = {};
                 const nextAvailability: Record<number, boolean> = {};
                 results.forEach((settled, index) => {
-                    const hotel = filteredHotels[index];
+                    const hotel = visibleHotels[index];
                     if (!hotel || settled.status !== "fulfilled" || !settled.value?.length) return;
                     const first = settled.value[0];
                     nextAvailability[hotel.id] = !!first?.is_available;
@@ -293,8 +295,8 @@ const SearchResults: React.FC = () => {
                     }
                 });
                 if (!cancelled) {
-                    setStartingFromPrices(nextPrices);
-                    setHotelAvailability(nextAvailability);
+                    setStartingFromPrices((prev) => ({ ...prev, ...nextPrices }));
+                    setHotelAvailability((prev) => ({ ...prev, ...nextAvailability }));
                 }
             } catch {
                 if (!cancelled) {
@@ -308,7 +310,7 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, hotelIdsKey, searchDatesAndRoomsKey, shouldCheckAvailability]);
+    }, [isAuthenticated, visibleHotelIdsKey, searchDatesAndRoomsKey]);
 
     return (
         <div className="search-page">
@@ -342,7 +344,7 @@ const SearchResults: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="hotels-container">
-                                    {filteredHotels.map((hotel, index) => {
+                                    {visibleHotels.map((hotel, index) => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
@@ -382,10 +384,15 @@ const SearchResults: React.FC = () => {
                                                                 <h6>{displayHotel.location}
                                                                 </h6>
                                                             )}
-                                                            {hotelAvailability[hotel.id] === false && (
+                                                            {hotelAvailability[hotel.id] === false ? (
                                                                 <p className="hotel-not-available-tag" style={{ color: "#b3311f", fontWeight: 600, margin: "4px 0" }}>
                                                                     <i className="fa fa-exclamation-triangle me-2"></i>
-                                                                    Not available for these dates — try selecting new dates
+                                                                    Not available for these dates — view hotel to check other dates
+                                                                </p>
+                                                            ) : (
+                                                                <p className="hotel-availability-hint" style={{ color: "#6b7280", fontSize: "0.85rem", margin: "4px 0" }}>
+                                                                    <i className="fa fa-info-circle me-2"></i>
+                                                                    View hotel to check availability for your dates
                                                                 </p>
                                                             )}
                                                             {isAuthenticated && (() => {
@@ -456,6 +463,18 @@ const SearchResults: React.FC = () => {
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+
+                            {!isSearching && visibleHotels.length < filteredHotels.length && (
+                                <div className="text-center mt-4">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-primary"
+                                        onClick={() => setVisibleCount((v) => Math.min(v + 10, filteredHotels.length))}
+                                    >
+                                        View More
+                                    </button>
                                 </div>
                             )}
 
