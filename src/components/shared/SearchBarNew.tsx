@@ -204,11 +204,13 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
     }, [urlSearchParams]);
 
     useEffect(() => {
+        if (locationChangedByUserRef.current) return;
         const urlLoc = urlSearchParams.get("location");
         if (urlLoc?.trim()) return;
         const p = prefillLocation?.trim();
         if (p) setLocation(normalizeLocationDisplay(p));
-    }, [urlSearchParams, prefillLocation]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [prefillLocation]);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -241,11 +243,13 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
             setShowSuggestions(false);
             return;
         }
+        let cancelled = false;
         const timer = setTimeout(async () => {
             setSuggestionsLoading(true);
             setShowSuggestions(true);
             try {
                 const hotels = await searchHotelsByQuery(q, 5);
+                if (cancelled) return;
 
                 const citySuggestions: LocationSuggestion[] = Array.from(
                     new Map(
@@ -277,13 +281,18 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation }
                 setSuggestions(mergedSuggestions);
                 setShowSuggestions(mergedSuggestions.length > 0);
             } catch {
-                setSuggestions([]);
-                setShowSuggestions(false);
+                if (!cancelled) {
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                }
             } finally {
-                setSuggestionsLoading(false);
+                if (!cancelled) setSuggestionsLoading(false);
             }
         }, 300);
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [location]);
 
     const shiftDate = (date: Date | null, days: number): Date => {
