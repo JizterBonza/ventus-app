@@ -66,6 +66,23 @@
     text-underline-offset: 3px;
 }
 
+.results-section.has-more-results {
+    padding-bottom: 0;
+}
+
+.search-results-load-more {
+    margin-top: 40px;
+    padding: 40px 0;
+    border-top: 1px solid #0000001a;
+}
+
+@media screen and (max-width: 767px) {
+    .search-results-load-more {
+        margin-top: 25px;
+        padding: 25px 0;
+    }
+}
+
 /* Hotel Details Loading and Contact Info Styles */
 .loading-overlay {
     position: absolute;
