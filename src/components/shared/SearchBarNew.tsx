@@ -24,11 +24,28 @@ interface SearchBarNewProps {
 
 interface LocationSuggestion {
     id: string;
-    type: "city" | "hotel";
+    type: "destination" | "hotel";
     title: string;
     subtitle?: string;
     value: string;
 }
+
+const FEATURED_DESTINATIONS: Array<{ title: string; country: string }> = [
+    { title: "London", country: "United Kingdom" },
+    { title: "London - West London", country: "United Kingdom" },
+    { title: "London - East London", country: "United Kingdom" },
+    { title: "Paris", country: "France" },
+    { title: "Rome", country: "Italy" },
+    { title: "Milan", country: "Italy" },
+    { title: "Amalfi Coast", country: "Italy" },
+    { title: "Lake Como", country: "Italy" },
+    { title: "Mallorca", country: "Spain" },
+    { title: "Barcelona", country: "Spain" },
+    { title: "Madrid", country: "Spain" },
+    { title: "New York", country: "United States" },
+    { title: "Dubai", country: "United Arab Emirates" },
+    { title: "Maldives", country: "Maldives" },
+];
 
 const parseDate = parseSearchDate;
 
@@ -167,6 +184,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const guestRef = useRef<HTMLDivElement>(null);
     const locationRef = useRef<HTMLDivElement>(null);
     const locationChangedByUserRef = useRef(false);
+    const suggestionRequestRef = useRef(0);
 
     // Load from cookies / URL params on mount
     useEffect(() => {
@@ -231,47 +249,76 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    const extractCityName = (hotelLocation?: string): string => {
-        if (!hotelLocation) return "";
-        const [city = ""] = hotelLocation.split(",");
-        return city.trim();
+    const splitHotelLocation = (hotelLocation?: string) => {
+        const parts = (hotelLocation || "").split(",").map((part) => part.trim()).filter(Boolean);
+        return {
+            city: parts[0] || "",
+            country: parts[parts.length - 1] || "",
+        };
     };
 
     // Debounced predictive search suggestions
     useEffect(() => {
         const q = location.trim();
         if (!locationChangedByUserRef.current || !q || q.length < 2) {
+            suggestionRequestRef.current += 1;
             setSuggestions([]);
             setShowSuggestions(false);
+            setSuggestionsLoading(false);
             return;
         }
-        let cancelled = false;
         const timer = setTimeout(async () => {
+            const requestId = ++suggestionRequestRef.current;
+            const normalizedQuery = q.toLowerCase();
+            const curatedDestinations: LocationSuggestion[] = FEATURED_DESTINATIONS
+                .filter((destination) => destination.title.toLowerCase().includes(normalizedQuery))
+                .map((destination) => ({
+                    id: `destination-${destination.title.toLowerCase().replace(/\s+/g, "-")}`,
+                    type: "destination" as const,
+                    title: destination.title,
+                    subtitle: destination.country,
+                    value: destination.title,
+                }))
+                .slice(0, 3);
+
+            // Destination matches are local, so show them immediately while the hotel
+            // supplier request completes. They also remain usable during an API outage.
+            setSuggestions(curatedDestinations);
             setSuggestionsLoading(true);
             setShowSuggestions(true);
             try {
-                const hotels = await searchHotelsByQuery(q, 5);
-                if (cancelled) return;
+                // Match the results-page limit so autocomplete also primes its cache.
+                const hotels = await searchHotelsByQuery(q, 20);
+                if (suggestionRequestRef.current !== requestId) return;
 
-                const citySuggestions: LocationSuggestion[] = Array.from(
+                const apiDestinations: LocationSuggestion[] = Array.from(
                     new Map(
                         hotels
-                            .map((hotel) => extractCityName(hotel.location))
-                            .filter(Boolean)
-                            .map((city) => [
+                            .map((hotel) => splitHotelLocation(hotel.location))
+                            .filter(({ city }) => Boolean(city))
+                            .map(({ city, country }) => [
                                 city.toLowerCase(),
                                 {
-                                    id: `city-${city.toLowerCase().replace(/\s+/g, "-")}`,
-                                    type: "city" as const,
+                                    id: `destination-${city.toLowerCase().replace(/\s+/g, "-")}`,
+                                    type: "destination" as const,
                                     title: city,
-                                    subtitle: "City",
+                                    subtitle: country,
                                     value: city,
                                 },
                             ])
                     ).values()
                 );
 
-                const hotelSuggestions: LocationSuggestion[] = hotels.map((hotel) => ({
+                const destinationSuggestions = Array.from(
+                    new Map(
+                        [...curatedDestinations, ...apiDestinations].map((destination) => [
+                            destination.title.toLowerCase(),
+                            destination,
+                        ])
+                    ).values()
+                ).slice(0, 3);
+
+                const hotelSuggestions: LocationSuggestion[] = hotels.slice(0, 9).map((hotel) => ({
                     id: `hotel-${hotel.id}`,
                     type: "hotel",
                     title: hotel.name,
@@ -279,23 +326,42 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                     value: hotel.name,
                 }));
 
-                const mergedSuggestions = [...citySuggestions, ...hotelSuggestions];
+                const mergedSuggestions = [...destinationSuggestions, ...hotelSuggestions];
                 setSuggestions(mergedSuggestions);
                 setShowSuggestions(mergedSuggestions.length > 0);
             } catch {
-                if (!cancelled) {
-                    setSuggestions([]);
-                    setShowSuggestions(false);
+                if (suggestionRequestRef.current === requestId) {
+                    setSuggestions(curatedDestinations);
+                    setShowSuggestions(curatedDestinations.length > 0);
                 }
             } finally {
-                if (!cancelled) setSuggestionsLoading(false);
+                if (suggestionRequestRef.current === requestId) setSuggestionsLoading(false);
             }
-        }, 300);
+        }, 220);
         return () => {
-            cancelled = true;
             clearTimeout(timer);
         };
     }, [location]);
+
+    const destinationSuggestions = suggestions.filter((suggestion) => suggestion.type === "destination");
+    const hotelSuggestions = suggestions.filter((suggestion) => suggestion.type === "hotel");
+
+    const chooseSuggestion = (suggestion: LocationSuggestion) => {
+        locationChangedByUserRef.current = false;
+        setLocation(suggestion.value);
+        setLocationError(null);
+        setShowSuggestions(false);
+    };
+
+    const clearLocation = () => {
+        locationChangedByUserRef.current = true;
+        suggestionRequestRef.current += 1;
+        setLocation("");
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setSuggestionsLoading(false);
+        setLocationError(null);
+    };
 
     const shiftDate = (date: Date | null, days: number): Date => {
         const d = date ? new Date(date) : new Date();
@@ -464,41 +530,85 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                             className={`le-input${locationError ? " is-invalid" : ""}`}
                             autoComplete="off"
+                            role="combobox"
+                            aria-autocomplete="list"
                             aria-invalid={!!locationError}
                             aria-describedby={locationError ? "le-search-location-error" : undefined}
+                            aria-expanded={showSuggestions}
+                            aria-controls="le-search-suggestions"
                         />
+                        {location && (
+                            <button
+                                type="button"
+                                className="le-location-clear"
+                                onClick={clearLocation}
+                                aria-label="Clear hotel or destination"
+                            >
+                                <span aria-hidden>×</span>
+                            </button>
+                        )}
                         {locationError && (
                             <div id="le-search-location-error" className="invalid-feedback d-block le-location-error" role="alert">
                                 {locationError}
                             </div>
                         )}
                         {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
-                            <div className="search-results-dropdown le-search-suggestions">
-                                {suggestionsLoading ? (
-                                    <div className="search-result-item search-result-loading" style={{ fontSize: '14px' }}>Searching...</div>
+                            <div id="le-search-suggestions" className="search-results-dropdown le-search-suggestions">
+                                {suggestionsLoading && suggestions.length === 0 ? (
+                                    <div className="le-suggestion-loading" role="status">
+                                        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                        Finding destinations and hotels…
+                                    </div>
                                 ) : (
-                                    suggestions.map((suggestion) => (
-                                        <div
-                                            key={suggestion.id}
-                                            className="search-result-item"
-                                            onClick={() => {
-                                                locationChangedByUserRef.current = false;
-                                                setLocation(suggestion.value);
-                                                setShowSuggestions(false);
-                                            }}
-                                            onMouseDown={(e) => e.preventDefault()}
-                                        >
-                                            <div className="result-info">
-                                                <h6>
-                                                    {suggestion.title}
-                                                    <span className={`search-suggestion-type ${suggestion.type}`}>
-                                                        {suggestion.type === "city" ? "City" : "Hotel"}
+                                    <div className="le-suggestion-columns">
+                                        <div className="le-suggestion-column le-suggestion-destinations">
+                                            <h3>Destinations</h3>
+                                            {destinationSuggestions.map((suggestion) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.id}
+                                                    className="le-suggestion-item"
+                                                    onClick={() => chooseSuggestion(suggestion)}
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                >
+                                                    <svg className="le-suggestion-icon" width="15" height="18" viewBox="0 0 15 18" fill="none" aria-hidden>
+                                                        <path d="M7.5 17s5.5-5.36 5.5-10A5.5 5.5 0 0 0 2 7c0 4.64 5.5 10 5.5 10Z" stroke="currentColor" />
+                                                        <circle cx="7.5" cy="7" r="2" stroke="currentColor" />
+                                                    </svg>
+                                                    <span>
+                                                        <strong>{suggestion.title}</strong>
+                                                        {suggestion.subtitle && <small>{suggestion.subtitle}</small>}
                                                     </span>
-                                                </h6>
-                                                {suggestion.subtitle && <p>{suggestion.subtitle}</p>}
-                                            </div>
+                                                </button>
+                                            ))}
                                         </div>
-                                    ))
+                                        <div className="le-suggestion-column le-suggestion-hotels">
+                                            <h3>Hotels</h3>
+                                            {suggestionsLoading && hotelSuggestions.length === 0 && (
+                                                <div className="le-suggestion-inline-loading" role="status">
+                                                    <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                                    Finding hotels…
+                                                </div>
+                                            )}
+                                            {hotelSuggestions.map((suggestion) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.id}
+                                                    className="le-suggestion-item"
+                                                    onClick={() => chooseSuggestion(suggestion)}
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                >
+                                                    <svg className="le-suggestion-icon le-suggestion-bed" width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden>
+                                                        <path d="M1 12.5V7.5h16v5M2.5 7.5V3h5v4.5M7.5 7.5V5h7a2.5 2.5 0 0 1 2.5 2.5M1 10.5h16M2.5 12.5V14M15.5 12.5V14" stroke="currentColor" />
+                                                    </svg>
+                                                    <span>
+                                                        <strong>{suggestion.title}</strong>
+                                                        {suggestion.subtitle && <small>{suggestion.subtitle}</small>}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}

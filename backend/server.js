@@ -334,9 +334,10 @@ app.get('/api/health', async (req, res) => {
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone } = req.body;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
     // Validation
-    if (!email || !password || !firstName || !lastName) {
+    if (!normalizedEmail || !password || !firstName || !lastName) {
       return res.status(400).json({
         success: false,
         error: 'Email, password, first name, and last name are required'
@@ -345,7 +346,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid email format'
@@ -363,7 +364,7 @@ app.post('/api/auth/signup', async (req, res) => {
     // Check if user already exists
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [normalizedEmail]
     );
 
     if (existingUser.rows.length > 0) {
@@ -382,7 +383,7 @@ app.post('/api/auth/signup', async (req, res) => {
       `INSERT INTO users (email, password_hash, first_name, last_name, phone, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
        RETURNING id, email, first_name, last_name, phone, created_at`,
-      [email.toLowerCase(), passwordHash, firstName, lastName, phone || null]
+      [normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), phone || null]
     );
 
     const user = result.rows[0];
@@ -421,9 +422,10 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
     // Validation
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
         error: 'Email and password are required'
@@ -433,7 +435,7 @@ app.post('/api/auth/login', async (req, res) => {
     // Find user
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [normalizedEmail]
     );
 
     if (result.rows.length === 0) {
@@ -872,8 +874,8 @@ const getHotelApiCachePolicy = (req) => {
 
   if (path === '/v2/search') {
     return {
-      serverTtlMs: 5 * 60 * 1000,
-      cacheControl: 'public, max-age=60, stale-while-revalidate=300, stale-if-error=3600'
+      serverTtlMs: 30 * 60 * 1000,
+      cacheControl: 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400'
     };
   }
 
@@ -943,7 +945,7 @@ app.use('/v2', express.json(), async (req, res) => {
         .set('Age', String(Math.floor((Date.now() - cached.cachedAt) / 1000)))
         .send(cached.data);
     }
-    if (cached) hotelApiCache.delete(cacheKey);
+    if (cached && cached.staleUntil <= Date.now()) hotelApiCache.delete(cacheKey);
   }
 
   const headers = {
@@ -958,6 +960,7 @@ app.use('/v2', express.json(), async (req, res) => {
         const fetchOptions = {
           method: req.method,
           headers,
+          signal: AbortSignal.timeout(req.method === 'GET' ? 15000 : 30000),
           ...(req.method !== 'GET' && req.method !== 'HEAD' && req.body && { body: JSON.stringify(req.body) }),
         };
         const proxyRes = await fetch(targetUrl, fetchOptions);
@@ -985,7 +988,8 @@ app.use('/v2', express.json(), async (req, res) => {
       storeHotelApiCacheEntry(cacheKey, {
         ...upstream,
         cachedAt,
-        expiresAt: cachedAt + cachePolicy.serverTtlMs
+        expiresAt: cachedAt + cachePolicy.serverTtlMs,
+        staleUntil: cachedAt + 24 * 60 * 60 * 1000
       });
     }
 
@@ -998,6 +1002,17 @@ app.use('/v2', express.json(), async (req, res) => {
   } catch (err) {
     if (cacheKey) hotelApiInflight.delete(cacheKey);
     console.error('Hotel API proxy error:', err);
+    const stale = cacheKey ? hotelApiCache.get(cacheKey) : null;
+    if (stale && stale.staleUntil > Date.now()) {
+      return res
+        .status(stale.status)
+        .set('Content-Type', stale.contentType)
+        .set('Cache-Control', cachePolicy.cacheControl)
+        .set('X-Cache', 'STALE')
+        .set('Warning', '110 - Response is stale')
+        .set('Age', String(Math.floor((Date.now() - stale.cachedAt) / 1000)))
+        .send(stale.data);
+    }
     res.status(502).json({
       success: false,
       error: 'Unable to connect to the hotel API. Please try again later.',

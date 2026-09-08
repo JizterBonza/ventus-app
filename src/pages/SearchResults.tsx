@@ -23,6 +23,31 @@ import Membership from "../components/shared/Membership";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
 
+async function settleWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    worker: (item: T, index: number) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+    const results: PromiseSettledResult<R>[] = new Array(items.length);
+    let nextIndex = 0;
+
+    const runWorker = async () => {
+        while (nextIndex < items.length) {
+            const index = nextIndex++;
+            try {
+                results[index] = { status: "fulfilled", value: await worker(items[index], index) };
+            } catch (reason) {
+                results[index] = { status: "rejected", reason };
+            }
+        }
+    };
+
+    await Promise.all(
+        Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker())
+    );
+    return results;
+}
+
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const currentSearchKey = urlSearchParams.toString();
@@ -47,8 +72,7 @@ const SearchResults: React.FC = () => {
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
     /** Availability per hotel id for the search dates/rooms; false = confirmed not available. */
     const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
-    /** How many results are rendered/checked at once; "View More" reveals the next batch of 10.
-     *  Keeps the number of concurrent availability checks bounded so tags never stall on a big city search. */
+    /** How many results are rendered/checked at once; "View More" reveals the next batch of 10. */
     const [visibleCount, setVisibleCount] = useState(10);
     const filteredHotels = useMemo(() => {
         let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
@@ -92,18 +116,12 @@ const SearchResults: React.FC = () => {
         }
     }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
-    /**
-     * True only while the very first batch of availability checks (for the initial 10 cards) is
-     * still running -- not for a later "View More" batch, which shouldn't hide the cards already
-     * on screen. Folded into `isSearching` so cards and their "Not available" tags always appear
-     * together, instead of the tags popping in a moment after the cards render.
-     */
-    const initialAvailabilityLoading = loadingStartingFromPrices && Object.keys(hotelAvailability).length === 0;
+    // Availability is secondary information. Never keep the result cards behind its much
+    // slower network calls; tags and member pricing can fill in progressively.
     const isSearching =
         loading ||
         loadingInspiration ||
-        (hasSearchCriteria && completedSearchKey !== currentSearchKey) ||
-        initialAvailabilityLoading;
+        (hasSearchCriteria && completedSearchKey !== currentSearchKey);
 
     // Start over at 10 whenever the result set itself changes (new search or filter/sort change).
     useEffect(() => {
@@ -230,10 +248,8 @@ const SearchResults: React.FC = () => {
         if (hotelIds.length === 0) return;
 
         const requestId = ++detailsRequestRef.current;
-        setDetailedHotels([]);
 
-        await Promise.allSettled(
-            hotelIds.map(async (hotelId) => {
+        await settleWithConcurrency(hotelIds, 4, async (hotelId) => {
                 const detailedHotel = await getHotelDetails(hotelId);
                 if (detailsRequestRef.current !== requestId) return;
 
@@ -245,9 +261,15 @@ const SearchResults: React.FC = () => {
                     next[existingIndex] = detailedHotel;
                     return next;
                 });
-            })
-        );
+        });
     };
+
+    // A new result set invalidates old enrichment, but revealing more results keeps details
+    // already on screen so images and copy never flash back to placeholders.
+    useEffect(() => {
+        detailsRequestRef.current += 1;
+        setDetailedHotels([]);
+    }, [hotelIdsKey]);
 
     // Enrich the currently visible text-search results progressively. Inspiration responses
     // already contain the card data and do not need immediate detail calls.
@@ -279,16 +301,14 @@ const SearchResults: React.FC = () => {
             try {
                 const currency = await getVisitorCurrency();
                 if (cancelled) return;
-                const results = await Promise.allSettled(
-                    visibleHotels.map((hotel) =>
-                        checkHotelAvailability({
+                const results = await settleWithConcurrency(visibleHotels, 4, (hotel) =>
+                    checkHotelAvailability({
                             hotel_id: hotel.id,
                             start_date,
                             end_date,
                             currency,
                             rooms,
                         })
-                    )
                 );
                 if (cancelled) return;
                 const nextPrices: Record<number, { rate: number; currency: string }> = {};

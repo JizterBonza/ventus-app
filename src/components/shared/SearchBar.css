@@ -25,12 +25,28 @@
 }
 
 .le-search-suggestions {
+  width: min(665px, calc(100vw - 32px));
   min-width: 100%;
 }
 
-.search-result-loading {
-  color: #666;
-  cursor: default;
+.le-location-clear {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #555;
+  font-size: 29px;
+  font-weight: 200;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.le-location-clear:hover,
+.le-location-clear:focus-visible {
+  color: #111;
+  outline: none;
 }
 
 .search-form .input-group {
@@ -71,19 +87,125 @@
 
 .search-results-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 9px);
   left: 0;
-  right: 0;
   background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  max-height: 300px;
-  overflow-y: auto;
-  margin-top: 5px;
+  border: 1px solid #c9c9c9;
+  border-radius: 5px;
+  box-shadow: 0 12px 28px rgba(28, 28, 28, 0.14);
+  z-index: 10000;
+  max-height: min(530px, calc(100vh - 150px));
+  overflow: auto;
 }
 
+.le-suggestion-columns {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.95fr) minmax(310px, 1.1fr);
+  gap: 34px;
+  padding: 18px 20px 20px;
+}
+
+.le-suggestion-column {
+  min-width: 0;
+}
+
+.le-suggestion-column h3 {
+  margin: 0 0 14px;
+  color: #1f1f1f;
+  font-family: 'Lato', Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.le-suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #292929;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.le-suggestion-item:hover,
+.le-suggestion-item:focus-visible {
+  background: #f5f2eb;
+  outline: none;
+}
+
+.le-suggestion-item > span {
+  min-width: 0;
+}
+
+.le-suggestion-item strong,
+.le-suggestion-item small {
+  display: block;
+}
+
+.le-suggestion-item strong {
+  overflow: hidden;
+  color: #383838;
+  font-family: 'Lato', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.le-suggestion-item small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #777;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.le-suggestion-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #c8ab73;
+  stroke-width: 1;
+}
+
+.le-suggestion-bed {
+  margin-top: 3px;
+}
+
+.le-suggestion-loading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 22px;
+  color: #666;
+  font-size: 13px;
+}
+
+.le-suggestion-inline-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 7px 6px;
+  color: #777;
+  font-size: 12px;
+}
+
+/* Legacy SearchBar result rows (SearchBarNew uses the LE column styles above). */
 .search-result-item {
   padding: 12px 16px;
   border-bottom: 1px solid #f8f9fa;
@@ -100,36 +222,30 @@
 }
 
 .result-info h6 {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin: 0 0 4px;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .result-info p {
-  margin: 0 0 4px 0;
-  font-size: 12px;
+  margin: 0 0 4px;
   color: #666;
-}
-
-.result-info .price {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--gold);
 }
 
 .search-suggestion-type {
-  font-size: 10px;
-  line-height: 1;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-radius: 999px;
   padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .search-suggestion-type.city {
@@ -160,6 +276,17 @@
   }
 
   .search-results-dropdown {
-    max-height: 250px;
+    max-height: min(460px, calc(100vh - 140px));
+  }
+
+  .le-search-suggestions {
+    left: -1px;
+    width: min(665px, calc(100vw - 24px));
+  }
+
+  .le-suggestion-columns {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 18px 16px;
   }
 }

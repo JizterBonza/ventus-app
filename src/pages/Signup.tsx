@@ -604,9 +604,14 @@ const Signup: React.FC = () => {
                   {/* PayPal payment */}
                   {finalPrice > 0 && (
                     <div className="form-group mb-3">
+                      {!paypalApproved && (
+                        <p className="signup-payment-help">
+                          Choose PayPal or Debit or Credit Card below to complete payment.
+                        </p>
+                      )}
                       {paypalApproved && paypalOrderId ? (
                         <div className="alert alert-success py-2 small">
-                          <i className="ti-check me-2"></i> PayPal payment approved. Order ID: {paypalOrderId}
+                          <i className="ti-check me-2"></i> Payment approved. You can now create your account.
                         </div>
                       ) : (
                         <div ref={paypalContainerRef} id={PAYPAL_CONTAINER_ID} style={{ minHeight: '50px' }}></div>
@@ -645,7 +650,7 @@ const Signup: React.FC = () => {
                   <button
                     type="submit"
                     className="btn btn-primary btn-lg butn-dark w-100"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (finalPrice > 0 && !paypalApproved)}
                   >
                     {isSubmitting ? (
                       <>
@@ -653,7 +658,9 @@ const Signup: React.FC = () => {
                         Creating Account...
                       </>
                     ) : (
-                      finalPrice > 0 ? `Pay ${currencySymbol}${finalPrice} & Join` : 'Join Now'
+                      finalPrice > 0
+                        ? (paypalApproved ? 'Create Account & Join' : 'Complete Payment Above')
+                        : 'Join Now'
                     )}
                   </button>
                 </form>
@@ -693,4 +700,3 @@ const Signup: React.FC = () => {
 };
 
 export default Signup;
-

@@ -6,13 +6,15 @@ const DEFAULT_API_BASE = 'https://api-staging.littleemperors.com/v2';
 
 // API base: development uses dev proxy; production uses REACT_APP_API_BASE (backend proxy) or direct API.
 const getApiBaseUrl = () => {
-  if (process.env.NODE_ENV === 'development') {
-    return '/v2'; // Use proxy in development (setupProxy.js)
-  }
-  // Staging: use backend proxy (e.g. https://ventus-backend.onrender.com/v2) to avoid CORS; no public proxy needed.
+  // Prefer an explicitly configured backend in every environment. This keeps local
+  // verification on the same authenticated API path used by production.
   if (process.env.REACT_APP_API_BASE) {
     return process.env.REACT_APP_API_BASE.replace(/\/$/, '');
   }
+  if (process.env.NODE_ENV === 'development') {
+    return '/v2'; // Fall back to the local development proxy.
+  }
+  // Staging: use backend proxy (e.g. https://ventus-backend.onrender.com/v2) to avoid CORS; no public proxy needed.
   return DEFAULT_API_BASE;
 };
 
@@ -352,17 +354,28 @@ const transformApiDataToHotels = (apiData: any[]): Hotel[] => {
  * Makes a search request to the API with authorization
  */
 const HOTEL_SEARCH_MEMORY_TTL_MS = 5 * 60 * 1000;
+const HOTEL_SEARCH_MEMORY_MAX_ENTRIES = 50;
 const hotelSearchMemoryCache = new Map<string, { response: SearchResponse; expiresAt: number }>();
+const hotelSearchInflight = new Map<string, Promise<SearchResponse>>();
 
 export const searchHotels = async (params: SearchParams): Promise<SearchResponse> => {
-  const searchParams = buildSearchParams(params);
+  const normalizedParams = {
+    ...params,
+    query: params.query.trim().toLowerCase(),
+  };
+  const searchParams = buildSearchParams(normalizedParams);
   const url = `${API_BASE_URL}/search?${searchParams.toString()}`;
   const cacheKey = searchParams.toString();
   const cachedSearch = hotelSearchMemoryCache.get(cacheKey);
   if (cachedSearch && cachedSearch.expiresAt > Date.now()) {
+    hotelSearchMemoryCache.delete(cacheKey);
+    hotelSearchMemoryCache.set(cacheKey, cachedSearch);
     return cachedSearch.response;
   }
   if (cachedSearch) hotelSearchMemoryCache.delete(cacheKey);
+
+  const inflightSearch = hotelSearchInflight.get(cacheKey);
+  if (inflightSearch) return inflightSearch;
   
   // Log the actual API URL (without proxy) for clarity
   const actualUrl = getActualApiUrl(url);
@@ -370,7 +383,7 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
   // console.log('Environment:', process.env.NODE_ENV);
   // console.log('API Base URL:', API_BASE_URL);
   //
-  try {
+  const request = (async () => {
     const response = await makeApiRequest(url, {
       method: 'GET',
       headers: {
@@ -431,17 +444,28 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
       data: hotels,
       total: hotels.length,
       page: 1,
-      limit: params.limit || 20
+      limit: normalizedParams.limit || 20
     } as SearchResponse;
+
+    while (hotelSearchMemoryCache.size >= HOTEL_SEARCH_MEMORY_MAX_ENTRIES) {
+      const oldestKey = hotelSearchMemoryCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      hotelSearchMemoryCache.delete(oldestKey);
+    }
     hotelSearchMemoryCache.set(cacheKey, {
       response: searchResponse,
       expiresAt: Date.now() + HOTEL_SEARCH_MEMORY_TTL_MS,
     });
     return searchResponse;
-  } catch (error) {
+  })()
+    .catch((error) => {
     console.error('searchHotels error:', error);
     throw error;
-  }
+    })
+    .finally(() => hotelSearchInflight.delete(cacheKey));
+
+  hotelSearchInflight.set(cacheKey, request);
+  return request;
 };
 
 /**

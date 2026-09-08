@@ -948,6 +948,16 @@ textarea.form-control{
     font-size: 14.07px;
     text-transform: uppercase;
 }
+.signup-payment-help{
+    margin: 0 0 10px;
+    color: #333;
+    font-size: 13px;
+    line-height: 1.45;
+}
+.signup-page .auth-card form button[type="submit"]:disabled{
+    cursor: not-allowed;
+    opacity: .62;
+}
 .btn.show-password-btn:after,
 .auth-card form button[type="submit"]:after{
     display: none;

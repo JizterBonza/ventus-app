@@ -53,6 +53,19 @@
     line-height: 1.4;
 }
 
+.password-reset-page .password-reset-support {
+    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.password-reset-page .password-reset-support a {
+    color: #1f1f1f;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
 /* Hotel Details Loading and Contact Info Styles */
 .loading-overlay {
     position: absolute;

@@ -71,6 +71,12 @@ const ForgotPassword: React.FC = () => {
                   </form>
                 )}
 
+                <p className="password-reset-support">
+                  Not receiving the email? Contact{' '}
+                  <a href="mailto:daniella@ventustravel.co.uk">daniella@ventustravel.co.uk</a>
+                  {' '}so your account can be checked manually.
+                </p>
+
                 <p className="password-reset-back">
                   <Link to="/login" className="password-reset-back-link">Back to login</Link>
                 </p>

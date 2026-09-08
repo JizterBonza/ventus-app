@@ -33,7 +33,11 @@ if (process.env.NODE_ENV === 'development') {
  */
 export const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    console.log('Login attempt:', credentials.email);
+    const normalizedCredentials = {
+      ...credentials,
+      email: credentials.email.trim().toLowerCase()
+    };
+    console.log('Login attempt:', normalizedCredentials.email);
 
     // Call actual backend API
     let response;
@@ -43,7 +47,7 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(credentials)
+        body: JSON.stringify(normalizedCredentials)
       });
     } catch (fetchError) {
       // Network error - backend might not be running or CORS issue
@@ -109,7 +113,8 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
  */
 export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
   try {
-    console.log('Signup attempt:', data.email);
+    const normalizedEmail = data.email.trim().toLowerCase();
+    console.log('Signup attempt:', normalizedEmail);
     console.log('API URL:', AUTH_API_URL);
     console.log('Full signup URL:', `${AUTH_API_URL}/signup`);
 
@@ -137,7 +142,7 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          email: data.email,
+          email: normalizedEmail,
           password: data.password,
           firstName: data.firstName,
           lastName: data.lastName,
