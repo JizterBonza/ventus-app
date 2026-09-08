@@ -1071,6 +1071,14 @@ textarea.form-control{
     padding-bottom: 40px;
     margin-bottom: 40px;
 }
+.results-section.has-more-results{
+    padding-bottom: 0;
+}
+.search-results-load-more{
+    margin-top: 40px;
+    padding: 40px 0;
+    border-top: 1px solid #0000001A;
+}
 .hotel-card{
     display: flex;
     flex-direction: row;
@@ -1400,7 +1408,11 @@ input:-internal-autofill-selected:active {
     }
     .hotel-result-row:not(:last-child){
         padding-bottom: 25px;
-    margin-bottom: 25px;
+        margin-bottom: 25px;
+    }
+    .search-results-load-more{
+        margin-top: 25px;
+        padding: 25px 0;
     }
    
 }

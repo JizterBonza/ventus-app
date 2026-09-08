@@ -361,7 +361,7 @@ const SearchResults: React.FC = () => {
             <br />
 
             {/* Filters and Results */}
-            <section className={`results-section  ${filteredHotels.length > 0 ? "has-results" : ""}`}>
+            <section className={`results-section ${filteredHotels.length > 0 ? "has-results" : ""} ${!isSearching && visibleHotels.length < filteredHotels.length ? "has-more-results" : ""}`}>
                 <div className="container">
                     <div className="row">
                         {/* Results */}
@@ -503,7 +503,7 @@ const SearchResults: React.FC = () => {
                             )}
 
                             {!isSearching && visibleHotels.length < filteredHotels.length && (
-                                <div className="text-center mt-4">
+                                <div className="search-results-load-more text-center">
                                     <button
                                         type="button"
                                         className="btn btn-outline-primary"
