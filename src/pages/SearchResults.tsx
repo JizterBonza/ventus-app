@@ -65,6 +65,14 @@ const titleCaseFacility = (value: string) =>
         .replace(/\bWifi\b/i, "Wi-Fi")
         .replace(/\b24 Hrs\b/i, "24 hrs");
 
+const formatFacilityLabel = (value: string) => {
+    const normalised = normaliseFilterValue(value);
+    if (normalised === "pool" || normalised === "swimming pool") return "Swimming pool";
+    if (normalised === "room service") return "Room service";
+    if (normalised === "pet friendly" || normalised === "pet-friendly") return "Pet friendly";
+    return titleCaseFacility(value);
+};
+
 const getHotelFacilities = (hotel: Hotel): string[] => {
     const facilities = new Set<string>();
     const searchableDetails = [
@@ -73,7 +81,7 @@ const getHotelFacilities = (hotel: Hotel): string[] => {
     ];
 
     (hotel.amenities || []).forEach((amenity) => {
-        if (amenity?.trim()) facilities.add(titleCaseFacility(amenity));
+        if (amenity?.trim()) facilities.add(formatFacilityLabel(amenity));
     });
 
     searchableDetails.forEach((detail) => {
