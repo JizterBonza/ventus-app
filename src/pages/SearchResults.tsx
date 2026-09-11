@@ -48,6 +48,92 @@ async function settleWithConcurrency<T, R>(
     return results;
 }
 
+type FilterOption = {
+    key: string;
+    label: string;
+    count: number;
+};
+
+const normaliseFilterValue = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+
+const titleCaseFacility = (value: string) =>
+    value
+        .trim()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/\b\w/g, (character) => character.toUpperCase())
+        .replace(/\bWifi\b/i, "Wi-Fi")
+        .replace(/\b24 Hrs\b/i, "24 hrs");
+
+const getHotelFacilities = (hotel: Hotel): string[] => {
+    const facilities = new Set<string>();
+    const searchableDetails = [
+        ...(hotel.amenities || []),
+        ...(hotel.hotel_information || []).flatMap((section) => section.description || []),
+    ];
+
+    (hotel.amenities || []).forEach((amenity) => {
+        if (amenity?.trim()) facilities.add(titleCaseFacility(amenity));
+    });
+
+    searchableDetails.forEach((detail) => {
+        const value = detail.toLowerCase();
+        if (/\bbars?\b/.test(value)) facilities.add("Bar");
+        if (/\bcinema\b/.test(value)) facilities.add("Cinema");
+        if (/\bgym\b|fitness/.test(value)) facilities.add("Gym");
+        if (/pet[ -]?friendly|pets? allowed/.test(value)) facilities.add("Pet friendly");
+        if (/\brestaurants?\b|\bdining\b/.test(value)) facilities.add("Restaurant");
+        if (/room service/.test(value)) facilities.add("Room service");
+        if (/\bspa\b|massage/.test(value)) facilities.add("Spa");
+        if (/swimming pool|\bpool\b/.test(value)) {
+            facilities.add("Swimming pool");
+            if (/heated/.test(value)) facilities.add("Swimming pool (heated)");
+            if (/indoor/.test(value)) facilities.add("Swimming pool (indoor)");
+            if (/outdoor/.test(value)) facilities.add("Swimming pool (outdoor)");
+        }
+    });
+
+    return Array.from(facilities);
+};
+
+const getHotelBenefitCategories = (hotel: Hotel): string[] => {
+    const categories = new Set<string>();
+
+    (hotel.benefits || []).forEach((benefit) => {
+        const value = benefit.trim();
+        const lower = value.toLowerCase();
+        if (!value) return;
+
+        if (/preferential|preferred|exclusive rate|discount/.test(lower)) categories.add("Preferential rate");
+        else if (/breakfast/.test(lower)) categories.add("Daily breakfast");
+        else if (/credit/.test(lower)) categories.add("Hotel credit");
+        else if (/upgrade/.test(lower)) categories.add("Room upgrade");
+        else if (/early check[ -]?in/.test(lower)) categories.add("Early check-in");
+        else if (/late check[ -]?out/.test(lower)) categories.add("Late check-out");
+        else if (/transfer/.test(lower)) categories.add("Transfer");
+        else if (/wi[ -]?fi/.test(lower)) categories.add("Wi-Fi");
+        else if (/welcome|amenit/.test(lower)) categories.add("Welcome amenity");
+        else categories.add(value);
+    });
+
+    return Array.from(categories);
+};
+
+const buildFilterOptions = (hotels: Hotel[], getValues: (hotel: Hotel) => string[]): FilterOption[] => {
+    const options = new Map<string, FilterOption>();
+
+    hotels.forEach((hotel) => {
+        const hotelValues = new Map<string, string>();
+        getValues(hotel).forEach((value) => hotelValues.set(normaliseFilterValue(value), value));
+        hotelValues.forEach((label, key) => {
+            const existing = options.get(key);
+            options.set(key, { key, label: existing?.label || label, count: (existing?.count || 0) + 1 });
+        });
+    });
+
+    return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label));
+};
+
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const currentSearchKey = urlSearchParams.toString();
@@ -74,8 +160,33 @@ const SearchResults: React.FC = () => {
     const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
     /** How many results are rendered/checked at once; "View More" reveals the next batch of 10. */
     const [visibleCount, setVisibleCount] = useState(10);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
+    const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+    const [loadingFilterOptions, setLoadingFilterOptions] = useState(false);
+    const baseHotels = useMemo(
+        () => (inspirationResults.length > 0 ? inspirationResults : hotels),
+        [hotels, inspirationResults]
+    );
+    const baseHotelIdsKey = useMemo(() => baseHotels.map((hotel) => hotel.id).join(","), [baseHotels]);
+    const detailByHotelId = useMemo(
+        () => new Map(detailedHotels.map((hotel) => [hotel.id, hotel])),
+        [detailedHotels]
+    );
+    const enrichedHotels = useMemo(
+        () => baseHotels.map((hotel) => detailByHotelId.get(hotel.id) || hotel),
+        [baseHotels, detailByHotelId]
+    );
+    const benefitOptions = useMemo(
+        () => buildFilterOptions(enrichedHotels, getHotelBenefitCategories),
+        [enrichedHotels]
+    );
+    const facilityOptions = useMemo(
+        () => buildFilterOptions(enrichedHotels, getHotelFacilities),
+        [enrichedHotels]
+    );
     const filteredHotels = useMemo(() => {
-        let filtered = inspirationResults.length > 0 ? inspirationResults : hotels;
+        let filtered = enrichedHotels;
 
         if (searchParams.priceRange !== "all") {
             filtered = filtered.filter((hotel) => {
@@ -98,11 +209,37 @@ const SearchResults: React.FC = () => {
             filtered = filtered.filter((hotel) => (hotel.rating || 0) >= minRating);
         }
 
+        if (selectedBenefits.length > 0) {
+            filtered = filtered.filter((hotel) => {
+                const hotelBenefits = new Set(getHotelBenefitCategories(hotel).map(normaliseFilterValue));
+                return selectedBenefits.every((benefit) => hotelBenefits.has(benefit));
+            });
+        }
+
+        if (selectedFacilities.length > 0) {
+            filtered = filtered.filter((hotel) => {
+                const hotelFacilities = new Set(getHotelFacilities(hotel).map(normaliseFilterValue));
+                return selectedFacilities.every((facility) => hotelFacilities.has(facility));
+            });
+        }
+
+        const getSortPrice = (hotel: Hotel) => startingFromPrices[hotel.id]?.rate ?? hotel.price;
+        const sortByPrice = (direction: "ascending" | "descending") => [...filtered].sort((a, b) => {
+            const aPrice = getSortPrice(a);
+            const bPrice = getSortPrice(b);
+            if (aPrice == null && bPrice == null) return 0;
+            if (aPrice == null) return 1;
+            if (bPrice == null) return -1;
+            return direction === "ascending" ? aPrice - bPrice : bPrice - aPrice;
+        });
+
         switch (searchParams.sortBy) {
             case "price-low":
-                return [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+                return sortByPrice("ascending");
             case "price-high":
-                return [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+                return sortByPrice("descending");
+            case "name":
+                return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
             case "rating":
                 return [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
             case "distance":
@@ -114,7 +251,7 @@ const SearchResults: React.FC = () => {
             default:
                 return filtered;
         }
-    }, [hotels, inspirationResults, searchParams.priceRange, searchParams.rating, searchParams.sortBy]);
+    }, [enrichedHotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy, selectedBenefits, selectedFacilities, startingFromPrices]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
     // Availability is secondary information. Never keep the result cards behind its much
     // slower network calls; tags and member pricing can fill in progressively.
@@ -243,45 +380,106 @@ const SearchResults: React.FC = () => {
         };
     }, [urlSearchParams, currentSearchKey, searchAdvanced, clearResults]);
 
-    // Function to fetch detailed hotel information
-    const fetchHotelDetails = async (hotelIds: number[]) => {
-        if (hotelIds.length === 0) return;
-
+    // Enrich every result in the background. Cards remain visible while these calls complete,
+    // while the complete detail set gives the filter counts a reliable source of truth.
+    useEffect(() => {
         const requestId = ++detailsRequestRef.current;
+        const hotelIds = baseHotels.map((hotel) => hotel.id);
+        setDetailedHotels([]);
 
-        await settleWithConcurrency(hotelIds, 4, async (hotelId) => {
-                const detailedHotel = await getHotelDetails(hotelId);
-                if (detailsRequestRef.current !== requestId) return;
+        if (hotelIds.length === 0) {
+            setLoadingFilterOptions(false);
+            return;
+        }
 
-                setDetailedHotels((current) => {
-                    const existingIndex = current.findIndex((hotel) => hotel.id === detailedHotel.id);
-                    if (existingIndex === -1) return [...current, detailedHotel];
+        setLoadingFilterOptions(true);
+        void settleWithConcurrency(hotelIds, 4, async (hotelId) => {
+            const detailedHotel = await getHotelDetails(hotelId);
+            if (detailsRequestRef.current !== requestId) return;
 
-                    const next = [...current];
-                    next[existingIndex] = detailedHotel;
-                    return next;
-                });
+            setDetailedHotels((current) => {
+                const existingIndex = current.findIndex((hotel) => hotel.id === detailedHotel.id);
+                if (existingIndex === -1) return [...current, detailedHotel];
+
+                const next = [...current];
+                next[existingIndex] = detailedHotel;
+                return next;
+            });
+        }).finally(() => {
+            if (detailsRequestRef.current === requestId) setLoadingFilterOptions(false);
         });
+
+        return () => {
+            if (detailsRequestRef.current === requestId) detailsRequestRef.current += 1;
+        };
+    }, [baseHotelIdsKey, baseHotels]);
+
+    useEffect(() => {
+        setSelectedBenefits([]);
+        setSelectedFacilities([]);
+        setFiltersOpen(false);
+    }, [currentSearchKey]);
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setSelectedBenefits([]);
+            setSearchParams((current) =>
+                current.sortBy === "price-high" || current.sortBy === "price-low"
+                    ? { ...current, sortBy: "recommended" }
+                    : current
+            );
+        }
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (!filtersOpen) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setFiltersOpen(false);
+        };
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [filtersOpen]);
+
+    const toggleFilterValue = (
+        value: string,
+        setValues: React.Dispatch<React.SetStateAction<string[]>>
+    ) => {
+        setValues((current) =>
+            current.includes(value)
+                ? current.filter((item) => item !== value)
+                : [...current, value]
+        );
     };
 
-    // A new result set invalidates old enrichment, but revealing more results keeps details
-    // already on screen so images and copy never flash back to placeholders.
-    useEffect(() => {
-        detailsRequestRef.current += 1;
-        setDetailedHotels([]);
-    }, [hotelIdsKey]);
+    const clearFilters = () => {
+        setSearchParams((current) => ({ ...current, sortBy: "recommended" }));
+        setSelectedBenefits([]);
+        setSelectedFacilities([]);
+    };
 
-    // Enrich the currently visible text-search results progressively. Inspiration responses
-    // already contain the card data and do not need immediate detail calls.
+    const activeFilterCount = selectedBenefits.length + selectedFacilities.length +
+        (searchParams.sortBy !== "recommended" ? 1 : 0);
+
+    // Discard obsolete options when the supplier's detail data changes beneath a search.
     useEffect(() => {
-        if (visibleHotels.length > 0 && inspirationResults.length === 0) {
-            const hotelIds = visibleHotels.map((hotel) => hotel.id);
-            fetchHotelDetails(hotelIds);
-        } else {
-            detailsRequestRef.current += 1;
+        if (loadingFilterOptions) return;
+        const validBenefits = new Set(benefitOptions.map((option) => option.key));
+        const validFacilities = new Set(facilityOptions.map((option) => option.key));
+        setSelectedBenefits((current) => current.filter((value) => validBenefits.has(value)));
+        setSelectedFacilities((current) => current.filter((value) => validFacilities.has(value)));
+    }, [benefitOptions, facilityOptions, loadingFilterOptions]);
+
+    // If there are no results, ensure a stale panel cannot obscure the empty state.
+    useEffect(() => {
+        if (!isSearching && baseHotels.length === 0) {
             setDetailedHotels([]);
+            setFiltersOpen(false);
         }
-    }, [visibleHotels, inspirationResults]);
+    }, [baseHotels.length, isSearching]);
 
     // Check real availability (search dates/rooms) and "Starting from" price for the currently visible
     // batch only (max 10 at a time -- "View More" reveals the next batch). Keeping the batch small means
@@ -366,9 +564,159 @@ const SearchResults: React.FC = () => {
                     <div className="row">
                         {/* Results */}
                         <div className="col-md-12">
-                            <div className="results-header">
+                            <div className="results-header search-results-toolbar">
                                <p>{isSearching ? "Searching for hotels…" : `${filteredHotels.length} results found`}</p>
+                               {!isSearching && baseHotels.length > 0 && (
+                                   <button
+                                       type="button"
+                                       className="search-filter-trigger"
+                                       onClick={() => setFiltersOpen(true)}
+                                       aria-haspopup="dialog"
+                                       aria-expanded={filtersOpen}
+                                   >
+                                       <svg viewBox="0 0 24 24" aria-hidden="true">
+                                           <path d="M4 7h16M7 12h10M10 17h4" />
+                                       </svg>
+                                       Filters
+                                       {activeFilterCount > 0 && (
+                                           <span className="search-filter-count">{activeFilterCount}</span>
+                                       )}
+                                   </button>
+                               )}
                             </div>
+
+                            {filtersOpen && (
+                                <>
+                                    <div
+                                        className="search-filter-backdrop"
+                                        onClick={() => setFiltersOpen(false)}
+                                        aria-hidden="true"
+                                    />
+                                    <aside
+                                        className="search-filter-panel"
+                                        role="dialog"
+                                        aria-modal="true"
+                                        aria-labelledby="search-filter-title"
+                                    >
+                                        <header className="search-filter-panel-header">
+                                            <h2 id="search-filter-title">Filters</h2>
+                                            <button
+                                                type="button"
+                                                className="search-filter-close"
+                                                onClick={() => setFiltersOpen(false)}
+                                                aria-label="Close filters"
+                                            >
+                                                <span aria-hidden="true">×</span>
+                                            </button>
+                                        </header>
+
+                                        <div className="search-filter-panel-content">
+                                            <fieldset className="search-filter-section">
+                                                <legend>Sort by</legend>
+                                                {[
+                                                    { value: "recommended", label: "Recommended" },
+                                                    ...(isAuthenticated ? [
+                                                        { value: "price-high", label: "Price (high to low)" },
+                                                        { value: "price-low", label: "Price (low to high)" },
+                                                    ] : []),
+                                                    { value: "name", label: "Hotel name (A–Z)" },
+                                                ].map((option) => (
+                                                    <label className="search-filter-option search-filter-radio" key={option.value}>
+                                                        <input
+                                                            type="radio"
+                                                            name="hotel-sort"
+                                                            value={option.value}
+                                                            checked={searchParams.sortBy === option.value}
+                                                            onChange={() => setSearchParams((current) => ({
+                                                                ...current,
+                                                                sortBy: option.value,
+                                                            }))}
+                                                        />
+                                                        <span className="search-filter-control" aria-hidden="true" />
+                                                        <span className="search-filter-label">{option.label}</span>
+                                                    </label>
+                                                ))}
+                                            </fieldset>
+
+                                            {isAuthenticated && (
+                                                <fieldset className="search-filter-section">
+                                                    <legend>Ventus Member Benefits</legend>
+                                                    {loadingFilterOptions && benefitOptions.length === 0 ? (
+                                                        <p className="search-filter-loading">
+                                                            <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                                            Loading benefit filters…
+                                                        </p>
+                                                    ) : benefitOptions.length > 0 ? (
+                                                        <div className="search-filter-grid">
+                                                            {benefitOptions.map((option) => (
+                                                                <label className="search-filter-option" key={option.key}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedBenefits.includes(option.key)}
+                                                                        onChange={() => toggleFilterValue(option.key, setSelectedBenefits)}
+                                                                        disabled={loadingFilterOptions}
+                                                                    />
+                                                                    <span className="search-filter-control" aria-hidden="true" />
+                                                                    <span className="search-filter-label">{option.label}</span>
+                                                                    <span className="search-filter-option-count">{option.count}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="search-filter-empty">No member-benefit filters are available for this search.</p>
+                                                    )}
+                                                </fieldset>
+                                            )}
+
+                                            <fieldset className="search-filter-section">
+                                                <legend>Facilities</legend>
+                                                {loadingFilterOptions && facilityOptions.length === 0 ? (
+                                                    <p className="search-filter-loading">
+                                                        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                                        Loading facility filters…
+                                                    </p>
+                                                ) : facilityOptions.length > 0 ? (
+                                                    <div className="search-filter-grid">
+                                                        {facilityOptions.map((option) => (
+                                                            <label className="search-filter-option" key={option.key}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedFacilities.includes(option.key)}
+                                                                    onChange={() => toggleFilterValue(option.key, setSelectedFacilities)}
+                                                                    disabled={loadingFilterOptions}
+                                                                />
+                                                                <span className="search-filter-control" aria-hidden="true" />
+                                                                <span className="search-filter-label">{option.label}</span>
+                                                                <span className="search-filter-option-count">{option.count}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="search-filter-empty">No facility filters are available for this search.</p>
+                                                )}
+                                            </fieldset>
+                                        </div>
+
+                                        <footer className="search-filter-panel-footer">
+                                            <button
+                                                type="button"
+                                                className="search-filter-clear"
+                                                onClick={clearFilters}
+                                                disabled={activeFilterCount === 0}
+                                            >
+                                                Clear all
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="search-filter-show"
+                                                onClick={() => setFiltersOpen(false)}
+                                            >
+                                                Show {filteredHotels.length} {filteredHotels.length === 1 ? "hotel" : "hotels"}
+                                            </button>
+                                        </footer>
+                                    </aside>
+                                </>
+                            )}
 
                             {error && (
                                 <div className="alert alert-danger" role="alert">
