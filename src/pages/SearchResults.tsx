@@ -56,90 +56,107 @@ type FilterOption = {
 
 const normaliseFilterValue = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
 
-const titleCaseFacility = (value: string) =>
-    value
-        .trim()
-        .replace(/[_-]+/g, " ")
-        .replace(/\s+/g, " ")
-        .replace(/\b\w/g, (character) => character.toUpperCase())
-        .replace(/\bWifi\b/i, "Wi-Fi")
-        .replace(/\b24 Hrs\b/i, "24 hrs");
-
-const formatFacilityLabel = (value: string) => {
-    const normalised = normaliseFilterValue(value);
-    if (normalised === "pool" || normalised === "swimming pool") return "Swimming pool";
-    if (normalised === "room service") return "Room service";
-    if (normalised === "pet friendly" || normalised === "pet-friendly") return "Pet friendly";
-    return titleCaseFacility(value);
+type HotelFilterDefinition = {
+    key: string;
+    label: string;
+    matches: (hotel: Hotel) => boolean;
 };
 
-const getHotelFacilities = (hotel: Hotel): string[] => {
-    const facilities = new Set<string>();
-    const searchableDetails = [
-        ...(hotel.amenities || []),
-        ...(hotel.hotel_information || []).flatMap((section) => section.description || []),
-    ];
+const getHotelInformationText = (hotel: Hotel, sectionName?: string) =>
+    (hotel.hotel_information || [])
+        .filter((section) => !sectionName || normaliseFilterValue(section.title) === normaliseFilterValue(sectionName))
+        .flatMap((section) => [section.title, ...(section.description || [])])
+        .join(" ")
+        .toLowerCase();
 
-    (hotel.amenities || []).forEach((amenity) => {
-        if (amenity?.trim()) facilities.add(formatFacilityLabel(amenity));
-    });
+const getAllHotelFilterText = (hotel: Hotel) => [
+    ...(hotel.amenities || []),
+    ...(hotel.hotel_information || []).flatMap((section) => [section.title, ...(section.description || [])]),
+].join(" ").toLowerCase();
 
-    searchableDetails.forEach((detail) => {
-        const value = detail.toLowerCase();
-        if (/\bbars?\b/.test(value)) facilities.add("Bar");
-        if (/\bcinema\b/.test(value)) facilities.add("Cinema");
-        if (/\bgym\b|fitness/.test(value)) facilities.add("Gym");
-        if (/pet[ -]?friendly|pets? allowed/.test(value)) facilities.add("Pet friendly");
-        if (/\brestaurants?\b|\bdining\b/.test(value)) facilities.add("Restaurant");
-        if (/room service/.test(value)) facilities.add("Room service");
-        if (/\bspa\b|massage/.test(value)) facilities.add("Spa");
-        if (/swimming pool|\bpool\b/.test(value)) {
-            facilities.add("Swimming pool");
-            if (/heated/.test(value)) facilities.add("Swimming pool (heated)");
-            if (/indoor/.test(value)) facilities.add("Swimming pool (indoor)");
-            if (/outdoor/.test(value)) facilities.add("Swimming pool (outdoor)");
-        }
-    });
+const includesPattern = (hotel: Hotel, pattern: RegExp, sectionName?: string) =>
+    pattern.test(sectionName ? getHotelInformationText(hotel, sectionName) : getAllHotelFilterText(hotel));
 
-    return Array.from(facilities);
-};
+const FACILITY_FILTERS: HotelFilterDefinition[] = [
+    { key: "bar", label: "Bar", matches: (hotel) => includesPattern(hotel, /\bbars?\b/) },
+    { key: "cinema", label: "Cinema", matches: (hotel) => includesPattern(hotel, /\bcinema\b/) },
+    { key: "gym", label: "Gym", matches: (hotel) => includesPattern(hotel, /\bgym\b|fitness (?:centre|center)/) },
+    {
+        key: "pet-friendly",
+        label: "Pet friendly",
+        matches: (hotel) => includesPattern(hotel, /pet[ -]?friendly|pets? allowed|welcomes? (?:dogs|pets)|dogs? (?:are )?welcome/),
+    },
+    {
+        key: "room-service-24-hours",
+        label: "Room service (24 hours)",
+        matches: (hotel) => includesPattern(hotel, /(?:24\s*[- ]?\s*(?:hour|hr)s?\s+room service|room service[^.]*24\s*[- ]?\s*(?:hour|hr)s?)/),
+    },
+    { key: "spa", label: "Spa", matches: (hotel) => includesPattern(hotel, /\bspa\b/, "Wellness") },
+    { key: "swimming-pool", label: "Swimming pool", matches: (hotel) => includesPattern(hotel, /swimming pool|spa pool|\bpools?\b/) },
+];
 
-const getHotelBenefitCategories = (hotel: Hotel): string[] => {
-    const categories = new Set<string>();
+const HEALTH_WELLNESS_FILTERS: HotelFilterDefinition[] = [
+    { key: "gym", label: "Gym", matches: (hotel) => includesPattern(hotel, /\bgym\b|fitness (?:centre|center)/, "Wellness") },
+    {
+        key: "24-hour-gym",
+        label: "24 hour gym",
+        matches: (hotel) => (hotel.hotel_information || []).some((section) =>
+            normaliseFilterValue(section.title) === "wellness" &&
+            (section.description || []).some((detail) =>
+                /\bgym\b|fitness (?:centre|center)/i.test(detail) &&
+                /open 24 hours|24\s*[- ]?\s*(?:hour|hr)s?/i.test(detail)
+            )
+        ),
+    },
+    { key: "hammam", label: "Hammam", matches: (hotel) => includesPattern(hotel, /\bhammam\b/, "Wellness") },
+    { key: "jacuzzi", label: "Jacuzzi", matches: (hotel) => includesPattern(hotel, /\bjacuzzi\b|hot tub/, "Wellness") },
+    { key: "massage", label: "Massage", matches: (hotel) => includesPattern(hotel, /\bmassage\b/, "Wellness") },
+    { key: "personal-training", label: "Personal training", matches: (hotel) => includesPattern(hotel, /personal training/, "Wellness") },
+    { key: "pilates", label: "Pilates", matches: (hotel) => includesPattern(hotel, /\bpilates\b/, "Wellness") },
+    { key: "sauna", label: "Sauna", matches: (hotel) => includesPattern(hotel, /\bsauna\b/, "Wellness") },
+    { key: "spa", label: "Spa", matches: (hotel) => includesPattern(hotel, /\bspa\b/, "Wellness") },
+    { key: "steam-room", label: "Steam room", matches: (hotel) => includesPattern(hotel, /steam room/, "Wellness") },
+    { key: "yoga", label: "Yoga", matches: (hotel) => includesPattern(hotel, /\byoga\b/, "Wellness") },
+];
 
-    (hotel.benefits || []).forEach((benefit) => {
-        const value = benefit.trim();
-        const lower = value.toLowerCase();
-        if (!value) return;
+const FAMILY_FILTERS: HotelFilterDefinition[] = [
+    {
+        key: "babysitting-available",
+        label: "Babysitting available",
+        matches: (hotel) => includesPattern(hotel, /baby[ -]?sitting available|babysitting available/, "Family"),
+    },
+    {
+        key: "childrens-activities",
+        label: "Children’s activities",
+        matches: (hotel) => includesPattern(
+            hotel,
+            /(?:kids?|children(?:’s|'s)?) (?:club|activities|activity|programme|program)|activities (?:for|tailored to) (?:kids?|children)/,
+            "Family"
+        ),
+    },
+    { key: "playground", label: "Playground", matches: (hotel) => includesPattern(hotel, /\bplayground\b|\bplay area\b/, "Family") },
+];
 
-        if (/preferential|preferred|exclusive rate|discount/.test(lower)) categories.add("Preferential rate");
-        else if (/breakfast/.test(lower)) categories.add("Daily breakfast");
-        else if (/credit/.test(lower)) categories.add("Hotel credit");
-        else if (/upgrade/.test(lower)) categories.add("Room upgrade");
-        else if (/early check[ -]?in/.test(lower)) categories.add("Early check-in");
-        else if (/late check[ -]?out/.test(lower)) categories.add("Late check-out");
-        else if (/transfer/.test(lower)) categories.add("Transfer");
-        else if (/wi[ -]?fi/.test(lower)) categories.add("Wi-Fi");
-        else if (/welcome|amenit/.test(lower)) categories.add("Welcome amenity");
-        else categories.add(value);
-    });
+const buildFilterOptions = (hotels: Hotel[], definitions: HotelFilterDefinition[]): FilterOption[] =>
+    definitions.map((definition) => ({
+        key: definition.key,
+        label: definition.label,
+        count: hotels.filter(definition.matches).length,
+    }));
 
-    return Array.from(categories);
-};
+const matchesSelectedFilters = (
+    hotel: Hotel,
+    selected: string[],
+    definitions: HotelFilterDefinition[]
+) => selected.every((key) => definitions.find((definition) => definition.key === key)?.matches(hotel));
 
-const buildFilterOptions = (hotels: Hotel[], getValues: (hotel: Hotel) => string[]): FilterOption[] => {
-    const options = new Map<string, FilterOption>();
+const getHotelOpeningTimestamp = (hotel: Hotel): number | null => {
+    const shortInfo = hotel.short_info;
+    const opened = typeof shortInfo === "object" && shortInfo !== null ? shortInfo.opened : null;
+    if (!opened) return null;
 
-    hotels.forEach((hotel) => {
-        const hotelValues = new Map<string, string>();
-        getValues(hotel).forEach((value) => hotelValues.set(normaliseFilterValue(value), value));
-        hotelValues.forEach((label, key) => {
-            const existing = options.get(key);
-            options.set(key, { key, label: existing?.label || label, count: (existing?.count || 0) + 1 });
-        });
-    });
-
-    return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label));
+    const timestamp = Date.parse(`1 ${opened}`);
+    return Number.isFinite(timestamp) ? timestamp : null;
 };
 
 const SearchResults: React.FC = () => {
@@ -169,8 +186,9 @@ const SearchResults: React.FC = () => {
     /** How many results are rendered/checked at once; "View More" reveals the next batch of 10. */
     const [visibleCount, setVisibleCount] = useState(10);
     const [filtersOpen, setFiltersOpen] = useState(false);
-    const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
     const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+    const [selectedHealthWellness, setSelectedHealthWellness] = useState<string[]>([]);
+    const [selectedFamily, setSelectedFamily] = useState<string[]>([]);
     const [loadingFilterOptions, setLoadingFilterOptions] = useState(false);
     const baseHotels = useMemo(
         () => (inspirationResults.length > 0 ? inspirationResults : hotels),
@@ -185,12 +203,16 @@ const SearchResults: React.FC = () => {
         () => baseHotels.map((hotel) => detailByHotelId.get(hotel.id) || hotel),
         [baseHotels, detailByHotelId]
     );
-    const benefitOptions = useMemo(
-        () => buildFilterOptions(enrichedHotels, getHotelBenefitCategories),
+    const facilityOptions = useMemo(
+        () => buildFilterOptions(enrichedHotels, FACILITY_FILTERS),
         [enrichedHotels]
     );
-    const facilityOptions = useMemo(
-        () => buildFilterOptions(enrichedHotels, getHotelFacilities),
+    const healthWellnessOptions = useMemo(
+        () => buildFilterOptions(enrichedHotels, HEALTH_WELLNESS_FILTERS),
+        [enrichedHotels]
+    );
+    const familyOptions = useMemo(
+        () => buildFilterOptions(enrichedHotels, FAMILY_FILTERS),
         [enrichedHotels]
     );
     const filteredHotels = useMemo(() => {
@@ -217,18 +239,16 @@ const SearchResults: React.FC = () => {
             filtered = filtered.filter((hotel) => (hotel.rating || 0) >= minRating);
         }
 
-        if (selectedBenefits.length > 0) {
-            filtered = filtered.filter((hotel) => {
-                const hotelBenefits = new Set(getHotelBenefitCategories(hotel).map(normaliseFilterValue));
-                return selectedBenefits.every((benefit) => hotelBenefits.has(benefit));
-            });
+        if (selectedFacilities.length > 0) {
+            filtered = filtered.filter((hotel) => matchesSelectedFilters(hotel, selectedFacilities, FACILITY_FILTERS));
         }
 
-        if (selectedFacilities.length > 0) {
-            filtered = filtered.filter((hotel) => {
-                const hotelFacilities = new Set(getHotelFacilities(hotel).map(normaliseFilterValue));
-                return selectedFacilities.every((facility) => hotelFacilities.has(facility));
-            });
+        if (selectedHealthWellness.length > 0) {
+            filtered = filtered.filter((hotel) => matchesSelectedFilters(hotel, selectedHealthWellness, HEALTH_WELLNESS_FILTERS));
+        }
+
+        if (selectedFamily.length > 0) {
+            filtered = filtered.filter((hotel) => matchesSelectedFilters(hotel, selectedFamily, FAMILY_FILTERS));
         }
 
         const getSortPrice = (hotel: Hotel) => startingFromPrices[hotel.id]?.rate ?? hotel.price;
@@ -246,8 +266,15 @@ const SearchResults: React.FC = () => {
                 return sortByPrice("ascending");
             case "price-high":
                 return sortByPrice("descending");
-            case "name":
-                return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+            case "opening-date":
+                return [...filtered].sort((a, b) => {
+                    const aOpened = getHotelOpeningTimestamp(a);
+                    const bOpened = getHotelOpeningTimestamp(b);
+                    if (aOpened == null && bOpened == null) return 0;
+                    if (aOpened == null) return 1;
+                    if (bOpened == null) return -1;
+                    return bOpened - aOpened;
+                });
             case "rating":
                 return [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
             case "distance":
@@ -259,7 +286,7 @@ const SearchResults: React.FC = () => {
             default:
                 return filtered;
         }
-    }, [enrichedHotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy, selectedBenefits, selectedFacilities, startingFromPrices]);
+    }, [enrichedHotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy, selectedFacilities, selectedHealthWellness, selectedFamily, startingFromPrices]);
     const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
     // Availability is secondary information. Never keep the result cards behind its much
     // slower network calls; tags and member pricing can fill in progressively.
@@ -423,14 +450,14 @@ const SearchResults: React.FC = () => {
     }, [baseHotelIdsKey, baseHotels]);
 
     useEffect(() => {
-        setSelectedBenefits([]);
         setSelectedFacilities([]);
+        setSelectedHealthWellness([]);
+        setSelectedFamily([]);
         setFiltersOpen(false);
     }, [currentSearchKey]);
 
     useEffect(() => {
         if (!isAuthenticated) {
-            setSelectedBenefits([]);
             setSearchParams((current) =>
                 current.sortBy === "price-high" || current.sortBy === "price-low"
                     ? { ...current, sortBy: "recommended" }
@@ -465,21 +492,13 @@ const SearchResults: React.FC = () => {
 
     const clearFilters = () => {
         setSearchParams((current) => ({ ...current, sortBy: "recommended" }));
-        setSelectedBenefits([]);
         setSelectedFacilities([]);
+        setSelectedHealthWellness([]);
+        setSelectedFamily([]);
     };
 
-    const activeFilterCount = selectedBenefits.length + selectedFacilities.length +
+    const activeFilterCount = selectedFacilities.length + selectedHealthWellness.length + selectedFamily.length +
         (searchParams.sortBy !== "recommended" ? 1 : 0);
-
-    // Discard obsolete options when the supplier's detail data changes beneath a search.
-    useEffect(() => {
-        if (loadingFilterOptions) return;
-        const validBenefits = new Set(benefitOptions.map((option) => option.key));
-        const validFacilities = new Set(facilityOptions.map((option) => option.key));
-        setSelectedBenefits((current) => current.filter((value) => validBenefits.has(value)));
-        setSelectedFacilities((current) => current.filter((value) => validFacilities.has(value)));
-    }, [benefitOptions, facilityOptions, loadingFilterOptions]);
 
     // If there are no results, ensure a stale panel cannot obscure the empty state.
     useEffect(() => {
@@ -622,12 +641,10 @@ const SearchResults: React.FC = () => {
                                             <fieldset className="search-filter-section">
                                                 <legend>Sort by</legend>
                                                 {[
-                                                    { value: "recommended", label: "Recommended" },
-                                                    ...(isAuthenticated ? [
-                                                        { value: "price-high", label: "Price (high to low)" },
-                                                        { value: "price-low", label: "Price (low to high)" },
-                                                    ] : []),
-                                                    { value: "name", label: "Hotel name (A–Z)" },
+                                                    { value: "recommended", label: "Recommended", disabled: false },
+                                                    { value: "price-high", label: "Price (high to low)", disabled: !isAuthenticated },
+                                                    { value: "price-low", label: "Price (low to high)", disabled: !isAuthenticated },
+                                                    { value: "opening-date", label: "Opening date", disabled: false },
                                                 ].map((option) => (
                                                     <label className="search-filter-option search-filter-radio" key={option.value}>
                                                         <input
@@ -639,59 +656,59 @@ const SearchResults: React.FC = () => {
                                                                 ...current,
                                                                 sortBy: option.value,
                                                             }))}
+                                                            disabled={option.disabled}
                                                         />
                                                         <span className="search-filter-control" aria-hidden="true" />
                                                         <span className="search-filter-label">{option.label}</span>
                                                     </label>
                                                 ))}
+                                                {!isAuthenticated && (
+                                                    <p className="search-filter-section-note">Log in to sort by live member prices.</p>
+                                                )}
                                             </fieldset>
-
-                                            {isAuthenticated && (
-                                                <fieldset className="search-filter-section">
-                                                    <legend>Ventus Member Benefits</legend>
-                                                    {loadingFilterOptions && benefitOptions.length === 0 ? (
-                                                        <p className="search-filter-loading">
-                                                            <span className="spinner-border spinner-border-sm" aria-hidden="true" />
-                                                            Loading benefit filters…
-                                                        </p>
-                                                    ) : benefitOptions.length > 0 ? (
-                                                        <div className="search-filter-grid">
-                                                            {benefitOptions.map((option) => (
-                                                                <label className="search-filter-option" key={option.key}>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={selectedBenefits.includes(option.key)}
-                                                                        onChange={() => toggleFilterValue(option.key, setSelectedBenefits)}
-                                                                        disabled={loadingFilterOptions}
-                                                                    />
-                                                                    <span className="search-filter-control" aria-hidden="true" />
-                                                                    <span className="search-filter-label">{option.label}</span>
-                                                                    <span className="search-filter-option-count">{option.count}</span>
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="search-filter-empty">No member-benefit filters are available for this search.</p>
-                                                    )}
-                                                </fieldset>
-                                            )}
 
                                             <fieldset className="search-filter-section">
                                                 <legend>Facilities</legend>
-                                                {loadingFilterOptions && facilityOptions.length === 0 ? (
+                                                {loadingFilterOptions ? (
                                                     <p className="search-filter-loading">
                                                         <span className="spinner-border spinner-border-sm" aria-hidden="true" />
                                                         Loading facility filters…
                                                     </p>
-                                                ) : facilityOptions.length > 0 ? (
+                                                ) : (
                                                     <div className="search-filter-grid">
                                                         {facilityOptions.map((option) => (
                                                             <label className="search-filter-option" key={option.key}>
                                                                 <input
+                                                                type="checkbox"
+                                                                checked={selectedFacilities.includes(option.key)}
+                                                                onChange={() => toggleFilterValue(option.key, setSelectedFacilities)}
+                                                                disabled={option.count === 0}
+                                                            />
+                                                            <span className="search-filter-control" aria-hidden="true" />
+                                                            <span className="search-filter-label">{option.label}</span>
+                                                                <span className="search-filter-option-count">{option.count}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </fieldset>
+
+                                            <fieldset className="search-filter-section">
+                                                <legend>Health and wellness</legend>
+                                                {loadingFilterOptions ? (
+                                                    <p className="search-filter-loading">
+                                                        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                                        Loading health and wellness filters…
+                                                    </p>
+                                                ) : (
+                                                    <div className="search-filter-grid">
+                                                        {healthWellnessOptions.map((option) => (
+                                                            <label className="search-filter-option" key={option.key}>
+                                                                <input
                                                                     type="checkbox"
-                                                                    checked={selectedFacilities.includes(option.key)}
-                                                                    onChange={() => toggleFilterValue(option.key, setSelectedFacilities)}
-                                                                    disabled={loadingFilterOptions}
+                                                                    checked={selectedHealthWellness.includes(option.key)}
+                                                                    onChange={() => toggleFilterValue(option.key, setSelectedHealthWellness)}
+                                                                    disabled={option.count === 0}
                                                                 />
                                                                 <span className="search-filter-control" aria-hidden="true" />
                                                                 <span className="search-filter-label">{option.label}</span>
@@ -699,8 +716,32 @@ const SearchResults: React.FC = () => {
                                                             </label>
                                                         ))}
                                                     </div>
+                                                )}
+                                            </fieldset>
+
+                                            <fieldset className="search-filter-section">
+                                                <legend>Family</legend>
+                                                {loadingFilterOptions ? (
+                                                    <p className="search-filter-loading">
+                                                        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                                                        Loading family filters…
+                                                    </p>
                                                 ) : (
-                                                    <p className="search-filter-empty">No facility filters are available for this search.</p>
+                                                    <div className="search-filter-grid">
+                                                        {familyOptions.map((option) => (
+                                                            <label className="search-filter-option" key={option.key}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedFamily.includes(option.key)}
+                                                                    onChange={() => toggleFilterValue(option.key, setSelectedFamily)}
+                                                                    disabled={option.count === 0}
+                                                                />
+                                                                <span className="search-filter-control" aria-hidden="true" />
+                                                                <span className="search-filter-label">{option.label}</span>
+                                                                <span className="search-filter-option-count">{option.count}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </fieldset>
                                         </div>

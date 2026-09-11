@@ -385,6 +385,13 @@
     font-size: 14px;
 }
 
+.search-filter-section-note {
+    margin: 8px 0 0 40px;
+    color: #777;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
 .search-filter-panel-footer {
     padding: 22px 40px;
     border-top: 1px solid #d8d8d8;

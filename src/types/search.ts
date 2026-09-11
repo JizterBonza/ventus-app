@@ -29,6 +29,17 @@ export interface HotelInformation {
   description: string[];
 }
 
+export interface HotelShortInfo {
+  logo?: string | null;
+  type?: string | null;
+  guest_rooms_count?: number | null;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  opened?: string | null;
+  location_description?: string | null;
+  last_refurbished?: string | null;
+}
+
 export interface HotelLinks {
   self: {
     href: string;
@@ -53,7 +64,7 @@ export interface Hotel {
   display_order?: number;
   sustainability_initiative?: string | null;
   sustainability_rating?: number | null;
-  short_info?: string | null;
+  short_info?: HotelShortInfo | string | null;
   hotel_information?: HotelInformation[];
   amenities: string[];
   images: HotelImage[];
