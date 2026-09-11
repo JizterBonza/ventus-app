@@ -389,6 +389,12 @@ const SearchResults: React.FC = () => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
+                                        const memberBenefits = isAuthenticated
+                                            ? Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
+                                            : [];
+                                        const benefitFootnotes = isAuthenticated
+                                            ? Array.from(new Set((displayHotel.benefits_footnotes || []).filter((footnote) => footnote.trim())))
+                                            : [];
 
                                         return (
                                             <div
@@ -466,6 +472,24 @@ const SearchResults: React.FC = () => {
                                                                         ? `${displayHotel.description.substring(0, 450)}...`
                                                                         : displayHotel.description}
                                                                 </p>
+                                                            )}
+                                                            {memberBenefits.length > 0 && (
+                                                                <section
+                                                                    className="search-result-benefits"
+                                                                    aria-label={`${displayHotel.name} member benefits`}
+                                                                >
+                                                                    <h5>Ventus Member Benefits</h5>
+                                                                    <ul>
+                                                                        {memberBenefits.map((benefit) => (
+                                                                            <li key={benefit}>{benefit}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                    {benefitFootnotes.map((footnote) => (
+                                                                        <p className="search-result-benefits-footnote" key={footnote}>
+                                                                            {footnote}
+                                                                        </p>
+                                                                    ))}
+                                                                </section>
                                                             )}
                                                         </div>
                                                         <div 
