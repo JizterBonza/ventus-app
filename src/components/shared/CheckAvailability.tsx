@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AvailabilityParams, AvailabilityResponse, Rate, RateInfo } from "../../types/search";
+import { AvailabilityParams, AvailabilityResponse, Rate } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -62,6 +62,7 @@ interface CheckAvailabilityProps {
     hotelName: string;
     className?: string;
     onAvailabilityResult?: (result: AvailabilityResultWithFormData) => void;
+    onRateSelected?: (rateIndex: string) => void;
 }
 
 function normalizeRateIndex(value: unknown): string | null {
@@ -71,25 +72,12 @@ function normalizeRateIndex(value: unknown): string | null {
     return null;
 }
 
-function getFirstAvailableRateIndex(result: AvailabilityResponse): string {
-    for (const roomType of result.room_types || []) {
-        if (Array.isArray(roomType.rates) && roomType.rates.length > 0) {
-            for (const rate of roomType.rates) {
-                const normalized = normalizeRateIndex(rate.rate_index);
-                if (normalized) return normalized;
-            }
-        }
-        const legacy = normalizeRateIndex(roomType.rate_index);
-        if (legacy) return legacy;
-    }
-    return "";
-}
-
 const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     hotelId,
     hotelName,
     className = "",
     onAvailabilityResult,
+    onRateSelected,
 }) => {
     const { isAuthenticated } = useAuth();
     const [urlSearchParams, setSearchParams] = useSearchParams();
@@ -353,9 +341,8 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                 if (results && results.length > 0) {
                     const result = results[0];
                     setAvailabilityResult(result);
-                    const defaultRateIndex = getFirstAvailableRateIndex(result);
-                    setSelectedRateIndex(defaultRateIndex);
-                    emitAvailabilityResult(result, defaultRateIndex);
+                    setSelectedRateIndex("");
+                    emitAvailabilityResult(result, "");
                 } else {
                     setError("No availability data returned");
                 }
@@ -387,22 +374,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         urlSearchParams,
         recheckNonce,
     ]);
-
-    const formatRate = (rate: number | RateInfo | undefined, currency: string | undefined, defaultCurrency: string): string | null => {
-        if (rate === undefined || rate === null) {
-            return null;
-        }
-
-        // Handle rate as object
-        if (typeof rate === 'object') {
-            const rateValue = rate.rate_in_requested_currency ?? rate.rate ?? rate.total_to_book_in_requested_currency ?? rate.total_to_book;
-            const currencyCode = rate.currency_code ?? rate.requested_currency_code ?? currency ?? defaultCurrency;
-            return rateValue !== undefined ? `${currencyCode} ${rateValue}` : null;
-        }
-
-        // Handle rate as number
-        return `${currency ?? defaultCurrency} ${rate}`;
-    };
 
     const getRoomTypeImage = (roomType: Record<string, any>, index: number): string => {
         const directKeys = ["image", "image_url", "photo", "photo_url", "thumbnail_url"];
@@ -475,6 +446,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         if (!availabilityResult || !rateIndexValue) return;
         setSelectedRateIndex(rateIndexValue);
         emitAvailabilityResult(availabilityResult, rateIndexValue);
+        onRateSelected?.(rateIndexValue);
     };
 
     const notAvailableRetryDates =
@@ -594,57 +566,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         </div>
                     )}
 
-                    {availabilityResult.is_available && isAuthenticated && availabilityResult.lowest_rate !== null && (
-                        <div className="card mt-3 availability-pricing-card">
-                            <div className="card-body">
-                                <h5 className="card-title">Pricing</h5>
-                                <p className="card-text mb-1">
-                                    {(() => {
-                                        const lr = availabilityResult.lowest_rate;
-                                        if (typeof lr === "number") {
-                                            return (
-                                                <>
-                                                    <strong>Lowest Rate:</strong> {formData.currency}{" "}
-                                                    {lr.toLocaleString()}
-                                                </>
-                                            );
-                                        }
-                                        if (lr && typeof lr === "object") {
-                                            const reqCur =
-                                                lr.requested_currency_code ?? lr.currency_code ?? formData.currency;
-                                            const val =
-                                                lr.rate_in_requested_currency ??
-                                                lr.rate ??
-                                                lr.total_to_book_in_requested_currency ??
-                                                lr.total_to_book;
-                                            const idx = normalizeRateIndex(lr.rate_index);
-                                            const amount =
-                                                typeof val === "number"
-                                                    ? `${reqCur} ${val.toLocaleString()}`
-                                                    : null;
-                                            return (
-                                                <>
-                                                    <strong>Lowest Rate:</strong> {amount ?? "N/A"}
-                                                    {idx ? (
-                                                        <>
-                                                            <br />
-                                                            <strong>Rate index:</strong> {idx}
-                                                        </>
-                                                    ) : null}
-                                                </>
-                                            );
-                                        }
-                                        return (
-                                            <>
-                                                <strong>Lowest Rate:</strong> N/A
-                                            </>
-                                        );
-                                    })()}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
                     {availabilityResult.is_available &&
                         availabilityResult.room_types &&
                         availabilityResult.room_types.length > 0 && (
@@ -653,9 +574,8 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                 <h5 className="card-title">Available Room Types</h5>
                                 <div className="room-types-list">
                                     {availabilityResult.room_types.map((roomType, index) => {
-                                        const formattedRate = formatRate(roomType.rate, roomType.currency, formData.currency);
                                         const roomImage = getRoomTypeImage(roomType as Record<string, any>, index);
-                                        const roomFeatures = getRoomTypeFeatures(roomType as Record<string, any>);
+                                        const roomFeatures = getRoomTypeFeatures(roomType as Record<string, any>).slice(0, 3);
                                         const roomRates =
                                             Array.isArray(roomType.rates) && roomType.rates.length > 0
                                                 ? roomType.rates
@@ -678,6 +598,11 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                 {roomType.name && (
                                                     <h6 className="room-type-name">{roomType.name}</h6>
                                                 )}
+                                                <div className="room-type-meta">
+                                                    {[roomType.room_size, roomType.bed_size, roomType.view_from_room]
+                                                        .filter((value): value is string => typeof value === "string" && value.trim() !== "")
+                                                        .map((value) => <span key={value}>{value}</span>)}
+                                                </div>
                                                 {roomType.description && (
                                                     <p className="room-type-description">{roomType.description}</p>
                                                 )}
@@ -707,6 +632,14 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                                     typeof (rate as Record<string, any>).cancellation_policy === "string"
                                                                         ? (rate as Record<string, any>).cancellation_policy
                                                                         : null;
+                                                                const paymentDescription =
+                                                                    typeof (rate as Record<string, any>).payment_description === "string"
+                                                                        ? (rate as Record<string, any>).payment_description
+                                                                        : null;
+                                                                const rateBenefits = Array.from(new Set([
+                                                                    ...(((rate as Rate).benefits || []).filter(Boolean)),
+                                                                    ...(((rate as Rate).additional_benefits || []).filter(Boolean)),
+                                                                ]));
                                                                 const resolvedRateIndex =
                                                                     normalizeRateIndex((rate as Rate).rate_index) ??
                                                                     normalizeRateIndex(roomType.rate_index);
@@ -724,33 +657,31 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                                         ) : (
                                                                             <span className="room-type-rate-value">Login to view price</span>
                                                                         )}
-                                                                        {resolvedRateIndex && (
-                                                                            <label className={`room-type-rate-checkbox ${isSelected ? "is-checked" : ""}`}>
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={isSelected}
-                                                                                    onChange={(e) => {
-                                                                                        if (e.target.checked) {
-                                                                                            handleSelectRate(resolvedRateIndex);
-                                                                                        }
-                                                                                    }}
-                                                                                />
-                                                                            </label>
+                                                                        {resolvedRateIndex && isAuthenticated && (
+                                                                            <button
+                                                                                type="button"
+                                                                                className={`btn room-type-select-rate ${isSelected ? "btn-outline-primary" : "btn-primary"}`}
+                                                                                onClick={() => handleSelectRate(resolvedRateIndex)}
+                                                                            >
+                                                                                {isSelected ? "Selected" : "Select room"}
+                                                                            </button>
                                                                         )}
-                                                                        {cancellationPolicy && (
-                                                                            <p className="room-type-rate-policy mb-0">
-                                                                                Cancellation Policy: {cancellationPolicy}
-                                                                            </p>
+                                                                        {(cancellationPolicy || paymentDescription || rateBenefits.length > 0) && (
+                                                                            <details className="room-type-rate-details">
+                                                                                <summary>Rate details</summary>
+                                                                                {rateBenefits.length > 0 && (
+                                                                                    <ul>
+                                                                                        {rateBenefits.map((benefit) => <li key={benefit}>{benefit}</li>)}
+                                                                                    </ul>
+                                                                                )}
+                                                                                {cancellationPolicy && <p>{cancellationPolicy}</p>}
+                                                                                {paymentDescription && <p>{paymentDescription}</p>}
+                                                                            </details>
                                                                         )}
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
-                                                        {selectedRateIndex && (
-                                                            <p className="room-type-selected-rate mb-0">
-                                                                Selected Rate Index: <strong>{selectedRateIndex}</strong>
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 )}
                                                 <div className="room-type-footer">
@@ -759,11 +690,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                             Max Occupancy: {roomType.max_occupancy}
                                                         </span>
                                                     )}
-                                                    {isAuthenticated && formattedRate && (
-                                                        <strong className="room-type-rate">
-                                                            {formattedRate}
-                                                        </strong>
-                                                    )}
+                                                    {!isAuthenticated && <span className="room-type-rate">Login to view prices</span>}
                                                 </div>
                                             </div>
                                         );

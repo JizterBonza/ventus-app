@@ -1634,6 +1634,233 @@
     }
 }
 
+/* Property availability: concise room selection first, booking details second. */
+.availability-results .availability-room-types-card {
+    border: 1px solid #d9d7d1;
+    background: #fff;
+    color: #1f1f1f;
+    box-shadow: none;
+}
+
+.availability-results .availability-room-types-card .card-title {
+    color: #1f1f1f;
+}
+
+.availability-results .availability-room-types-card .room-types-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+.availability-results .room-type-item {
+    display: grid;
+    grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+    column-gap: 30px;
+    min-height: 250px;
+    padding: 24px 0;
+    border: 0;
+    border-bottom: 1px solid #dfddd7;
+    background: #fff;
+    color: #1f1f1f;
+    box-shadow: none;
+}
+
+.availability-results .room-type-item:first-child {
+    padding-top: 10px;
+}
+
+.availability-results .room-type-item:last-child {
+    border-bottom: 0;
+}
+
+.availability-results .room-type-item:hover {
+    transform: none;
+    border-color: #dfddd7;
+    box-shadow: none;
+}
+
+.availability-results .room-type-image-wrap {
+    grid-column: 1;
+    grid-row: 1 / span 8;
+    height: 100%;
+    min-height: 220px;
+    margin: 0;
+    border-radius: 0;
+}
+
+.availability-results .room-type-image {
+    height: 100%;
+    min-height: 220px;
+}
+
+.availability-results .room-type-name,
+.availability-results .room-type-description,
+.availability-results .room-type-meta,
+.availability-results .room-type-features,
+.availability-results .room-type-rates,
+.availability-results .room-type-footer {
+    grid-column: 2;
+}
+
+.availability-results .room-type-name {
+    margin: 0 0 4px;
+    color: #1f1f1f;
+    font-size: 1.25rem;
+}
+
+.availability-results .room-type-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-bottom: 10px;
+    color: #6b6b6b;
+    font-size: 0.82rem;
+}
+
+.availability-results .room-type-meta span + span::before {
+    content: "•";
+    margin-right: 14px;
+    color: #b49a65;
+}
+
+.availability-results .room-type-description {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-bottom: 10px;
+    color: #555;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.availability-results .room-type-features-label {
+    color: #6d644f;
+}
+
+.availability-results .room-type-feature-tag,
+.availability-results .room-type-occupancy {
+    border: 1px solid #ded8ca;
+    background: #f6f3ec;
+    color: #333;
+}
+
+.availability-results .room-type-rates-list {
+    gap: 9px;
+}
+
+.availability-results .room-type-rate-item {
+    display: grid;
+    grid-template-columns: minmax(130px, 1fr) auto auto;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #dfddd7;
+    border-radius: 0;
+    background: #fff;
+}
+
+.availability-results .room-type-rate-item--selected {
+    border-color: #aa9363;
+    background: #f8f5ee;
+}
+
+.availability-results .room-type-rate-title,
+.availability-results .room-type-rate-value {
+    color: #1f1f1f;
+}
+
+.availability-results .room-type-rate-value {
+    align-self: center;
+    font-size: 0.95rem;
+}
+
+.availability-results .room-type-select-rate {
+    min-width: 116px;
+    margin: 0;
+    padding: 9px 14px;
+}
+
+.availability-results .room-type-rate-details {
+    grid-column: 1 / -1;
+    color: #555;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.availability-results .room-type-rate-details summary {
+    width: max-content;
+    color: #4f4634;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.availability-results .room-type-rate-details ul,
+.availability-results .room-type-rate-details p {
+    margin: 10px 0 0;
+}
+
+@media (max-width: 767px) {
+    .availability-results .room-type-item {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .availability-results .room-type-image-wrap,
+    .availability-results .room-type-name,
+    .availability-results .room-type-description,
+    .availability-results .room-type-meta,
+    .availability-results .room-type-features,
+    .availability-results .room-type-rates,
+    .availability-results .room-type-footer {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .availability-results .room-type-rate-item {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .availability-results .room-type-rate-value {
+        text-align: left;
+    }
+}
+
+.booking-selection-summary {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr auto;
+    gap: 24px;
+    align-items: center;
+    margin: 26px 0 34px;
+    padding: 20px 22px;
+    border: 1px solid #d9d7d1;
+    background: #f8f6f1;
+}
+
+.booking-selection-summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.booking-selection-label {
+    color: #746b59;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.booking-change-room {
+    color: #2b2b2b;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+@media (max-width: 767px) {
+    .booking-selection-summary {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+}
+
 /* Policy Pages Header Styles */
 .policy-header {
     background-color: #dbe2d6;

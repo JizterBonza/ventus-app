@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import { searchHotelsByQuery } from "../../utils/api";
+import { getHotelCalendarRates, searchHotelsByQuery } from "../../utils/api";
+import { getVisitorCurrency } from "../../utils/currency";
+import { useAuth } from "../../contexts/AuthContext";
+import type { HotelCalendarRate } from "../../types/search";
 import {
     SEARCH_SESSION_COOKIES,
     setCookie,
@@ -20,6 +23,8 @@ interface SearchBarNewProps {
     prefillLocation?: string | null;
     /** Whether a search triggered from this bar is currently in flight (e.g. results page re-searching). Shows a spinner on the Search button so it's obvious a click registered. */
     isSearching?: boolean;
+    /** Enables property-specific nightly prices in the date picker for signed-in members. */
+    hotelId?: number;
 }
 
 interface LocationSuggestion {
@@ -84,10 +89,26 @@ interface CalendarMonthProps {
     hovered: Date | null;
     onSelect: (d: Date) => void;
     onHover: (d: Date | null) => void;
+    ratesByDate?: Record<string, HotelCalendarRate>;
+    ratesLoading?: boolean;
 }
 
+const formatCalendarRate = (rate: HotelCalendarRate): string => {
+    if (rate.rate === null || rate.rate === undefined || rate.rate === "") return "";
+    const symbols: Record<string, string> = {
+        GBP: "£",
+        EUR: "€",
+        USD: "$",
+        JPY: "¥",
+        AUD: "A$",
+        SGD: "S$",
+        PHP: "₱",
+    };
+    return `${symbols[rate.currency] || `${rate.currency} `}${rate.rate}`;
+};
+
 const CalendarMonth: React.FC<CalendarMonthProps> = ({
-    year, month, checkIn, checkOut, hovered, onSelect, onHover,
+    year, month, checkIn, checkOut, hovered, onSelect, onHover, ratesByDate, ratesLoading,
 }) => {
     const monthName = new Date(year, month).toLocaleString("en-GB", {
         month: "long",
@@ -119,12 +140,17 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
                 {cells.map((d, i) => {
                     if (!d) return <div key={i} className="le-cal-cell empty" />;
                     const isPast = d < today;
+                    const dateKey = toStorageStr(d);
+                    const calendarRate = ratesByDate?.[dateKey];
+                    const isClosed = Boolean(calendarRate?.is_closed);
                     const isStart = checkIn && isSameDay(d, checkIn);
                     const isEnd = checkOut && isSameDay(d, checkOut);
                     const inRange = isInRange(d, checkIn, rangeEnd);
                     const isHov = hovered && isSameDay(d, hovered);
                     let cls = "le-cal-cell";
                     if (isPast) cls += " past";
+                    if (calendarRate && !isClosed) cls += " has-rate";
+                    if (isClosed) cls += " closed";
                     if (isStart) cls += " start selected";
                     if (isEnd) cls += " end selected";
                     if (inRange) cls += " in-range";
@@ -133,11 +159,19 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
                         <div
                             key={i}
                             className={cls}
-                            onClick={() => !isPast && onSelect(d)}
-                            onMouseEnter={() => !isPast && onHover(d)}
+                            onClick={() => !isPast && !isClosed && onSelect(d)}
+                            onMouseEnter={() => !isPast && !isClosed && onHover(d)}
                             onMouseLeave={() => onHover(null)}
                         >
-                            {d.getDate()}
+                            <span className="le-cal-date-number">{d.getDate()}</span>
+                            {!isPast && calendarRate && (
+                                <span className="le-cal-date-rate">
+                                    {isClosed ? "Closed" : formatCalendarRate(calendarRate)}
+                                </span>
+                            )}
+                            {!isPast && ratesLoading && !calendarRate && (
+                                <span className="le-cal-date-rate le-cal-date-rate--loading" aria-hidden />
+                            )}
                         </div>
                     );
                 })}
@@ -149,10 +183,11 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
 const normalizeLocationDisplay = (raw: string) =>
     raw.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
-const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, isSearching = false }) => {
+const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, isSearching = false, hotelId }) => {
     const [urlSearchParams, setUrlSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const routeLocation = useLocation();
+    const { isAuthenticated } = useAuth();
 
     const [location, setLocation] = useState("");
     const [checkIn, setCheckIn] = useState<Date | null>(() => {
@@ -179,6 +214,9 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestionsLoading, setSuggestionsLoading] = useState(false);
     const [locationError, setLocationError] = useState<string | null>(null);
+    const [selectedHotelId, setSelectedHotelId] = useState<number | null>(null);
+    const [calendarRates, setCalendarRates] = useState<Record<string, HotelCalendarRate>>({});
+    const [calendarRatesLoading, setCalendarRatesLoading] = useState(false);
 
     const calendarRef = useRef<HTMLDivElement>(null);
     const guestRef = useRef<HTMLDivElement>(null);
@@ -231,6 +269,37 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         if (p) setLocation(normalizeLocationDisplay(p));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [prefillLocation]);
+
+    const calendarHotelId = hotelId ?? selectedHotelId;
+
+    useEffect(() => {
+        if (!isAuthenticated || !calendarHotelId) {
+            setCalendarRates({});
+            setCalendarRatesLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        setCalendarRatesLoading(true);
+        void (async () => {
+            try {
+                const currency = await getVisitorCurrency();
+                const rates = await getHotelCalendarRates(calendarHotelId, currency);
+                if (cancelled) return;
+                setCalendarRates(
+                    Object.fromEntries(rates.map((rate) => [rate.date, rate]))
+                );
+            } catch {
+                if (!cancelled) setCalendarRates({});
+            } finally {
+                if (!cancelled) setCalendarRatesLoading(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [calendarHotelId, isAuthenticated]);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -349,6 +418,9 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const chooseSuggestion = (suggestion: LocationSuggestion) => {
         locationChangedByUserRef.current = false;
         setLocation(suggestion.value);
+        setSelectedHotelId(
+            suggestion.type === "hotel" ? Number(suggestion.id.replace(/^hotel-/, "")) : null
+        );
         setLocationError(null);
         setShowSuggestions(false);
     };
@@ -357,6 +429,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         locationChangedByUserRef.current = true;
         suggestionRequestRef.current += 1;
         setLocation("");
+        setSelectedHotelId(null);
         setSuggestions([]);
         setShowSuggestions(false);
         setSuggestionsLoading(false);
@@ -525,6 +598,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                             onChange={(e) => {
                                 locationChangedByUserRef.current = true;
                                 setLocation(e.target.value);
+                                setSelectedHotelId(null);
                                 setLocationError(null);
                             }}
                             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
@@ -656,6 +730,8 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                                             hovered={hovered}
                                             onSelect={handleDateSelect}
                                             onHover={setHovered}
+                                            ratesByDate={calendarRates}
+                                            ratesLoading={calendarRatesLoading}
                                         />
                                         <CalendarMonth
                                             year={secondMonth.year}
@@ -665,6 +741,8 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                                             hovered={hovered}
                                             onSelect={handleDateSelect}
                                             onHover={setHovered}
+                                            ratesByDate={calendarRates}
+                                            ratesLoading={calendarRatesLoading}
                                         />
                                     </div>
                                     <button type="button" className="le-cal-nav" onClick={nextMonth}>›</button>

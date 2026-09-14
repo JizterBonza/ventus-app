@@ -865,6 +865,13 @@ const getHotelApiCachePolicy = (req) => {
     };
   }
 
+  if (/^\/v2\/hotels\/\d+\/calendar$/.test(path)) {
+    return {
+      serverTtlMs: 10 * 60 * 1000,
+      cacheControl: 'private, max-age=300, stale-while-revalidate=600, stale-if-error=3600'
+    };
+  }
+
   if (path === '/v2/hotels' && requestUrl.searchParams.has('inspiration_id')) {
     return {
       serverTtlMs: 30 * 60 * 1000,

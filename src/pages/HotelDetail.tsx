@@ -467,6 +467,14 @@ const HotelDetail: React.FC = () => {
         }
     };
 
+    const handleAvailabilityRateSelected = () => {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                document.getElementById("booking")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        });
+    };
+
     const handleBookingSuccess = (response: any) => {
         // console.log("Booking successful:", response);
         // You can add additional success handling here
@@ -571,7 +579,7 @@ const HotelDetail: React.FC = () => {
         <div className="hotel-detail-page">
             <Header />
             {/* Hero Section */}
-        <SearchBarNew prefillLocation={hotel.name} />
+        <SearchBarNew prefillLocation={hotel.name} hotelId={hotel.id} />
             
             <section className="header-image-container" onClick={() => setShowGallery(true)}>
                     <img
@@ -841,6 +849,42 @@ const HotelDetail: React.FC = () => {
                 </div>
             </section>
 
+            <section id="check-availability" className="section-padding availability-section">
+                <div className="container">
+                    <CheckAvailability
+                        hotelId={hotel.id}
+                        hotelName={hotel.name}
+                        onAvailabilityResult={handleAvailabilityResult}
+                        onRateSelected={handleAvailabilityRateSelected}
+                    />
+                </div>
+            </section>
+
+            {isAuthenticated && availabilityResult?.is_available && availabilityResult.room_types?.length > 0 && selectedAvailabilityRateIndex && (
+                <section id="booking" className="section-padding booking-section" style={{ paddingTop: 0 }}>
+                    <div className="container">
+                        <BookingForm
+                            hotelId={hotel.id}
+                            hotelName={hotel.name}
+                            onBookingSuccess={handleBookingSuccess}
+                            onBookingError={handleBookingError}
+                            sessionId={availabilityResult.session_id?.trim() || undefined}
+                            startDate={availabilityFormData?.start_date || ""}
+                            endDate={availabilityFormData?.end_date || ""}
+                            initialRooms={
+                                availabilityFormData
+                                    ? availabilityFormData.initialRooms ?? [
+                                          { adults: availabilityFormData.adults, children: [] },
+                                      ]
+                                    : undefined
+                            }
+                            rateIndex={selectedAvailabilityRateIndex}
+                            availabilityResult={availabilityResult}
+                        />
+                    </div>
+                </section>
+            )}
+
             {hotel.hotel_information && hotel.hotel_information.length > 0 && (
                 <section className="section-hotel-info">
                     <div className="container">
@@ -963,96 +1007,6 @@ const HotelDetail: React.FC = () => {
                 </section>
             )}
          
-            <section id="check-availability" className="section-padding availability-section">
-                <div className="container">
-                    <CheckAvailability
-                        hotelId={hotel.id}
-                        hotelName={hotel.name}
-                        onAvailabilityResult={handleAvailabilityResult}
-                    />
-                </div>
-            </section>
-
-            {availabilityResult && availabilityResult.is_available && availabilityResult.room_types && availabilityResult.room_types.length > 0 && (
-                <section className="section-padding booking-section" style={{ paddingTop: 0 }}>
-                    <div className="container">
-                        {isAuthenticated ? (
-                            <BookingForm
-                                hotelId={hotel.id}
-                                hotelName={hotel.name}
-                                onBookingSuccess={handleBookingSuccess}
-                                onBookingError={handleBookingError}
-                                sessionId={availabilityResult?.session_id && availabilityResult.session_id.trim() !== '' ? availabilityResult.session_id : undefined}
-                                startDate={availabilityFormData?.start_date || ""}
-                                endDate={availabilityFormData?.end_date || ""}
-                                initialRooms={
-                                    availabilityFormData
-                                        ? availabilityFormData.initialRooms ?? [
-                                              { adults: availabilityFormData.adults, children: [] },
-                                          ]
-                                        : undefined
-                                }
-                                rateIndex={selectedAvailabilityRateIndex || (() => {
-                                    // Extract rate_index from the first available rate in the first room type
-                                    if (availabilityResult?.room_types && availabilityResult.room_types.length > 0) {
-                                        const firstRoomType = availabilityResult.room_types[0];
-                                        // Check if room type has rates array
-                                        if (firstRoomType.rates && firstRoomType.rates.length > 0) {
-                                            const firstRate = firstRoomType.rates[0];
-                                            if (firstRate.rate_index !== undefined && firstRate.rate_index !== null) {
-                                                return String(firstRate.rate_index);
-                                            }
-                                        }
-                                        // Fallback to legacy rate_index field
-                                        if (firstRoomType.rate_index !== undefined && firstRoomType.rate_index !== null) {
-                                            return String(firstRoomType.rate_index);
-                                        }
-                                    }
-                                    return undefined;
-                                })()}
-                                availabilityResult={availabilityResult}
-                            />
-                        ) : (
-                            <div className="global-form">
-                                <div className="text-center">
-                                    <h2>Book Your Stay</h2>
-                                    <p className="text-muted mb-3">Hotel: {hotel.name}</p>
-                                    <button 
-                                                onClick={() => setIsSubscriptionModalOpen(true)}
-                                                className="btn btn-primary btn-lg"
-                                            >
-                                                Join Now
-                                            </button>
-                                </div>
-                                {/* <div className="alert alert-info text-center">
-                                    <h4><i className="fa fa-info-circle me-2"></i>Login Required</h4>
-                                    <p className="mb-3">You must be logged in to make a booking. Please log in to continue with your reservation.</p>
-                                    <Link to="/login" className="btn btn-primary btn-lg">
-                                        Log In to Book
-                                    </Link>
-                                    <p className="mt-3 mb-0">
-                                        Don't have an account? <Link to="/signup">Sign up here</Link>
-                                    </p>
-                                </div> */}
-                              {/*    <div className="section-membership" style={{ display: 'block' }}>
-                                    <div className="section-membership-content text-center">
-                                        <div className="membership-content_heading">
-                                            <img src="/assets/img/ventus-logo.png" />
-                                            <h3>Join now to unlock exclusive member benefits</h3>
-                                            
-                                        </div>
-                                        <div className="membership-content_foot">
-                                            <p>Already have an account? Sign in <Link to="/login">here</Link></p>
-                                        </div>
-                                    </div>
-                                </div>  */}
-
-
-                            </div>
-                        )}
-                    </div>
-                </section>
-            )}
               <BannerCTA />
               <QuoteForm />
             <Footer />

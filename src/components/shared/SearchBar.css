@@ -290,3 +290,50 @@
     padding: 18px 16px;
   }
 }
+
+/* Signed-in property searches show the supplier's nightly calendar prices. */
+.le-cal-cell.has-rate,
+.le-cal-cell.closed {
+  aspect-ratio: auto;
+  min-height: 42px;
+  border-radius: 3px;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.le-cal-date-number {
+  display: block;
+}
+
+.le-cal-date-rate {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #9b7f48;
+  font-size: 8px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.le-cal-cell.selected .le-cal-date-rate {
+  color: inherit;
+}
+
+.le-cal-cell.closed {
+  color: #aaa;
+  cursor: default;
+}
+
+.le-cal-cell.closed .le-cal-date-rate {
+  color: #aaa;
+  font-size: 7px;
+}
+
+.le-cal-date-rate--loading {
+  width: 24px;
+  height: 5px;
+  border-radius: 3px;
+  background: #ece8df;
+}

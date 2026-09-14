@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
-import { Hotel, RateInfo } from "../types/search";
+import { AvailabilityResponse, Hotel, RateInfo } from "../types/search";
 import { getHotelDetails, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
 import {
@@ -52,6 +52,33 @@ type FilterOption = {
     key: string;
     label: string;
     count: number;
+};
+
+type AvailabilityMemberBenefits = {
+    benefits: string[];
+    footnotes: string[];
+};
+
+const getAvailabilityMemberBenefits = (
+    result: AvailabilityResponse
+): AvailabilityMemberBenefits | null => {
+    const benefits = new Set<string>();
+    const footnotes = new Set<string>();
+
+    for (const roomType of result.room_types || []) {
+        for (const rate of roomType.rates || []) {
+            for (const benefit of [...(rate.benefits || []), ...(rate.additional_benefits || [])]) {
+                if (typeof benefit === "string" && benefit.trim()) benefits.add(benefit.trim());
+            }
+            for (const footnote of rate.benefits_footnotes || []) {
+                if (typeof footnote === "string" && footnote.trim()) footnotes.add(footnote.trim());
+            }
+        }
+    }
+
+    return benefits.size > 0
+        ? { benefits: Array.from(benefits), footnotes: Array.from(footnotes) }
+        : null;
 };
 
 const normaliseFilterValue = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
@@ -183,6 +210,8 @@ const SearchResults: React.FC = () => {
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
     /** Availability per hotel id for the search dates/rooms; false = confirmed not available. */
     const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
+    /** Exact, date-specific member benefits returned with the live room rates. */
+    const [availabilityMemberBenefits, setAvailabilityMemberBenefits] = useState<Record<number, AvailabilityMemberBenefits>>({});
     /** How many results are rendered/checked at once; "View More" reveals the next batch of 10. */
     const [visibleCount, setVisibleCount] = useState(10);
     const [filtersOpen, setFiltersOpen] = useState(false);
@@ -515,11 +544,13 @@ const SearchResults: React.FC = () => {
         if (visibleHotels.length === 0) {
             setStartingFromPrices({});
             setHotelAvailability({});
+            setAvailabilityMemberBenefits({});
             setLoadingStartingFromPrices(false);
             return;
         }
         let cancelled = false;
         setLoadingStartingFromPrices(true);
+        setAvailabilityMemberBenefits({});
         const { start_date, end_date, rooms } = searchDatesAndRooms;
 
         (async () => {
@@ -538,11 +569,14 @@ const SearchResults: React.FC = () => {
                 if (cancelled) return;
                 const nextPrices: Record<number, { rate: number; currency: string }> = {};
                 const nextAvailability: Record<number, boolean> = {};
+                const nextBenefits: Record<number, AvailabilityMemberBenefits> = {};
                 results.forEach((settled, index) => {
                     const hotel = visibleHotels[index];
                     if (!hotel || settled.status !== "fulfilled" || !settled.value?.length) return;
                     const first = settled.value[0];
                     nextAvailability[hotel.id] = !!first?.is_available;
+                    const exactBenefits = first ? getAvailabilityMemberBenefits(first) : null;
+                    if (exactBenefits) nextBenefits[hotel.id] = exactBenefits;
                     if (!isAuthenticated || !first?.is_available || first.lowest_rate == null) return;
                     const lr = first.lowest_rate;
                     const rateValue =
@@ -563,11 +597,13 @@ const SearchResults: React.FC = () => {
                 if (!cancelled) {
                     setStartingFromPrices((prev) => ({ ...prev, ...nextPrices }));
                     setHotelAvailability((prev) => ({ ...prev, ...nextAvailability }));
+                    setAvailabilityMemberBenefits((prev) => ({ ...prev, ...nextBenefits }));
                 }
             } catch {
                 if (!cancelled) {
                     setStartingFromPrices({});
                     setHotelAvailability({});
+                    setAvailabilityMemberBenefits({});
                 }
             } finally {
                 if (!cancelled) setLoadingStartingFromPrices(false);
@@ -786,11 +822,12 @@ const SearchResults: React.FC = () => {
                                         // Use detailed hotel information if available, otherwise fall back to basic info
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
+                                        const exactMemberBenefits = availabilityMemberBenefits[hotel.id];
                                         const memberBenefits = isAuthenticated
-                                            ? Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
+                                            ? exactMemberBenefits?.benefits || Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
                                             : [];
                                         const benefitFootnotes = isAuthenticated
-                                            ? Array.from(new Set((displayHotel.benefits_footnotes || []).filter((footnote) => footnote.trim())))
+                                            ? exactMemberBenefits?.footnotes || Array.from(new Set((displayHotel.benefits_footnotes || []).filter((footnote) => footnote.trim())))
                                             : [];
 
                                         return (

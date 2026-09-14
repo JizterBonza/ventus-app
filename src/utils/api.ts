@@ -1,4 +1,4 @@
-import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse } from '../types/search';
+import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse, HotelCalendarRate } from '../types/search';
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
 import { isAuthenticated } from './authService';
 
@@ -1112,6 +1112,67 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
       );
     }
     throw error;
+  }
+};
+
+const HOTEL_CALENDAR_MEMORY_TTL_MS = 10 * 60 * 1000;
+const hotelCalendarMemoryCache = new Map<string, { rates: HotelCalendarRate[]; expiresAt: number }>();
+const hotelCalendarInflight = new Map<string, Promise<HotelCalendarRate[]>>();
+
+/** Fetches the same nightly-rate calendar used by the Little Emperors property search. */
+export const getHotelCalendarRates = async (
+  hotelId: number,
+  currency = 'GBP'
+): Promise<HotelCalendarRate[]> => {
+  const normalizedCurrency = currency.trim().toUpperCase() || 'GBP';
+  const cacheKey = `${hotelId}:${normalizedCurrency}`;
+  const cached = hotelCalendarMemoryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.rates;
+  if (cached) hotelCalendarMemoryCache.delete(cacheKey);
+
+  const inflight = hotelCalendarInflight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    const searchParams = new URLSearchParams({ currency: normalizedCurrency });
+    const response = await makeApiRequest(
+      `${API_BASE_URL}/hotels/${hotelId}/calendar?${searchParams.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${API_TOKEN}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Unable to load the hotel rate calendar (${response.status})`);
+    }
+
+    const data = await response.json();
+    const rates = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
+    const normalizedRates: HotelCalendarRate[] = rates
+      .filter((item: any) => item && typeof item.date === 'string')
+      .map((item: any) => ({
+        date: item.date,
+        rate: item.rate ?? null,
+        currency: item.currency || normalizedCurrency,
+        is_closed: Boolean(item.is_closed),
+      }));
+
+    hotelCalendarMemoryCache.set(cacheKey, {
+      rates: normalizedRates,
+      expiresAt: Date.now() + HOTEL_CALENDAR_MEMORY_TTL_MS,
+    });
+    return normalizedRates;
+  })();
+
+  hotelCalendarInflight.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    hotelCalendarInflight.delete(cacheKey);
   }
 };
 

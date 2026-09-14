@@ -156,6 +156,8 @@ export interface Rate {
   requested_currency_code?: string;
   currency_code?: string;
   additional_benefits?: string[];
+  benefits?: string[];
+  benefits_footnotes?: string[];
   [key: string]: any; // For any other fields that might be present
 }
 
@@ -202,4 +204,11 @@ export interface AvailabilityResponse {
       method: string;
     };
   };
+}
+
+export interface HotelCalendarRate {
+  date: string;
+  rate: string | number | null;
+  currency: string;
+  is_closed: boolean;
 }

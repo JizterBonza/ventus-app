@@ -322,8 +322,6 @@ import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import {
     ensureMinimumCheckOutDateString,
-    getMinimumCheckOutDateString,
-    getTodayLocalDateString,
 } from "../../utils/searchSession";
 
 interface BookingFormProps {
@@ -1217,6 +1215,24 @@ const BookingForm: React.FC<BookingFormProps> = ({
         }
     };
 
+    const selectedRoomAndRate = (() => {
+        for (const roomType of availabilityResult?.room_types || []) {
+            const selectedRate = roomType.rates?.find(
+                (rate) => String(rate.rate_index) === formData.rateIndex
+            );
+            if (selectedRate) {
+                const value = selectedRate.rate_in_requested_currency ?? selectedRate.rate ?? selectedRate.total_to_book_in_requested_currency ?? selectedRate.total_to_book;
+                const currency = selectedRate.requested_currency_code ?? selectedRate.currency_code ?? availabilityResult?.default_currency ?? "";
+                return {
+                    room: roomType.name || "Selected room",
+                    rate: selectedRate.title || "Standard rate",
+                    price: typeof value === "number" ? `${currency} ${value.toLocaleString()}` : null,
+                };
+            }
+        }
+        return null;
+    })();
+
     return (
         <div className={`global-form ${className}`}>
             <div className="text-center">
@@ -1224,167 +1240,22 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 <p className="text-muted mb-0">Hotel: {hotelName}</p>
             </div>
             <form className="form slim" onSubmit={handleSubmit}>
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                        <div className="form-column-inner">
-                            <label htmlFor="startDate" className="form-label">
-                                Check-in Date *
-                            </label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                id="startDate"
-                                name="startDate"
-                                value={formData.startDate}
-                                onChange={handleInputChange}
-                                min={getTodayLocalDateString()}
-                                required
-                            />
-                        </div>
-                        <div className="form-column-inner">
-                            <label htmlFor="endDate" className="form-label">
-                                Check-out Date *
-                            </label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                id="endDate"
-                                name="endDate"
-                                value={formData.endDate}
-                                onChange={handleInputChange}
-                                min={getMinimumCheckOutDateString(formData.startDate)}
-                                required
-                            />
-                        </div>
-                    </div>
-                </div>
+                <input type="hidden" name="sessionId" value={formData.sessionId} />
+                <input type="hidden" name="rateIndex" value={formData.rateIndex} />
 
-                <div className="d-grid form-row">
-                    <div className="form-column">
-                        <div className="form-column-inner">
-                            <label htmlFor="sessionId" className="form-label">
-                                Session ID *
-                            </label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                id="sessionId"
-                                name="sessionId"
-                                value={formData.sessionId}
-                                onChange={handleInputChange}
-                                placeholder={formData.sessionId ? "Session ID from availability check" : "Please check availability first to get a session ID"}
-                                required
-                            />
-                            {!formData.sessionId && (
-                                <div className="alert alert-warning mt-2">
-                                    <i className="fa fa-exclamation-triangle me-1"></i>
-                                    <strong>Session ID required:</strong> Please check availability above first. The session ID will be automatically filled. If your session has expired, please check availability again.
-                                </div>
-                            )}
-                        </div>
-                        <div className="form-column-inner">
-                            <label htmlFor="rateIndex" className="form-label">
-                                Room Type / Rate Index *
-                            </label>
-                            {availabilityResult?.room_types && availabilityResult.room_types.length > 0 ? (
-                                <select
-                                    className="form-select"
-                                    id="rateIndex"
-                                    name="rateIndex"
-                                    value={formData.rateIndex}
-                                    onChange={handleInputChange}
-                                    required
-                                >
-                                    <option value="">Select a room type and rate</option>
-                                    {availabilityResult.room_types.flatMap((roomType, roomIndex) => {
-                                        const roomName = roomType.name || `Room Type ${roomIndex + 1}`;
-                                        
-                                        // If room type has rates array, show each rate as an option
-                                        if (roomType.rates && roomType.rates.length > 0) {
-                                            return roomType.rates
-                                                .filter(rate => {
-                                                    // Allow rate_index to be 0 (which is a valid rate_index)
-                                                    if (rate.rate_index === undefined || rate.rate_index === null) {
-                                                        return false;
-                                                    }
-                                                    // Allow numbers (including 0) and non-empty strings
-                                                    if (typeof rate.rate_index === 'number') {
-                                                        return true; // 0 is valid
-                                                    }
-                                                    if (typeof rate.rate_index === 'string') {
-                                                        return rate.rate_index.trim() !== '';
-                                                    }
-                                                    return false;
-                                                })
-                                                .map((rate, rateIndex) => {
-                                                    const rateValue = rate.rate_in_requested_currency ?? rate.rate ?? rate.total_to_book_in_requested_currency ?? rate.total_to_book;
-                                                    const currency = rate.requested_currency_code ?? rate.currency_code ?? availabilityResult.default_currency ?? '';
-                                                    const rateDisplay = isAuthenticated && rateValue !== undefined && rateValue !== null 
-                                                        ? `${currency} ${typeof rateValue === 'number' ? rateValue.toLocaleString() : rateValue}` 
-                                                        : isAuthenticated ? 'Price not available' : 'Login to view price';
-                                                    const rateTitle = rate.title || 'Standard Rate';
-                                                    const optionLabel = isAuthenticated 
-                                                        ? `${roomName} - ${rateTitle} (${rateDisplay})`
-                                                        : `${roomName} - ${rateTitle}`;
-                                                    
-                                                    return (
-                                                        <option key={`${roomIndex}-${rateIndex}`} value={String(rate.rate_index)}>
-                                                            {optionLabel}
-                                                        </option>
-                                                    );
-                                                });
-                                        }
-                                        
-                                        // Fallback: if no rates array, use legacy rate field or rate_index
-                                        // Only include if rate_index is valid (including 0)
-                                        if (roomType.rate_index === undefined || roomType.rate_index === null) {
-                                            return []; // Don't show invalid options
-                                        }
-                                        // Allow 0 as a valid rate_index
-                                        if (typeof roomType.rate_index === 'string' && roomType.rate_index.trim() === '') {
-                                            return []; // Don't show empty string options
-                                        }
-                                        
-                                        const rateValue = typeof roomType.rate === 'object' 
-                                            ? roomType.rate?.rate_in_requested_currency ?? roomType.rate?.rate ?? roomType.rate?.total_to_book_in_requested_currency ?? roomType.rate?.total_to_book
-                                            : roomType.rate;
-                                        const currency = typeof roomType.rate === 'object'
-                                            ? roomType.rate?.requested_currency_code ?? roomType.rate?.currency_code ?? roomType.currency
-                                            : roomType.currency ?? availabilityResult.default_currency ?? '';
-                                        const rateDisplay = isAuthenticated && rateValue 
-                                            ? `${currency} ${rateValue}` 
-                                            : isAuthenticated ? 'Price not available' : 'Login to view price';
-                                        
-                                        // Use rate_index from roomType (already validated above)
-                                        const rateIndexValue = String(roomType.rate_index);
-                                        
-                                        return (
-                                            <option key={roomIndex} value={rateIndexValue}>
-                                                {isAuthenticated ? `${roomName} - ${rateDisplay}` : `${roomName}`}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            ) : (
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    id="rateIndex"
-                                    name="rateIndex"
-                                    value={formData.rateIndex}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter rate index (check availability first)"
-                                    required
-                                />
-                            )}
-                            {!availabilityResult && (
-                                <div className="alert alert-warning mt-2">
-                                    <i className="fa fa-exclamation-triangle me-1"></i>
-                                    <strong>Rate Index required:</strong> Please check availability above first to see available room types and rates.
-                                </div>
-                            )}
-                        </div>
+                <div className="booking-selection-summary">
+                    <div>
+                        <span className="booking-selection-label">Your stay</span>
+                        <strong>{formData.startDate} — {formData.endDate}</strong>
                     </div>
+                    <div>
+                        <span className="booking-selection-label">Selected room</span>
+                        <strong>{selectedRoomAndRate?.room || "Selected room"}</strong>
+                        {selectedRoomAndRate && (
+                            <span>{selectedRoomAndRate.rate}{selectedRoomAndRate.price ? ` · ${selectedRoomAndRate.price}` : ""}</span>
+                        )}
+                    </div>
+                    <a href="#check-availability" className="booking-change-room">Change room</a>
                 </div>
 
                 <div className="d-grid form-row">
