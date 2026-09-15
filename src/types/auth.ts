@@ -6,8 +6,20 @@ export interface User {
   firstName: string;
   lastName: string;
   phone?: string;
+  cityOfResidence?: string;
   avatar?: string;
   createdAt: string;
+  membershipActive: boolean;
+  membership?: {
+    id: string;
+    planId: string;
+    status: string;
+    amountPaid: number;
+    currency: string;
+    paymentProvider: string;
+    startsAt: string;
+    expiresAt: string | null;
+  } | null;
 }
 
 export interface AuthState {
@@ -29,6 +41,7 @@ export interface SignupData {
   firstName: string;
   lastName: string;
   phone?: string;
+  cityOfResidence: string;
   agreeToTerms: boolean;
 }
 
@@ -43,6 +56,7 @@ export interface AuthResponse {
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  hasActiveMembership: boolean;
   isLoading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -50,4 +64,3 @@ export interface AuthContextType {
   logout: () => void;
   clearError: () => void;
 }
-

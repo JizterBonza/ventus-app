@@ -47,8 +47,18 @@ EMAILJS_TEMPLATE_ID=your_password_reset_template_id
 EMAILJS_PUBLIC_KEY=your_emailjs_public_key
 
 # PayPal Configuration
-# Get these from: https://developer.paypal.com/dashboard/applications/sandbox
-PAYPAL_CLIENT_ID=AfaoowvVXx5dXMEisezXWp4ZQpQm_3lRs-7YmDJc4-dDTFb529Tso9nmdCEF6P6Yn_wwnSpP_z0w10dk
-PAYPAL_SECRET_KEY=EMPNpEciL8qsSBvv4emt4G5EFhhtMjm6lddSMbYoS6jyKMxH8fsXClMwyexbbfg7Q925uNfcF_dEZJZm
-# Set to 'sandbox' for testing, 'live' for production
-PAYPAL_MODE=sandbox
+# Create separate sandbox and live REST apps in the PayPal developer dashboard.
+PAYPAL_CLIENT_ID=your_paypal_client_id
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret
+PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
+# Use sandbox locally and live only with live REST app credentials.
+PAYPAL_ENVIRONMENT=sandbox
+
+# Optional membership coupons. Keep these on the server only.
+# Example: {"WELCOME100":{"discountPercent":100,"description":"Complimentary membership"}}
+MEMBERSHIP_COUPONS_JSON={}
+
+# Booking requests are always persisted. Configure this address to also receive notifications.
+BOOKING_NOTIFICATION_EMAIL=daniella@ventustravel.co.uk
+# Optional; defaults to PASSWORD_RESET_FROM_EMAIL.
+# BOOKING_FROM_EMAIL=Ventus Travel <bookings@ventustravel.co.uk>

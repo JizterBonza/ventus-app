@@ -87,14 +87,10 @@ async function initDatabase() {
   console.log('=== Initializing Database ===');
   
   try {
-    // Drop existing table (optional - remove in production)
-    console.log('Dropping existing users table if exists...');
-    await pool.query('DROP TABLE IF EXISTS users CASCADE');
-    
-    // Create users table
-    console.log('Creating users table...');
+    // This initializer is deliberately non-destructive and is safe to re-run.
+    console.log('Ensuring users table exists...');
     await pool.query(`
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
@@ -108,12 +104,12 @@ async function initDatabase() {
     `);
     
     // Create index on email for faster lookups
-    console.log('Creating index on email...');
-    await pool.query('CREATE INDEX idx_users_email ON users(email)');
+    console.log('Ensuring email index exists...');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
 
     console.log('Creating password reset tokens table...');
     await pool.query(`
-      CREATE TABLE password_reset_tokens (
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id BIGSERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         token_hash CHAR(64) UNIQUE NOT NULL,
@@ -122,8 +118,8 @@ async function initDatabase() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await pool.query('CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)');
-    await pool.query('CREATE INDEX idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at)');
     
     console.log('✓ Database initialized successfully!');
     console.log('\nDatabase schema:');

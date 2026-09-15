@@ -17,8 +17,7 @@ Your PayPal Client ID and Secret Key have been configured in the following files
 - ✅ `backend/ENV_example.txt` - PayPal credentials template
 - Add to your `.env` file for backend PayPal verification
 
-**Client ID:** `AfaoowvVXx5dXMEisezXWp4ZQpQm_3lRs-7YmDJc4-dDTFb529Tso9nmdCEF6P6Yn_wwnSpP_z0w10dk`  
-**Secret Key:** `EMPNpEciL8qsSBvv4emt4G5EFhhtMjm6lddSMbYoS6jyKMxH8fsXClMwyexbbfg7Q925uNfcF_dEZJZm`
+Create separate sandbox and live REST applications in the PayPal developer dashboard. Store both credentials only in the backend environment.
 
 ### For Production:
 - Switch to your **Live Client ID** and **Live Secret Key** from PayPal Dashboard
@@ -74,8 +73,9 @@ The backend currently accepts PayPal payment details. For production, you should
 
 2. **Add PayPal credentials to backend `.env` file:**
    ```env
-   PAYPAL_CLIENT_ID=AfaoowvVXx5dXMEisezXWp4ZQpQm_3lRs-7YmDJc4-dDTFb529Tso9nmdCEF6P6Yn_wwnSpP_z0w10dk
-   PAYPAL_SECRET_KEY=EMPNpEciL8qsSBvv4emt4G5EFhhtMjm6lddSMbYoS6jyKMxH8fsXClMwyexbbfg7Q925uNfcF_dEZJZm
+   PAYPAL_CLIENT_ID=your_paypal_client_id
+   PAYPAL_CLIENT_SECRET=your_paypal_client_secret
+   PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
    PAYPAL_MODE=sandbox
    ```
 

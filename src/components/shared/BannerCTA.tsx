@@ -10,7 +10,7 @@ const BannerCTA: React.FC = () => {
                         <p>Explore the World with Ventus Luxury Travels</p>
                     </div>
                     <div className="cta-content_buttons">
-                        <a href="https://www.ventustravel.co.uk/contact-us" target="_blank" className="btn btn-primary btn-lg">Contact</a>
+                        <a href="https://www.ventustravel.co.uk/contact-us" target="_blank" rel="noreferrer" className="btn btn-primary btn-lg">Contact</a>
                         <a href="/#destinations"  className="btn btn-secondary btn-lg">Explore</a>
                     </div>
                 </div>

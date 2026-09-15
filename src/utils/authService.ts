@@ -22,6 +22,7 @@ const getApiUrl = () => {
 };
 
 const AUTH_API_URL = getApiUrl();
+const SUBSCRIPTIONS_API_URL = AUTH_API_URL.replace(/\/auth\/?$/, '/subscriptions');
 
 // Log API URL in development for debugging
 if (process.env.NODE_ENV === 'development') {
@@ -472,6 +473,100 @@ export const resetPassword = async (token: string, password: string): Promise<Au
     console.error('Reset password error:', error);
     return { success: false, error: 'Unable to connect to the password reset service' };
   }
+};
+
+export interface MembershipCheckoutConfig {
+  plan: {
+    id: string;
+    name: string;
+    price: number;
+    currency: 'GBP';
+    interval: 'yearly';
+  };
+  paypal: {
+    configured: boolean;
+    clientId: string | null;
+    environment: 'sandbox' | 'live';
+  };
+}
+
+export interface MembershipQuote {
+  planId: string;
+  basePrice: number;
+  finalPrice: number;
+  currency: 'GBP';
+  couponValid: boolean;
+  discountPercent: number;
+  couponDescription: string;
+}
+
+const parseApiResponse = async <T>(response: Response): Promise<T> => {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed (${response.status})`);
+  }
+  return data as T;
+};
+
+const membershipAuthHeaders = () => {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please log in to continue with membership checkout.');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`
+  };
+};
+
+export const getMembershipCheckoutConfig = async (): Promise<MembershipCheckoutConfig> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/config`, { cache: 'no-store' });
+  const data = await parseApiResponse<{ success: boolean } & MembershipCheckoutConfig>(response);
+  return { plan: data.plan, paypal: data.paypal };
+};
+
+export const getMembershipQuote = async (couponCode?: string): Promise<MembershipQuote> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/quote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId: 'travel-yearly', couponCode })
+  });
+  const data = await parseApiResponse<{ success: boolean; quote: MembershipQuote }>(response);
+  return data.quote;
+};
+
+export const createPayPalMembershipOrder = async (couponCode?: string): Promise<string> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/paypal/order`, {
+    method: 'POST',
+    headers: membershipAuthHeaders(),
+    body: JSON.stringify({ planId: 'travel-yearly', couponCode })
+  });
+  const data = await parseApiResponse<{ success: boolean; orderId: string }>(response);
+  return data.orderId;
+};
+
+export const capturePayPalMembershipOrder = async (orderId: string): Promise<void> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/paypal/capture`, {
+    method: 'POST',
+    headers: membershipAuthHeaders(),
+    body: JSON.stringify({ orderId })
+  });
+  await parseApiResponse(response);
+};
+
+export const activateComplimentaryMembership = async (couponCode: string): Promise<void> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/complimentary`, {
+    method: 'POST',
+    headers: membershipAuthHeaders(),
+    body: JSON.stringify({ planId: 'travel-yearly', couponCode })
+  });
+  await parseApiResponse(response);
+};
+
+export const getSubscriptionStatus = async (): Promise<{ hasActiveSubscription: boolean }> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/status`, {
+    headers: membershipAuthHeaders(),
+    cache: 'no-store'
+  });
+  return parseApiResponse(response);
 };
 
 /**

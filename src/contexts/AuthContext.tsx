@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { User, AuthState, LoginCredentials, SignupData, AuthContextType } from '../types/auth';
+import { AuthState, LoginCredentials, SignupData, AuthContextType } from '../types/auth';
 import { loginUser, signupUser, logoutUser, getCurrentUser } from '../utils/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -120,6 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = useMemo(() => ({
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
+    hasActiveMembership: Boolean(authState.user?.membershipActive),
     isLoading: authState.isLoading,
     error: authState.error,
     login,
@@ -130,4 +131,3 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

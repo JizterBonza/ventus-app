@@ -79,7 +79,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     onAvailabilityResult,
     onRateSelected,
 }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, hasActiveMembership } = useAuth();
     const [urlSearchParams, setSearchParams] = useSearchParams();
     const [formData, setFormData] = useState(() => {
         const dates = getDefaultSearchDateStrings();
@@ -171,13 +171,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     const [recheckNonce, setRecheckNonce] = useState(0);
     /** Editable dates while result is "Not Available"; applied on "Check again" only (no auto-fetch on change). */
     const [retryDraft, setRetryDraft] = useState<{ start_date: string; end_date: string } | null>(null);
-    const roomImageFallbacks = [
-        "/assets/img/rooms/1.jpg",
-        "/assets/img/rooms/2.jpg",
-        "/assets/img/rooms/3.jpg",
-        "/assets/img/rooms/4.jpg",
-    ];
-
     const getValidationError = (): string | null => {
         if (!formData.start_date) {
             return "Please select check-in date";
@@ -299,7 +292,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
     // Auto-run availability using header search (URL + cookies), after hydration from the same source.
     useEffect(() => {
-        if (!searchHydrated || !hotelId) {
+        if (!hasActiveMembership || !searchHydrated || !hotelId) {
             return;
         }
 
@@ -373,6 +366,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         searchRoomSlots,
         urlSearchParams,
         recheckNonce,
+        hasActiveMembership,
     ]);
 
     const getRoomTypeImage = (roomType: Record<string, any>, index: number): string => {
@@ -401,7 +395,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             }
         }
 
-        return roomImageFallbacks[index % roomImageFallbacks.length];
+        return "";
     };
 
     const getRoomTypeFeatures = (roomType: Record<string, any>): string[] => {
@@ -456,6 +450,20 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                   end_date: formData.end_date,
               })
             : null;
+
+    if (!hasActiveMembership) {
+        return (
+            <div className={`global-form ${className}`}>
+                <div className="text-center">
+                    <h2>Availability</h2>
+                    <p>{isAuthenticated ? "Complete your membership to view live prices, benefits and room availability." : "Log in to view live prices, benefits and room availability."}</p>
+                    <a className="btn btn-primary" href={isAuthenticated ? "/subscription" : "/login"}>
+                        {isAuthenticated ? "Complete membership" : "Log in"}
+                    </a>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`global-form ${className}`}>
@@ -585,15 +593,18 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                         return (
                                             <div key={index} className="room-type-item">
                                                 <div className="room-type-image-wrap">
-                                                    <img
-                                                        src={roomImage}
-                                                        alt={roomType.name || `Room Type ${index + 1}`}
-                                                        className="room-type-image"
-                                                        onError={(e) => {
-                                                            const target = e.target as HTMLImageElement;
-                                                            target.src = roomImageFallbacks[index % roomImageFallbacks.length];
-                                                        }}
-                                                    />
+                                                    {roomImage ? (
+                                                        <img
+                                                            src={roomImage}
+                                                            alt={roomType.name || `Room Type ${index + 1}`}
+                                                            className="room-type-image"
+                                                            loading="lazy"
+                                                            decoding="async"
+                                                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                                        />
+                                                    ) : (
+                                                        <span className="room-type-image-placeholder" role="img" aria-label={`${roomType.name || `Room type ${index + 1}`} image unavailable`} />
+                                                    )}
                                                 </div>
                                                 {roomType.name && (
                                                     <h6 className="room-type-name">{roomType.name}</h6>
@@ -650,14 +661,14 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                                         className={`room-type-rate-item ${isSelected ? "room-type-rate-item--selected" : ""}`}
                                                                     >
                                                                         <span className="room-type-rate-title">{rateTitle}</span>
-                                                                        {isAuthenticated ? (
+                                                                        {hasActiveMembership ? (
                                                                             <span className="room-type-rate-value">
                                                                                 {value !== null ? `${currency} ${value.toLocaleString()}` : "Price not available"}
                                                                             </span>
                                                                         ) : (
                                                                             <span className="room-type-rate-value">Login to view price</span>
                                                                         )}
-                                                                        {resolvedRateIndex && isAuthenticated && (
+                                                                        {resolvedRateIndex && hasActiveMembership && (
                                                                             <button
                                                                                 type="button"
                                                                                 className={`btn room-type-select-rate ${isSelected ? "btn-outline-primary" : "btn-primary"}`}
@@ -690,7 +701,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                             Max Occupancy: {roomType.max_occupancy}
                                                         </span>
                                                     )}
-                                                    {!isAuthenticated && <span className="room-type-rate">Login to view prices</span>}
+                                                    {!hasActiveMembership && <span className="room-type-rate">Complete membership to view prices</span>}
                                                 </div>
                                             </div>
                                         );

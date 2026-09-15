@@ -15,7 +15,7 @@ const Membership: React.FC = () => {
                 <div className="container">
                     <div className="section-membership-content text-center">
                         <div className="membership-content_heading">
-                            <img src="/assets/img/ventus-logo.png" />
+                            <img src="/assets/img/ventus-logo.png" alt="Ventus Travel" />
                             
                             <h3>Join now to view rates and unlock exclusive members benefits</h3>
                             <button 
@@ -26,7 +26,7 @@ const Membership: React.FC = () => {
                             </button>
                         </div>
                         <div className="membership-content_foot">
-                            <p>Already have an account? Sign in here <a href="/login">here</a></p>
+                            <p>Already have an account? Sign in <a href="/login">here</a></p>
                         </div>
                     </div>
                 </div>

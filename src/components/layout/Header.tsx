@@ -6,6 +6,7 @@ import Breadcrumb from "../shared/Breadcrumb";
 const Header: React.FC = () => {
     const location = useLocation();
     const hideBreadcrumbs = location.pathname === '/signup' || location.pathname === '/login';
+    const overlayHero = location.pathname === '/buy-outs';
     
     return (
         <>
@@ -25,7 +26,7 @@ const Header: React.FC = () => {
             </div>
 
             {/* Navbar */}
-            <nav className="navbar navbar-expand-lg">
+            <nav className={`navbar navbar-expand-lg${overlayHero ? ' ventus-overlay-navbar' : ''}`}>
                 <div className="container">
                     {/* Logo */}
                     <div className="logo-wrapper">

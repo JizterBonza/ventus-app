@@ -1,89 +1,116 @@
-import React from "react";
+import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
-import PageHeader from "../components/shared/PageHeader";
+import "./RecoveryPages.css";
 
 const BuyOuts: React.FC = () => {
+    const [submitted, setSubmitted] = useState(false);
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setSubmitted(true);
+    };
+
     return (
         <Layout>
-            {/* Page Header */}
-            <PageHeader
-                title="Buy out your favourite properties and make them your private oasis."
-                text="Discover the breathtaking destinations Ventus Luxury Travel has to offer."
-                backgroundImage="/assets/img/page/buyout.webp"
-            />
+            <div
+                className="ventus-recovery-page ventus-buyouts-page"
+                data-wf-site="677faee4ec02118e52414101"
+                data-wf-page="677faee4ec02118e52414116"
+            >
+                <header className="ventus-buyouts-hero" aria-labelledby="buyouts-heading">
+                    <img
+                        className="ventus-buyouts-hero-image"
+                        src="/assets/img/recovered/buyouts-hero.webp"
+                        alt="A private lakeside property surrounded by lush gardens"
+                        width="1920"
+                        height="1280"
+                        loading="eager"
+                        decoding="async"
+                    />
+                    <div className="ventus-buyouts-shade" />
+                    <div className="ventus-recovery-container ventus-buyouts-hero-copy ventus-reveal">
+                        <h1 id="buyouts-heading">
+                            Buy out your favourite properties and make them your private oasis.
+                        </h1>
+                        <p>Discover the breathtaking destinations Ventus Luxury Travel has to offer.</p>
+                    </div>
+                    <a className="ventus-scroll-cue" href="#proposal-form">
+                        <span>Scroll to discover more</span>
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m2 5 6 6 6-6" /></svg>
+                    </a>
+                </header>
 
-            {/* About Content */}
-            <section className="section-padding section-text-center">
-                <div className="container">
-                    <div className="global-form">
-                        <div className="text-center">
-                            <h2>Submit a proposal for request</h2>
+                <section className="ventus-proposal-section" id="proposal-form" aria-labelledby="proposal-heading">
+                    <div className="ventus-form-container">
+                        <div className="ventus-form-heading">
+                            <span aria-hidden="true" />
+                            <h2 id="proposal-heading">Submit a proposal for request</h2>
+                            <span aria-hidden="true" />
                         </div>
-                        <form className="form slim">
-                            <div className="form-column">
-                                <label htmlFor="firstname" className="form-label">
-                                    First Name
-                                </label>
-                                <input type="text" className="form-control" id="firstname" name="firstname" required />
 
-                                <label htmlFor="email" className="form-label">
-                                    Email Address
-                                </label>
-                                <input type="email" className="form-control" id="email" name="email" required />
-
-                                <label htmlFor="date" className="form-label">
-                                    Date
-                                </label>
-                                <input type="date" className="form-control" id="date" name="date" required />
+                        {submitted ? (
+                            <div className="ventus-form-success" role="status" tabIndex={-1}>
+                                <span aria-hidden="true">✓</span>
+                                <h3>Thank you</h3>
+                                <p>Your proposal request has been received. Daniella will be in touch soon.</p>
+                                <button type="button" onClick={() => setSubmitted(false)}>Send another request</button>
                             </div>
-
-                            <div className="form-column">
-                                <label htmlFor="lastname" className="form-label">
-                                    Last Name
-                                </label>
-                                <input type="text" className="form-control" id="lastname" name="lastname" required />
-
-                                <label htmlFor="phone" className="form-label">
-                                    Phone Number
-                                </label>
-                                <input type="text" className="form-control" id="phone" name="phone" required />
-
-                                <label htmlFor="roomType" className="form-label">
-                                    Choose a topic
-                                </label>
-                                <select className="form-select" id="roomType" name="roomType">
-                                    <option value="">Select a topic</option>
-                                    <option value="wedding">Wedding</option>
-                                    <option value="birthday">Birthday</option>
-                                    <option value="privacy">Privacy</option>
-                                    <option value="business">Business</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div className="d-grid form-row">
-                                <div className="form-column">
-                                    <label htmlFor="message" className="form-label">
-                                        Message
-                                    </label>
+                        ) : (
+                            <form className="ventus-proposal-form" onSubmit={handleSubmit}>
+                                <div className="ventus-form-grid">
+                                    <div className="ventus-field">
+                                        <label htmlFor="buyout-first-name">First name</label>
+                                        <input id="buyout-first-name" name="firstName" type="text" autoComplete="given-name" required />
+                                    </div>
+                                    <div className="ventus-field">
+                                        <label htmlFor="buyout-last-name">Last name</label>
+                                        <input id="buyout-last-name" name="lastName" type="text" autoComplete="family-name" required />
+                                    </div>
+                                    <div className="ventus-field">
+                                        <label htmlFor="buyout-email">Email</label>
+                                        <input id="buyout-email" name="email" type="email" autoComplete="email" required />
+                                    </div>
+                                    <div className="ventus-field">
+                                        <label htmlFor="buyout-phone">Phone number</label>
+                                        <input id="buyout-phone" name="phone" type="tel" autoComplete="tel" required />
+                                    </div>
+                                    <div className="ventus-field">
+                                        <label htmlFor="buyout-date">Date</label>
+                                        <input id="buyout-date" name="date" type="date" />
+                                    </div>
+                                    <div className="ventus-field">
+                                        <label htmlFor="buyout-topic">Choose a topic</label>
+                                        <select id="buyout-topic" name="topic" defaultValue="" required>
+                                            <option value="" disabled>Select field</option>
+                                            <option value="wedding">Wedding</option>
+                                            <option value="birthday">Birthday</option>
+                                            <option value="privacy">Privacy</option>
+                                            <option value="business">Business</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="ventus-field ventus-field-message">
+                                    <label htmlFor="buyout-message">Message</label>
                                     <textarea
-                                        className="form-control"
-                                        id="message"
+                                        id="buyout-message"
                                         name="message"
-                                        placeholder="Type your message"
-                                        rows={5}
+                                        placeholder="Type your message..."
+                                        maxLength={5000}
+                                        rows={6}
                                         required
                                     />
                                 </div>
-                            </div>
-                            <div className="d-grid">
-                                <button type="submit" className="btn btn-primary btn-lg">
-                                    Submit
-                                </button>
-                            </div>
-                        </form>
+                                <label className="ventus-consent" htmlFor="buyout-terms">
+                                    <input id="buyout-terms" name="terms" type="checkbox" required />
+                                    <span>I accept the <a href="/terms-of-service">Terms</a></span>
+                                </label>
+                                <button className="ventus-form-submit" type="submit">Submit</button>
+                            </form>
+                        )}
                     </div>
-                </div>
-            </section>
+                </section>
+            </div>
         </Layout>
     );
 };

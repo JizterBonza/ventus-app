@@ -187,7 +187,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const [urlSearchParams, setUrlSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const routeLocation = useLocation();
-    const { isAuthenticated } = useAuth();
+    const { hasActiveMembership } = useAuth();
 
     const [location, setLocation] = useState("");
     const [checkIn, setCheckIn] = useState<Date | null>(() => {
@@ -273,7 +273,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const calendarHotelId = hotelId ?? selectedHotelId;
 
     useEffect(() => {
-        if (!isAuthenticated || !calendarHotelId) {
+        if (!hasActiveMembership || !calendarHotelId) {
             setCalendarRates({});
             setCalendarRatesLoading(false);
             return;
@@ -299,7 +299,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         return () => {
             cancelled = true;
         };
-    }, [calendarHotelId, isAuthenticated]);
+    }, [calendarHotelId, hasActiveMembership]);
 
     // Close dropdowns on outside click
     useEffect(() => {

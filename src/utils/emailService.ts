@@ -2,18 +2,22 @@ import emailjs from '@emailjs/browser';
 import { BookingDetails } from '../types/search';
 
 // EmailJS configuration
-const EMAILJS_SERVICE_ID = 'service_bz8el8q';
-const EMAILJS_TEMPLATE_ID = 'template_e9gwfvx';
-const EMAILJS_PUBLIC_KEY = 'UlWAdeYMonSd7VHlz';
+const EMAILJS_SERVICE_ID = process.env.REACT_APP_EMAILJS_SERVICE_ID || '';
+const EMAILJS_TEMPLATE_ID = process.env.REACT_APP_EMAILJS_TEMPLATE_ID || '';
+const EMAILJS_PUBLIC_KEY = process.env.REACT_APP_EMAILJS_PUBLIC_KEY || '';
+const BOOKING_EMAIL = process.env.REACT_APP_BOOKING_EMAIL || 'daniella@ventustravel.co.uk';
 
 // Initialize EmailJS
-emailjs.init(EMAILJS_PUBLIC_KEY);
+if (EMAILJS_PUBLIC_KEY) emailjs.init(EMAILJS_PUBLIC_KEY);
 
 /**
  * Send booking details via EmailJS
  */
 export const sendBookingEmailViaEmailJS = async (bookingDetails: BookingDetails): Promise<{ success: boolean; message: string; bookingId?: string }> => {
   try {
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+      throw new Error('Browser email delivery is not configured');
+    }
     console.log('Sending booking email via EmailJS:', bookingDetails);
     
     // Generate a unique booking ID
@@ -21,7 +25,7 @@ export const sendBookingEmailViaEmailJS = async (bookingDetails: BookingDetails)
     
     // Prepare template parameters
     const templateParams = {
-      to_email: 'testjizternoda@gmail.com',
+      to_email: BOOKING_EMAIL,
       from_name: bookingDetails.guestName,
       from_email: bookingDetails.guestEmail,
       booking_id: bookingId,
@@ -96,7 +100,7 @@ export const sendBookingEmailViaFormService = async (bookingDetails: BookingDeta
     formData.append('submitted_at', new Date().toISOString());
     formData.append('_subject', `New Hotel Booking Request - ${bookingDetails.hotelName}`);
     formData.append('_replyto', bookingDetails.guestEmail);
-    formData.append('_cc', 'testjizternoda@gmail.com');
+    formData.append('_cc', BOOKING_EMAIL);
     
     // For demonstration, we'll simulate the form submission
     // In a real implementation, you would submit to a service like Formspree
@@ -165,7 +169,7 @@ Booking submitted at: ${new Date().toLocaleString()}
     `.trim();
     
     // Create mailto link
-    const mailtoLink = `mailto:testjizternoda@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailtoLink = `mailto:${BOOKING_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
     // Open mailto link
     window.open(mailtoLink, '_blank');

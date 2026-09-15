@@ -1,0 +1,989 @@
+/*
+ * Scoped reconstruction styles for the verified May 2025 Webflow pages.
+ * The source pages were still live when Common Crawl captured them in March 2026.
+ */
+
+.ventus-recovery-page {
+    --ventus-ink: #252628;
+    --ventus-grey: #656569;
+    --ventus-light-grey: #e2e2e2;
+    --ventus-gold: #d9a470;
+    --ventus-sage: #dbe2d6;
+    background: #fff;
+    color: #000;
+    font-family: "Lato", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    overflow: hidden;
+}
+
+.ventus-recovery-page h1,
+.ventus-recovery-page h2,
+.ventus-recovery-page h3,
+.ventus-recovery-page p,
+.ventus-recovery-page figure,
+.ventus-recovery-page blockquote {
+    margin: 0;
+}
+
+.ventus-recovery-page h1,
+.ventus-recovery-page h2,
+.ventus-recovery-page h3 {
+    color: inherit;
+    font-family: "Lato", sans-serif;
+    font-weight: 300;
+    text-transform: uppercase;
+}
+
+.ventus-recovery-page p {
+    color: inherit;
+    font-family: "Lato", sans-serif;
+}
+
+.ventus-recovery-container {
+    width: min(100% - 5rem, 80rem);
+    margin-inline: auto;
+}
+
+.ventus-reveal {
+    animation: ventus-reveal 700ms cubic-bezier(.22, .61, .36, 1) both;
+}
+
+.ventus-reveal-delay {
+    animation-delay: 120ms;
+}
+
+@keyframes ventus-reveal {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header overlay used only by the recovered Buy Outs hero. */
+.navbar.ventus-overlay-navbar {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 100;
+    width: 100%;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, .68), rgba(0, 0, 0, .08));
+    border-bottom-color: rgba(255, 255, 255, .12);
+}
+
+/* About: founder introduction */
+.ventus-founder-section {
+    display: flex;
+    align-items: center;
+    min-height: 44rem;
+    padding-block: 5rem;
+}
+
+.ventus-founder-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 5rem;
+    align-items: center;
+}
+
+.ventus-founder-copy h1 {
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    line-height: 1.4;
+}
+
+.ventus-founder-copy p {
+    font-size: 1.125rem;
+    font-weight: 300;
+    line-height: 1.65;
+}
+
+.ventus-founder-copy .ventus-founder-emphasis {
+    margin-top: 1.5rem;
+    color: var(--ventus-ink);
+    font-weight: 400;
+}
+
+.ventus-founder-image {
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+}
+
+.ventus-founder-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ventus-mark-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: min(100% - 5rem, 80rem);
+    margin-inline: auto;
+    padding-block: 1rem;
+}
+
+.ventus-mark-divider span {
+    width: 100%;
+    height: 1px;
+    background: #b5b5b5;
+}
+
+.ventus-mark-divider img {
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
+}
+
+/* About: VIP amenities */
+.ventus-benefits-section {
+    padding-block: 8rem;
+}
+
+.ventus-benefits-intro {
+    max-width: 44rem;
+}
+
+.ventus-benefits-intro h2 {
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.4;
+    text-transform: none;
+}
+
+.ventus-outline-link,
+.ventus-solid-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    min-height: 3rem;
+    padding: .7rem 1.4rem;
+    border: 1px solid #000;
+    color: #000;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.ventus-outline-link svg,
+.ventus-solid-link svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    transition: transform 180ms ease;
+}
+
+.ventus-outline-link:hover,
+.ventus-outline-link:focus-visible {
+    border-color: var(--ventus-ink);
+    background: var(--ventus-ink);
+    color: #fff;
+}
+
+.ventus-outline-link:hover svg,
+.ventus-solid-link:hover svg {
+    transform: translate(2px, -2px);
+}
+
+.ventus-benefits-lead {
+    margin-top: 4.5rem !important;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.ventus-benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3rem;
+    margin: 3rem 0 0;
+    padding: 0;
+}
+
+.ventus-benefits-grid li {
+    list-style: none;
+    font-size: 1rem;
+    font-weight: 300;
+    line-height: 1.5;
+}
+
+.ventus-amenity-icon {
+    display: block;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: .75rem;
+    color: var(--ventus-gold);
+}
+
+/* About: occasion panel */
+.ventus-occasion-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42rem;
+    padding: 8rem 2.5rem;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.ventus-occasion-background {
+    position: absolute;
+    z-index: -2;
+    inset: -20%;
+    width: 140%;
+    height: 140%;
+    object-fit: cover;
+    opacity: .8;
+}
+
+.ventus-occasion-section::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: rgba(255, 255, 255, .08);
+    content: "";
+}
+
+.ventus-occasion-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 38rem;
+    text-align: center;
+}
+
+.ventus-occasion-copy h2 {
+    margin-bottom: .75rem;
+    font-size: 3rem;
+    font-weight: 400;
+    line-height: 1.35;
+    text-transform: none;
+}
+
+.ventus-occasion-copy p {
+    max-width: 31rem;
+    margin-bottom: 2.5rem !important;
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.55;
+}
+
+/* About: Instagram */
+.ventus-adventures-section {
+    padding-block: 8rem;
+}
+
+.ventus-adventures-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.ventus-adventures-heading h2 {
+    margin-bottom: 1.5rem;
+    font-size: 2.5rem;
+    line-height: 1.4;
+    text-transform: none;
+}
+
+.ventus-instagram-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    padding: .65rem;
+    border-radius: 50%;
+    background: var(--ventus-gold);
+    color: #fff;
+    transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.ventus-instagram-link:hover,
+.ventus-instagram-link:focus-visible {
+    background: var(--ventus-ink);
+    transform: translateY(-2px);
+}
+
+.ventus-instagram-link svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+}
+
+.ventus-instagram-link .ventus-instagram-dot {
+    fill: currentColor;
+    stroke: none;
+}
+
+.ventus-instagram-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    width: 100%;
+}
+
+.ventus-instagram-grid img {
+    display: block;
+    aspect-ratio: 1;
+    width: 100%;
+    object-fit: cover;
+    transition: filter 250ms ease, transform 250ms ease;
+}
+
+.ventus-instagram-grid:hover img:not(:hover) {
+    filter: saturate(.75) brightness(.88);
+}
+
+.ventus-instagram-grid img:hover {
+    transform: scale(1.02);
+}
+
+/* About: verified testimonial */
+.ventus-testimonial-section {
+    border-top: 1px solid rgba(0, 0, 0, .1);
+    padding-block: 5rem;
+}
+
+.ventus-testimonial-grid {
+    display: grid;
+    grid-template-columns: minmax(18rem, .7fr) 1fr;
+    gap: 5rem;
+    align-items: center;
+}
+
+.ventus-testimonial-image {
+    display: block;
+    aspect-ratio: 4 / 5;
+    width: 100%;
+    max-height: 40rem;
+    object-fit: cover;
+}
+
+.ventus-stars {
+    display: flex;
+    gap: .3rem;
+    margin-bottom: 2rem;
+    color: var(--ventus-sage);
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.ventus-testimonial-copy blockquote {
+    max-width: 45rem;
+    font-size: 1.3rem;
+    font-weight: 400;
+    line-height: 1.55;
+}
+
+.ventus-testimonial-copy figcaption {
+    margin-top: 2rem;
+    font-weight: 700;
+}
+
+/* About: full-width CTA from the archived page */
+.ventus-journey-cta {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 75vh;
+    background-position: 0 0, center;
+    background-repeat: repeat, no-repeat;
+    background-size: auto, cover;
+    background-attachment: scroll, fixed;
+    color: #fff;
+}
+
+.ventus-journey-layout {
+    display: grid;
+    grid-template-columns: 1fr max-content;
+    gap: 5rem;
+    align-items: start;
+}
+
+.ventus-journey-layout h2 {
+    margin-bottom: .75rem;
+    font-size: 2rem;
+}
+
+.ventus-journey-layout p {
+    font-size: 1.25rem;
+    font-weight: 300;
+}
+
+.ventus-journey-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.ventus-solid-link {
+    border-color: rgba(0, 0, 0, .5);
+    background: rgba(0, 0, 0, .75);
+    color: #fff;
+    backdrop-filter: blur(15px);
+}
+
+.ventus-solid-link:hover,
+.ventus-solid-link:focus-visible {
+    background: var(--ventus-ink);
+    color: #fff;
+}
+
+.ventus-outline-link-light {
+    border-color: var(--ventus-light-grey);
+    color: var(--ventus-light-grey);
+}
+
+/* Buy Outs: full-height editorial hero */
+.ventus-buyouts-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 100svh;
+    background: #000;
+    color: #fff;
+    isolation: isolate;
+}
+
+.ventus-buyouts-hero-image {
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.ventus-buyouts-shade {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, .68) 8%, rgba(0, 0, 0, .02) 78%);
+}
+
+.ventus-buyouts-hero-copy {
+    padding-top: 4.5rem;
+}
+
+.ventus-buyouts-hero-copy h1 {
+    max-width: 32rem;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.ventus-buyouts-hero-copy p {
+    max-width: 32rem;
+    font-size: 1.25rem;
+    font-weight: 300;
+    line-height: 1.5;
+}
+
+.ventus-scroll-cue {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .3rem;
+    color: #fff;
+    text-decoration: none;
+    transform: translateX(-50%);
+}
+
+.ventus-scroll-cue span {
+    letter-spacing: .05em;
+    font-size: .75rem;
+    text-transform: uppercase;
+}
+
+.ventus-scroll-cue svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    animation: ventus-scroll-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes ventus-scroll-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+}
+
+/* Buy Outs: proposal form */
+.ventus-proposal-section {
+    padding: 8rem 2.5rem;
+    scroll-margin-top: 1rem;
+}
+
+.ventus-form-container {
+    width: min(100%, 48rem);
+    margin-inline: auto;
+}
+
+.ventus-form-heading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 4rem;
+}
+
+.ventus-form-heading span {
+    width: 100%;
+    height: 1px;
+    background: #b5b5b5;
+}
+
+.ventus-form-heading h2 {
+    flex: none;
+    font-size: 2rem;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.ventus-proposal-form {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.ventus-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+.ventus-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.ventus-field label {
+    margin-bottom: .5rem;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.ventus-field input,
+.ventus-field select,
+.ventus-field textarea {
+    width: 100%;
+    min-height: 3rem;
+    margin: 0;
+    padding: .6rem 1rem;
+    border: 1px solid #000;
+    border-radius: 0;
+    background: #fff;
+    color: var(--ventus-ink);
+    font: inherit;
+    line-height: 1.3;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ventus-field textarea {
+    min-height: 8rem;
+    padding-top: .75rem;
+    resize: vertical;
+}
+
+.ventus-field input:focus,
+.ventus-field select:focus,
+.ventus-field textarea:focus {
+    border-color: var(--ventus-gold);
+    box-shadow: 0 0 0 3px rgba(217, 164, 112, .2);
+    outline: none;
+}
+
+.ventus-field-message {
+    grid-column: 1 / -1;
+}
+
+.ventus-consent {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    width: fit-content;
+    margin: 0;
+    font-size: .875rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.ventus-consent input {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: #000;
+}
+
+.ventus-consent a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.ventus-form-submit,
+.ventus-form-success button {
+    justify-self: center;
+    width: 15rem;
+    min-height: 4rem;
+    padding: .75rem 1.5rem;
+    border: 1px solid #000;
+    border-radius: 0;
+    background: #000;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.ventus-form-submit:hover,
+.ventus-form-submit:focus-visible,
+.ventus-form-success button:hover,
+.ventus-form-success button:focus-visible {
+    border-color: var(--ventus-gold);
+    background: var(--ventus-gold);
+}
+
+.ventus-form-success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 24rem;
+    padding: 3rem;
+    border: 1px solid var(--ventus-light-grey);
+    text-align: center;
+}
+
+.ventus-form-success > span {
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 50%;
+    background: var(--ventus-sage);
+    font-size: 1.5rem;
+}
+
+.ventus-form-success h3 {
+    margin-bottom: .75rem;
+    font-size: 2rem;
+}
+
+.ventus-form-success p {
+    max-width: 30rem;
+    margin-bottom: 2rem !important;
+}
+
+@media (max-width: 991px) {
+    .ventus-recovery-container {
+        width: min(100% - 2.5rem, 80rem);
+    }
+
+    .ventus-founder-section {
+        min-height: auto;
+        padding-block: 4rem;
+    }
+
+    .ventus-founder-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+    }
+
+    .ventus-benefits-section,
+    .ventus-adventures-section {
+        padding-block: 6rem;
+    }
+
+    .ventus-benefits-grid {
+        gap: 2rem;
+    }
+
+    .ventus-adventures-layout {
+        gap: 3rem;
+    }
+
+    .ventus-adventures-heading h2 {
+        font-size: 1.5rem;
+    }
+
+    .ventus-testimonial-grid {
+        grid-template-columns: .5fr 1fr;
+        gap: 2.5rem;
+    }
+
+    .ventus-journey-layout {
+        gap: 3rem;
+    }
+
+    .ventus-proposal-section {
+        padding-block: 6rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .ventus-founder-grid,
+    .ventus-testimonial-grid,
+    .ventus-journey-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .ventus-founder-grid,
+    .ventus-testimonial-grid {
+        gap: 3rem;
+    }
+
+    .ventus-founder-image {
+        aspect-ratio: 4 / 5;
+    }
+
+    .ventus-benefits-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ventus-occasion-section {
+        min-height: 36rem;
+        padding-block: 6rem;
+    }
+
+    .ventus-occasion-copy h2 {
+        font-size: 2.3rem;
+    }
+
+    .ventus-adventures-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .ventus-adventures-heading {
+        text-align: center;
+    }
+
+    .ventus-adventures-heading h2 {
+        font-size: 2rem;
+    }
+
+    .ventus-instagram-link {
+        margin-inline: auto;
+    }
+
+    .ventus-testimonial-image {
+        max-height: 44rem;
+    }
+
+    .ventus-testimonial-section {
+        padding-block: 4rem;
+    }
+
+    .ventus-journey-actions {
+        justify-content: flex-start;
+    }
+
+    .ventus-buyouts-hero-copy h1,
+    .ventus-buyouts-hero-copy p {
+        max-width: 28rem;
+    }
+
+    .ventus-form-heading h2 {
+        text-align: center;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 479px) {
+    .ventus-recovery-container,
+    .ventus-mark-divider {
+        width: calc(100% - 2.5rem);
+    }
+
+    .ventus-founder-section {
+        padding-block: 3rem;
+        background: var(--ventus-ink);
+        color: #fff;
+    }
+
+    .ventus-founder-copy h1 {
+        margin-bottom: 1.25rem;
+        font-size: 1.25rem;
+    }
+
+    .ventus-founder-copy p {
+        font-size: .875rem;
+    }
+
+    .ventus-founder-copy .ventus-founder-emphasis {
+        margin-top: 1rem;
+        color: var(--ventus-gold);
+        font-size: 1rem;
+    }
+
+    .ventus-benefits-section {
+        padding-block: 4rem;
+        background: var(--ventus-ink);
+        color: #fff;
+    }
+
+    .ventus-benefits-intro h2 {
+        font-size: 1.5rem;
+    }
+
+    .ventus-benefits-section .ventus-outline-link {
+        border-color: #fff;
+        color: #fff;
+    }
+
+    .ventus-benefits-lead {
+        margin-top: 3rem !important;
+        font-size: .875rem;
+    }
+
+    .ventus-benefits-grid {
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .ventus-benefits-grid li {
+        font-size: .875rem;
+    }
+
+    .ventus-amenity-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .ventus-occasion-section {
+        min-height: 32rem;
+        padding: 4rem 1.25rem;
+    }
+
+    .ventus-occasion-copy h2 {
+        font-size: 1.75rem;
+    }
+
+    .ventus-occasion-copy p {
+        margin-bottom: 2rem !important;
+        font-size: .95rem;
+    }
+
+    .ventus-adventures-section {
+        padding-block: 4rem;
+    }
+
+    .ventus-adventures-layout {
+        gap: 2.5rem;
+    }
+
+    .ventus-adventures-heading h2 {
+        font-size: 1.75rem;
+    }
+
+    .ventus-instagram-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .75rem;
+    }
+
+    .ventus-testimonial-copy blockquote {
+        font-size: 1.1rem;
+    }
+
+    .ventus-journey-cta {
+        min-height: 38rem;
+        padding-block: 4rem;
+        background-attachment: scroll;
+    }
+
+    .ventus-journey-layout h2 {
+        font-size: 1.5rem;
+    }
+
+    .ventus-journey-layout p {
+        font-size: 1rem;
+    }
+
+    .ventus-journey-actions {
+        width: 100%;
+    }
+
+    .ventus-buyouts-hero-image {
+        width: 200%;
+        max-width: none;
+        left: -100%;
+        object-position: center;
+    }
+
+    .ventus-buyouts-shade {
+        background: linear-gradient(90deg, rgba(0, 0, 0, .72), rgba(0, 0, 0, .15));
+    }
+
+    .ventus-buyouts-hero-copy h1 {
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        line-height: 1.55;
+    }
+
+    .ventus-buyouts-hero-copy p {
+        font-size: 1rem;
+    }
+
+    .ventus-scroll-cue {
+        bottom: 2rem;
+        width: 18.75rem;
+    }
+
+    .ventus-proposal-section {
+        padding: 4rem 1.25rem;
+    }
+
+    .ventus-form-heading {
+        margin-bottom: 3rem;
+    }
+
+    .ventus-form-heading span {
+        display: none;
+    }
+
+    .ventus-form-heading h2 {
+        max-width: 16rem;
+        font-size: 1.75rem;
+    }
+
+    .ventus-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ventus-form-submit,
+    .ventus-form-success button {
+        width: 100%;
+    }
+
+    .ventus-form-success {
+        min-height: 22rem;
+        padding: 2rem 1.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ventus-reveal,
+    .ventus-scroll-cue svg {
+        animation: none;
+    }
+
+    .ventus-instagram-grid img,
+    .ventus-outline-link svg,
+    .ventus-solid-link svg {
+        transition: none;
+    }
+}

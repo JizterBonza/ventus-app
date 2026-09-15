@@ -52,7 +52,7 @@ const HotelDetail: React.FC = () => {
     const [sliderReady, setSliderReady] = useState(false);
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, hasActiveMembership } = useAuth();
     const [hotel, setHotel] = useState<Hotel | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
@@ -78,15 +78,6 @@ const HotelDetail: React.FC = () => {
     /** "Starting from" price from availability API (today/tomorrow, visitor currency). Independent of Check Availability. */
     const [startingFromPrice, setStartingFromPrice] = useState<{ rate: number; currency: string } | null>(null);
     const [startingFromPriceLoading, setStartingFromPriceLoading] = useState(false);
-
-    // Fallback hotel images for when API doesn't provide images
-    const fallbackImages = [
-        "/assets/img/rooms/1.jpg",
-        "/assets/img/rooms/2.jpg",
-        "/assets/img/rooms/3.jpg",
-        "/assets/img/rooms/4.jpg",
-        "/assets/img/rooms/5.jpg",
-    ];
 
     // Mock rooms data (since API might not provide room details)
     const mockRooms: Room[] = [
@@ -249,7 +240,7 @@ const HotelDetail: React.FC = () => {
 
     // Fetch "Starting from" price via availability API (today/tomorrow, visitor currency). Does not affect Check Availability.
     useEffect(() => {
-        if (!hotel || !isAuthenticated) {
+        if (!hotel || !hasActiveMembership) {
             setStartingFromPrice(null);
             setStartingFromPriceLoading(false);
             return;
@@ -298,7 +289,7 @@ const HotelDetail: React.FC = () => {
             cancelled = true;
             controller.abort();
         };
-    }, [hotel?.id, isAuthenticated]);
+    }, [hotel?.id, hasActiveMembership]);
 
     const [showGallery, setShowGallery] = useState(false);
 
@@ -511,15 +502,16 @@ const HotelDetail: React.FC = () => {
         return (total / mockReviews.length).toFixed(1);
     };
 
-    // Get hotel images - use API data if available, otherwise fallback
+    // Only display supplier-provided hotel images. A neutral placeholder is used
+    // when an image is unavailable so unrelated stock photos never flicker in.
     const getHotelImages = (): string[] => {
         if (hotel?.images && hotel.images.length > 0) {
-            return hotel.images.map((img) => img.url);
+            return hotel.images.map((img) => img.url).filter(Boolean);
         }
         if (hotel?.image) {
-            return [hotel.image, ...fallbackImages.slice(1)];
+            return [hotel.image];
         }
-        return fallbackImages;
+        return [];
     };
 
     if (loading) {
@@ -581,18 +573,19 @@ const HotelDetail: React.FC = () => {
             {/* Hero Section */}
         <SearchBarNew prefillLocation={hotel.name} hotelId={hotel.id} />
             
-            <section className="header-image-container" onClick={() => setShowGallery(true)}>
-                    <img
-                        src={hotelImages[0]}
-                        alt={`${hotel.name}`}
-                        style={{ width: '100%', height: '500px', objectFit: 'cover' }}
-                        onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = fallbackImages[0];
-                        }}
-                    />
+            <section className="header-image-container" onClick={() => hotelImages.length > 0 && setShowGallery(true)}>
+                    {hotelImages[0] ? (
+                        <img
+                            src={hotelImages[0]}
+                            alt={`${hotel.name}`}
+                            style={{ width: '100%', height: '500px', objectFit: 'cover' }}
+                            decoding="async"
+                            fetchPriority="high"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                    ) : <span className="hotel-hero-image-placeholder" role="img" aria-label={`${hotel.name} image unavailable`} />}
                     <div className="view-btn">
-                        <span>View all {hotelImages.length} photos</span>
+                        <span>{hotelImages.length > 0 ? `View all ${hotelImages.length} photos` : 'Photos unavailable'}</span>
                     </div>
                 </section>
 
@@ -607,10 +600,9 @@ const HotelDetail: React.FC = () => {
                                 <img
                                     src={image}
                                     alt={`${hotel.name} ${index + 1}`}
-                                    onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = fallbackImages[index];
-                                    }}
+                                    loading="lazy"
+                                    decoding="async"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                 />
                             </div>
                         ))}
@@ -740,7 +732,7 @@ const HotelDetail: React.FC = () => {
                                     <div>
                                         <strong>Hotel Amenities</strong> {hotel.amenities.join(", ")}
                                     </div>
-                                    {isAuthenticated && (() => {
+                                    {hasActiveMembership && (() => {
                                         if (startingFromPriceLoading && startingFromPrice == null && (availabilityResult?.lowest_rate == null || availabilityResult?.lowest_rate === undefined)) {
                                             return (
                                                 <div>
@@ -799,13 +791,13 @@ const HotelDetail: React.FC = () => {
                         </div>
                         {/* Sidebar - Show benefits if logged in, membership if logged out */}
                     <div className="hotel-content_sidebar">
-                        {isAuthenticated ? (
+                        {hasActiveMembership ? (
                             // Show benefits if logged in and benefits exist
                             hotel.benefits && hotel.benefits.length > 0 ? (
                                 <div className="hotel-benefits">
                                     <div className="hotel-benefits_heading">
                                         <h3>Your Benefits</h3>
-                                        <img src="/assets/img/ventus-logo.png" />
+                                        <img src="/assets/img/ventus-logo.png" alt="Ventus Travel" />
                                     </div>
                                     <div className="hotel-benefits_cont">
                                         <ul>
@@ -830,17 +822,17 @@ const HotelDetail: React.FC = () => {
                             <div className="section-membership">
                                 <div className="section-membership-content text-center">
                                     <div className="membership-content_heading">
-                                        <img src="/assets/img/ventus-logo.png" />
-                                        <h3>Join now to unlock exclusive member benefits</h3>
+                                        <img src="/assets/img/ventus-logo.png" alt="Ventus Travel" />
+                                        <h3>{isAuthenticated ? 'Complete membership to unlock exclusive member benefits' : 'Join now to unlock exclusive member benefits'}</h3>
                                         <button 
                                             onClick={() => setIsSubscriptionModalOpen(true)}
                                             className="btn btn-primary btn-lg"
                                         >
-                                            Join Now
+                                            {isAuthenticated ? 'Complete Membership' : 'Join Now'}
                                         </button>
                                     </div>
                                     <div className="membership-content_foot">
-                                        <p>Already have an account? Sign in <Link to="/login">here</Link></p>
+                                        <p>{isAuthenticated ? <Link to="/subscription">Continue to secure membership payment</Link> : <>Already have an account? Sign in <Link to="/login">here</Link></>}</p>
                                     </div>
                                 </div>
                             </div>
@@ -860,7 +852,7 @@ const HotelDetail: React.FC = () => {
                 </div>
             </section>
 
-            {isAuthenticated && availabilityResult?.is_available && availabilityResult.room_types?.length > 0 && selectedAvailabilityRateIndex && (
+            {hasActiveMembership && availabilityResult?.is_available && availabilityResult.room_types?.length > 0 && selectedAvailabilityRateIndex && (
                 <section id="booking" className="section-padding booking-section" style={{ paddingTop: 0 }}>
                     <div className="container">
                         <BookingForm
@@ -961,7 +953,7 @@ const HotelDetail: React.FC = () => {
                         <h3>Other Hotels in {hotel.location}</h3>
                         <div className="hotels-grid row">
                             {relatedHotels.map((relatedHotel) => {
-                                // Get image from hotel data - prioritize images array, then image property, then fallback
+                                // Use only the real image returned for this hotel.
                                 const getRelatedHotelImage = () => {
                                     if (relatedHotel.images && relatedHotel.images.length > 0) {
                                         return relatedHotel.images[0].url;
@@ -969,21 +961,22 @@ const HotelDetail: React.FC = () => {
                                     if (relatedHotel.image) {
                                         return relatedHotel.image;
                                     }
-                                    return fallbackImages[0];
+                                    return undefined;
                                 };
 
                                 return (
                                     <div key={relatedHotel.id} className="col-md-4 mb-4">
                                         <Link className="card interest-card" to={`/hotel/${relatedHotel.id}`}>
                                             <div className="card-image">
-                                                <img 
-                                                    src={getRelatedHotelImage()} 
-                                                    alt={relatedHotel.name}
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.src = fallbackImages[0];
-                                                    }}
-                                                />
+                                                {getRelatedHotelImage() ? (
+                                                    <img
+                                                        src={getRelatedHotelImage()}
+                                                        alt={relatedHotel.name}
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                    />
+                                                ) : <span className="related-hotel-image-placeholder" role="img" aria-label={`${relatedHotel.name} image unavailable`} />}
                                             </div>
                                         <div className="card-content">
                                             <h4>{relatedHotel.name}</h4>

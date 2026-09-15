@@ -6781,10 +6781,6 @@ select {
     transform: translate(-50%, -50%);
 }
 
-.results-section:not(.has-results) {
-    display: none;
-}
-
 .section-about .image-col {
     padding-inline: 10px;
 }

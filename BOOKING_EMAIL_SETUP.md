@@ -1,6 +1,6 @@
 # Booking Email Setup Guide
 
-This guide explains how to set up email functionality for the booking system to send booking details to `testjizternoda@gmail.com`.
+This guide explains how to set up booking-request email delivery to the configured Ventus team address.
 
 ## Current Implementation
 
@@ -74,7 +74,7 @@ The booking system includes multiple fallback methods for sending emails:
 
 2. **Create a new form:**
    - Create a new form in Formspree
-   - Set the email to `testjizternoda@gmail.com`
+   - Set the email to the approved Ventus booking inbox
    - Copy the form endpoint URL
 
 3. **Update the form service:**
@@ -113,7 +113,7 @@ The system includes a mailto fallback that opens the user's default email client
    - Click "Send Booking Request"
 
 4. **Check the email:**
-   - The booking details should be sent to `testjizternoda@gmail.com`
+   - The booking details should be sent to the configured Ventus booking inbox
    - Check the console for any error messages
 
 ## Email Content

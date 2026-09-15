@@ -20,19 +20,15 @@ module.exports = function(app) {
     })
   );
 
-  // Proxy for hotel search API (forwards auth so hotel details work)
-  const hotelApiToken = process.env.REACT_APP_API_TOKEN || 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
+  // Proxy hotel requests through the local backend. Supplier credentials must
+  // never be present in the React process or browser bundle.
   app.use(
     '/v2',
     createProxyMiddleware({
-      target: 'https://api-staging.littleemperors.com',
+      target: 'http://localhost:5000',
       changeOrigin: true,
-      secure: true,
       logLevel: 'debug',
       onProxyReq: (proxyReq, req, res) => {
-        if (hotelApiToken && !proxyReq.getHeader('authorization')) {
-          proxyReq.setHeader('Authorization', `Bearer ${hotelApiToken}`);
-        }
         console.log('Proxying request:', req.method, req.url);
       },
       onProxyRes: (proxyRes, req, res) => {

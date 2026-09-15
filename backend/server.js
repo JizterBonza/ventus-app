@@ -103,14 +103,180 @@ pool.connect((err, client, release) => {
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
+const MEMBERSHIP_PLAN_ID = 'travel-yearly';
+const MEMBERSHIP_PRICE_GBP = 299;
+const MEMBERSHIP_CURRENCY = 'GBP';
+const PAYPAL_ENVIRONMENT = process.env.PAYPAL_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live';
+const PAYPAL_API_BASE = PAYPAL_ENVIRONMENT === 'sandbox'
+  ? 'https://api-m.sandbox.paypal.com'
+  : 'https://api-m.paypal.com';
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const PASSWORD_RESET_REQUEST_LIMIT = 5;
 const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || 'https://destinations.ventustravel.co.uk').replace(/\/$/, '');
 const passwordResetAttempts = new Map();
 let passwordResetSchemaReady = false;
+let subscriptionSchemaReady = false;
+
+const assertProductionConfiguration = () => {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
+    throw new Error('JWT_SECRET must be configured in production');
+  }
+  if (!process.env.HOTEL_API_TOKEN) {
+    throw new Error('HOTEL_API_TOKEN must be configured in production');
+  }
+};
+
+const ensureSubscriptionSchema = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_migrations (
+      name VARCHAR(120) PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS paypal_orders (
+      id BIGSERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      paypal_order_id VARCHAR(64) UNIQUE NOT NULL,
+      plan_id VARCHAR(64) NOT NULL,
+      expected_amount NUMERIC(12, 2) NOT NULL,
+      currency CHAR(3) NOT NULL,
+      discount_percent INTEGER NOT NULL DEFAULT 0,
+      coupon_hash CHAR(64),
+      status VARCHAR(32) NOT NULL DEFAULT 'CREATED',
+      paypal_capture_id VARCHAR(64) UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id BIGSERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      plan_id VARCHAR(64) NOT NULL,
+      status VARCHAR(32) NOT NULL,
+      amount_paid NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      currency CHAR(3) NOT NULL DEFAULT 'GBP',
+      payment_provider VARCHAR(32) NOT NULL,
+      paypal_order_id VARCHAR(64) UNIQUE,
+      paypal_capture_id VARCHAR(64) UNIQUE,
+      starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_subscriptions_expiry ON subscriptions(expires_at)');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS booking_requests (
+      id BIGSERIAL PRIMARY KEY,
+      request_reference VARCHAR(40) UNIQUE NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      hotel_id INTEGER NOT NULL,
+      hotel_name VARCHAR(255) NOT NULL,
+      session_id VARCHAR(255) NOT NULL,
+      rate_index VARCHAR(255) NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      guest_name VARCHAR(200) NOT NULL,
+      guest_email VARCHAR(255) NOT NULL,
+      guest_phone VARCHAR(80) NOT NULL,
+      room_type VARCHAR(255),
+      rooms JSONB NOT NULL,
+      quoted_amount NUMERIC(12, 2),
+      quoted_currency CHAR(3),
+      special_requests TEXT,
+      status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT booking_request_dates_valid CHECK (end_date > start_date)
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_booking_requests_user_created ON booking_requests(user_id, created_at DESC)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_booking_requests_status_created ON booking_requests(status, created_at DESC)');
+
+  // The previous live portal treated every existing account as a member. Apply this
+  // migration once so the security upgrade does not lock those members out. Accounts
+  // created after this migration must complete checkout before receiving member access.
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const migration = await client.query(
+      `INSERT INTO app_migrations (name) VALUES ('grandfather-existing-members-v1')
+       ON CONFLICT (name) DO NOTHING RETURNING name`
+    );
+    if (migration.rows.length > 0) {
+      await client.query(`
+        INSERT INTO subscriptions (
+          user_id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
+        )
+        SELECT id, $1, 'active', 0, $2, 'legacy', NOW(), NULL
+        FROM users
+        WHERE NOT EXISTS (
+          SELECT 1 FROM subscriptions WHERE subscriptions.user_id = users.id
+        )
+      `, [MEMBERSHIP_PLAN_ID, MEMBERSHIP_CURRENCY]);
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  subscriptionSchemaReady = true;
+};
+
+const getActiveSubscription = async (userId, client = pool) => {
+  if (!subscriptionSchemaReady) return null;
+  const result = await client.query(
+    `SELECT id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
+     FROM subscriptions
+     WHERE user_id = $1
+       AND status = 'active'
+       AND (expires_at IS NULL OR expires_at > NOW())
+     ORDER BY starts_at DESC
+     LIMIT 1`,
+    [userId]
+  );
+  return result.rows[0] || null;
+};
+
+const serializeSubscription = (subscription) => subscription ? {
+  id: subscription.id.toString(),
+  planId: subscription.plan_id,
+  status: subscription.status,
+  amountPaid: Number(subscription.amount_paid),
+  currency: subscription.currency,
+  paymentProvider: subscription.payment_provider,
+  startsAt: subscription.starts_at?.toISOString?.() || subscription.starts_at,
+  expiresAt: subscription.expires_at?.toISOString?.() || subscription.expires_at || null
+} : null;
+
+const serializeUser = async (user) => {
+  const subscription = await getActiveSubscription(user.id);
+  return {
+    id: user.id.toString(),
+    email: user.email,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    phone: user.phone,
+    cityOfResidence: user.city_of_residence,
+    avatar: user.avatar,
+    createdAt: user.created_at.toISOString(),
+    membershipActive: Boolean(subscription),
+    membership: serializeSubscription(subscription)
+  };
+};
 
 const ensurePasswordResetSchema = async () => {
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS city_of_residence VARCHAR(160)');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_agreed_at TIMESTAMPTZ');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id BIGSERIAL PRIMARY KEY,
@@ -285,6 +451,98 @@ const sendPasswordResetEmail = async (details) => {
   throw new Error('Password reset email delivery is not configured');
 };
 
+const sendBookingRequestNotification = async (booking) => {
+  const notificationEmail = process.env.BOOKING_NOTIFICATION_EMAIL || 'daniella@ventustravel.co.uk';
+  const summary = [
+    `Booking request ${booking.reference}`,
+    `Hotel: ${booking.hotelName} (${booking.hotelId})`,
+    `Stay: ${booking.startDate} to ${booking.endDate}`,
+    `Guest: ${booking.guestName}`,
+    `Email: ${booking.guestEmail}`,
+    `Phone: ${booking.guestPhone}`,
+    `Room: ${booking.roomType || 'Selected room'}`,
+    `Rooms: ${JSON.stringify(booking.rooms)}`,
+    `Quote shown: ${booking.quotedAmount === null ? 'Not available' : `${booking.quotedCurrency} ${booking.quotedAmount}`}`,
+    `Special requests: ${booking.specialRequests || 'None'}`,
+  ].join('\n');
+
+  if (process.env.RESEND_API_KEY && process.env.PASSWORD_RESET_FROM_EMAIL) {
+    const from = process.env.BOOKING_FROM_EMAIL || process.env.PASSWORD_RESET_FROM_EMAIL;
+    const postEmail = async (payload) => {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        signal: AbortSignal.timeout(10000),
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const providerMessage = await response.text();
+        throw new Error(`Booking email provider returned ${response.status}: ${providerMessage.slice(0, 300)}`);
+      }
+    };
+
+    await Promise.all([
+      postEmail({
+        from,
+        to: [notificationEmail],
+        reply_to: booking.guestEmail,
+        subject: `New Ventus booking request ${booking.reference}`,
+        text: summary
+      }),
+      postEmail({
+        from,
+        to: [booking.guestEmail],
+        ...(process.env.PASSWORD_RESET_REPLY_TO && { reply_to: process.env.PASSWORD_RESET_REPLY_TO }),
+        subject: `We received your Ventus booking request ${booking.reference}`,
+        text: `Hello ${booking.guestName},\n\nWe have received your request for ${booking.hotelName}, ${booking.startDate} to ${booking.endDate}. No payment has been taken. The Ventus team will confirm availability, benefits and the final total before booking.\n\nReference: ${booking.reference}\n\nVentus Travel`
+      })
+    ]);
+    return true;
+  }
+
+  if (process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_TEMPLATE_ID && process.env.EMAILJS_PUBLIC_KEY) {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      signal: AbortSignal.timeout(10000),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_id: process.env.EMAILJS_SERVICE_ID,
+        template_id: process.env.EMAILJS_TEMPLATE_ID,
+        user_id: process.env.EMAILJS_PUBLIC_KEY,
+        template_params: {
+          to_email: notificationEmail,
+          from_name: booking.guestName,
+          from_email: booking.guestEmail,
+          booking_id: booking.reference,
+          hotel_name: booking.hotelName,
+          guest_name: booking.guestName,
+          guest_email: booking.guestEmail,
+          guest_phone: booking.guestPhone,
+          check_in_date: booking.startDate,
+          check_out_date: booking.endDate,
+          number_of_guests: booking.rooms.reduce((sum, room) => sum + Number(room.adults || 0) + (room.children?.length || 0), 0),
+          number_of_rooms: booking.rooms.length,
+          room_type: booking.roomType || 'Selected room',
+          special_requests: booking.specialRequests || 'None',
+          total_price: booking.quotedAmount === null ? 'To be confirmed' : `${booking.quotedCurrency} ${booking.quotedAmount}`,
+          submitted_at: new Date().toISOString(),
+          message: summary
+        }
+      })
+    });
+    if (!response.ok) {
+      const providerMessage = await response.text();
+      throw new Error(`Booking email provider returned ${response.status}: ${providerMessage.slice(0, 300)}`);
+    }
+    return true;
+  }
+
+  return false;
+};
+
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -333,14 +591,14 @@ app.get('/api/health', async (req, res) => {
 // Signup - Create new user
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName, phone, cityOfResidence, agreeToTerms } = req.body;
     const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
     // Validation
-    if (!normalizedEmail || !password || !firstName || !lastName) {
+    if (!normalizedEmail || !password || !firstName || !lastName || !cityOfResidence || agreeToTerms !== true) {
       return res.status(400).json({
         success: false,
-        error: 'Email, password, first name, and last name are required'
+        error: 'Email, password, name, city of residence and acceptance of the terms are required'
       });
     }
 
@@ -354,10 +612,10 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     // Validate password length
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).json({
         success: false,
-        error: 'Password must be at least 6 characters'
+        error: 'Password must be at least 8 characters'
       });
     }
 
@@ -380,10 +638,12 @@ app.post('/api/auth/signup', async (req, res) => {
 
     // Create user
     const result = await pool.query(
-      `INSERT INTO users (email, password_hash, first_name, last_name, phone, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-       RETURNING id, email, first_name, last_name, phone, created_at`,
-      [normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), phone || null]
+      `INSERT INTO users (
+         email, password_hash, first_name, last_name, phone, city_of_residence,
+         terms_agreed_at, created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), NOW())
+       RETURNING id, email, first_name, last_name, phone, city_of_residence, created_at`,
+      [normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), phone || null, cityOfResidence.trim().slice(0, 160)]
     );
 
     const user = result.rows[0];
@@ -395,18 +655,13 @@ app.post('/api/auth/signup', async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    const serializedUser = await serializeUser(user);
+
     // Return user data (without password)
     res.status(201).json({
       success: true,
       message: 'Account created successfully',
-      user: {
-        id: user.id.toString(),
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        createdAt: user.created_at.toISOString()
-      },
+      user: serializedUser,
       token
     });
   } catch (error) {
@@ -464,19 +719,13 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    const serializedUser = await serializeUser(user);
+
     // Return user data (without password)
     res.json({
       success: true,
       message: 'Login successful',
-      user: {
-        id: user.id.toString(),
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        avatar: user.avatar,
-        createdAt: user.created_at.toISOString()
-      },
+      user: serializedUser,
       token
     });
   } catch (error) {
@@ -609,8 +858,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
     if (!token || token.length > 200) {
       return res.status(400).json({ success: false, error: 'Reset link is missing or invalid.' });
     }
-    if (newPassword.length < 6 || newPassword.length > 128) {
-      return res.status(400).json({ success: false, error: 'Password must be between 6 and 128 characters.' });
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      return res.status(400).json({ success: false, error: 'Password must be between 8 and 128 characters.' });
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -655,7 +904,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.get('/api/auth/verify', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, phone, city_of_residence, avatar, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -667,18 +916,11 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
     }
 
     const user = result.rows[0];
+    const serializedUser = await serializeUser(user);
 
     res.json({
       success: true,
-      user: {
-        id: user.id.toString(),
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        avatar: user.avatar,
-        createdAt: user.created_at.toISOString()
-      }
+      user: serializedUser
     });
   } catch (error) {
     console.error('Verify error:', error);
@@ -693,7 +935,7 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
 app.get('/api/auth/user', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, phone, city_of_residence, avatar, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -705,18 +947,11 @@ app.get('/api/auth/user', authenticateToken, async (req, res) => {
     }
 
     const user = result.rows[0];
+    const serializedUser = await serializeUser(user);
 
     res.json({
       success: true,
-      user: {
-        id: user.id.toString(),
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        avatar: user.avatar,
-        createdAt: user.created_at.toISOString()
-      }
+      user: serializedUser
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -739,107 +974,524 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 
 // ============= SUBSCRIPTION ROUTES =============
 
-// Valid coupon codes (matching frontend)
-const VALID_COUPONS = {
-  'VENTUS': { discountPercent: 100, description: 'Full access - 100% discount!' },
-  'VENTUSVIP': { discountPercent: 100, description: 'Full access - 100% discount!' },
-  'WELCOME50': { discountPercent: 50, description: '50% off your first subscription' },
-  'SAVE20': { discountPercent: 20, description: '20% discount applied' }
+const getConfiguredCoupons = () => {
+  if (!process.env.MEMBERSHIP_COUPONS_JSON) return {};
+  try {
+    const parsed = JSON.parse(process.env.MEMBERSHIP_COUPONS_JSON);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed;
+  } catch (error) {
+    console.error('MEMBERSHIP_COUPONS_JSON is invalid JSON');
+    return {};
+  }
 };
 
-// Subscribe user to a plan
-app.post('/api/subscriptions/subscribe', authenticateToken, async (req, res) => {
+const getMembershipQuote = (planId, couponCode) => {
+  if (planId !== MEMBERSHIP_PLAN_ID) {
+    const error = new Error('Invalid membership plan');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedCoupon = typeof couponCode === 'string' ? couponCode.trim().toUpperCase() : '';
+  const configuredCoupon = normalizedCoupon ? getConfiguredCoupons()[normalizedCoupon] : null;
+  const rawDiscount = typeof configuredCoupon === 'number'
+    ? configuredCoupon
+    : configuredCoupon?.discountPercent;
+  const discountPercent = Number.isFinite(Number(rawDiscount))
+    ? Math.min(100, Math.max(0, Number(rawDiscount)))
+    : 0;
+  const couponValid = !normalizedCoupon || Boolean(configuredCoupon);
+  const finalPrice = Number((MEMBERSHIP_PRICE_GBP * (1 - discountPercent / 100)).toFixed(2));
+
+  return {
+    planId: MEMBERSHIP_PLAN_ID,
+    basePrice: MEMBERSHIP_PRICE_GBP,
+    finalPrice,
+    currency: MEMBERSHIP_CURRENCY,
+    couponValid,
+    discountPercent,
+    couponDescription: couponValid && normalizedCoupon
+      ? (configuredCoupon?.description || `${discountPercent}% membership discount`)
+      : '',
+    couponHash: couponValid && normalizedCoupon
+      ? crypto.createHash('sha256').update(normalizedCoupon).digest('hex')
+      : null
+  };
+};
+
+const paypalIsConfigured = () => Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+let paypalAccessTokenCache = null;
+
+const getPayPalAccessToken = async () => {
+  if (!paypalIsConfigured()) {
+    const error = new Error('Secure membership checkout is temporarily unavailable');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  if (paypalAccessTokenCache && paypalAccessTokenCache.expiresAt > Date.now() + 30000) {
+    return paypalAccessTokenCache.token;
+  }
+
+  const basic = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
+  const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) {
+    console.error('PayPal access token request failed:', response.status, data.error || data.name || 'unknown error');
+    const error = new Error('Secure membership checkout is temporarily unavailable');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  paypalAccessTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + Math.max(60, Number(data.expires_in) || 300) * 1000
+  };
+  return data.access_token;
+};
+
+const paypalRequest = async (path, options = {}) => {
+  const accessToken = await getPayPalAccessToken();
+  const response = await fetch(`${PAYPAL_API_BASE}${path}`, {
+    method: options.method || 'GET',
+    signal: AbortSignal.timeout(15000),
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'PayPal-Request-Id': options.requestId || crypto.randomUUID()
+    },
+    ...(options.body && { body: JSON.stringify(options.body) })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error('PayPal API request failed:', path, response.status, data.name || data.error || 'unknown error');
+    const error = new Error('PayPal could not complete the membership payment');
+    error.statusCode = 502;
+    error.paypalStatus = response.status;
+    throw error;
+  }
+  return data;
+};
+
+const persistCompletedMembershipPayment = async ({ orderId, captureId, amount, currency }) => {
+  const client = await pool.connect();
   try {
-    const { planId, couponCode, paymentDetails } = req.body;
-    const userId = req.user.id;
-
-    // Validate plan ID
-    if (!planId || planId !== 'travel-yearly') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid subscription plan'
-      });
+    await client.query('BEGIN');
+    const orderResult = await client.query(
+      `SELECT * FROM paypal_orders WHERE paypal_order_id = $1 FOR UPDATE`,
+      [orderId]
+    );
+    if (orderResult.rows.length === 0) {
+      throw Object.assign(new Error('Unknown PayPal order'), { statusCode: 400 });
     }
 
-    // Validate coupon if provided
-    let discountPercent = 0;
-    if (couponCode) {
-      const upperCode = couponCode.toUpperCase().trim();
-      const coupon = VALID_COUPONS[upperCode];
-      if (coupon) {
-        discountPercent = coupon.discountPercent;
-      }
+    const order = orderResult.rows[0];
+    if (Number(order.expected_amount).toFixed(2) !== Number(amount).toFixed(2) || order.currency.trim() !== currency) {
+      throw Object.assign(new Error('PayPal payment amount did not match the membership order'), { statusCode: 400 });
     }
 
-    // Calculate final price (base price is 299 GBP)
-    const basePrice = 299;
-    const finalPrice = Math.max(0, basePrice - (basePrice * discountPercent / 100));
-
-    // If price > 0, PayPal payment is required
-    if (finalPrice > 0) {
-      if (!paymentDetails || paymentDetails.type !== 'paypal') {
-        return res.status(400).json({
-          success: false,
-          error: 'PayPal payment is required for paid subscriptions'
-        });
-      }
-      
-      if (!paymentDetails.orderId) {
-        return res.status(400).json({
-          success: false,
-          error: 'PayPal order ID is required'
-        });
-      }
-      
-      // In a real app, you'd verify the PayPal order with PayPal's API
-      // You can use the PayPal Secret Key (PAYPAL_SECRET_KEY env var) for server-side verification
-      // Example: Use @paypal/checkout-server-sdk to verify the order
-      // For now, we'll log the payment details
-      console.log(`PayPal payment received - user ${userId}, order ID: ${paymentDetails.orderId}, price: £${finalPrice}`);
-      
-      // TODO: Verify PayPal order with PayPal API using PAYPAL_SECRET_KEY
-      // This ensures the payment was actually completed and prevents fraud
+    const existing = await client.query(
+      'SELECT * FROM subscriptions WHERE paypal_order_id = $1 LIMIT 1',
+      [orderId]
+    );
+    let subscription = existing.rows[0];
+    if (!subscription) {
+      const inserted = await client.query(
+        `INSERT INTO subscriptions (
+          user_id, plan_id, status, amount_paid, currency, payment_provider,
+          paypal_order_id, paypal_capture_id, starts_at, expires_at
+        ) VALUES ($1, $2, 'active', $3, $4, 'paypal', $5, $6, NOW(), NOW() + INTERVAL '1 year')
+        RETURNING *`,
+        [order.user_id, order.plan_id, amount, currency, orderId, captureId]
+      );
+      subscription = inserted.rows[0];
     }
 
-    // Generate a subscription ID
-    const subscriptionId = `sub_${Date.now()}_${userId}`;
+    await client.query(
+      `UPDATE paypal_orders
+       SET status = 'COMPLETED', paypal_capture_id = $2, updated_at = NOW()
+       WHERE paypal_order_id = $1`,
+      [orderId, captureId]
+    );
+    await client.query('COMMIT');
+    return { subscription, userId: order.user_id };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+};
 
-    // In a real app, you'd store the subscription in the database
-    // For now, we'll just return success
-    console.log(`New subscription: ${subscriptionId}, user: ${userId}, plan: ${planId}, discount: ${discountPercent}%`);
+const activateComplimentaryMembership = async (userId, quote) => {
+  if (!quote.couponValid || !quote.couponHash || quote.finalPrice !== 0) {
+    throw Object.assign(new Error('A valid complimentary membership code is required'), { statusCode: 400 });
+  }
+  const result = await pool.query(
+    `INSERT INTO subscriptions (
+      user_id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
+    ) VALUES ($1, $2, 'active', 0, $3, 'coupon', NOW(), NOW() + INTERVAL '1 year')
+    RETURNING *`,
+    [userId, quote.planId, quote.currency]
+  );
+  return result.rows[0];
+};
 
-    res.status(201).json({
+app.get('/api/subscriptions/config', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    success: true,
+    plan: {
+      id: MEMBERSHIP_PLAN_ID,
+      name: 'Travel',
+      price: MEMBERSHIP_PRICE_GBP,
+      currency: MEMBERSHIP_CURRENCY,
+      interval: 'yearly'
+    },
+    paypal: {
+      configured: paypalIsConfigured(),
+      clientId: process.env.PAYPAL_CLIENT_ID || null,
+      environment: PAYPAL_ENVIRONMENT
+    }
+  });
+});
+
+app.post('/api/subscriptions/quote', (req, res) => {
+  try {
+    const quote = getMembershipQuote(req.body.planId || MEMBERSHIP_PLAN_ID, req.body.couponCode);
+    res.set('Cache-Control', 'no-store');
+    res.json({
       success: true,
-      subscriptionId,
-      message: finalPrice === 0 
-        ? 'Welcome to the club! Your free membership has been activated.'
-        : `Welcome to the club! Your membership has been activated. Amount charged: £${finalPrice}`
+      quote: {
+        planId: quote.planId,
+        basePrice: quote.basePrice,
+        finalPrice: quote.finalPrice,
+        currency: quote.currency,
+        couponValid: quote.couponValid,
+        discountPercent: quote.discountPercent,
+        couponDescription: quote.couponDescription
+      }
     });
   } catch (error) {
-    console.error('Subscription error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to process subscription'
-    });
+    res.status(error.statusCode || 500).json({ success: false, error: error.message });
   }
 });
 
-// Get user's subscription status
-app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
+app.post('/api/subscriptions/paypal/order', authenticateToken, async (req, res) => {
   try {
-    // In a real app, you'd query the database for the user's subscription
-    // For now, return a placeholder response
+    const existingSubscription = await getActiveSubscription(req.user.id);
+    if (existingSubscription) {
+      return res.status(409).json({ success: false, error: 'This account already has an active membership' });
+    }
+
+    const quote = getMembershipQuote(req.body.planId || MEMBERSHIP_PLAN_ID, req.body.couponCode);
+    if (!quote.couponValid) {
+      return res.status(400).json({ success: false, error: 'Invalid membership code' });
+    }
+    if (quote.finalPrice <= 0) {
+      return res.status(400).json({ success: false, error: 'No PayPal payment is required for this membership' });
+    }
+
+    const requestId = crypto.randomUUID();
+    const order = await paypalRequest('/v2/checkout/orders', {
+      method: 'POST',
+      requestId,
+      body: {
+        intent: 'CAPTURE',
+        purchase_units: [{
+          reference_id: 'VENTUS_TRAVEL_MEMBERSHIP',
+          custom_id: String(req.user.id),
+          description: 'Ventus Travel annual membership',
+          amount: {
+            currency_code: quote.currency,
+            value: quote.finalPrice.toFixed(2)
+          }
+        }],
+        payment_source: {
+          paypal: {
+            experience_context: {
+              brand_name: 'Ventus Travel',
+              shipping_preference: 'NO_SHIPPING',
+              user_action: 'PAY_NOW',
+              return_url: `${PUBLIC_APP_URL}/subscription`,
+              cancel_url: `${PUBLIC_APP_URL}/subscription`
+            }
+          }
+        }
+      }
+    });
+
+    if (!order.id) throw Object.assign(new Error('PayPal did not create an order'), { statusCode: 502 });
+    await pool.query(
+      `INSERT INTO paypal_orders (
+        user_id, paypal_order_id, plan_id, expected_amount, currency,
+        discount_percent, coupon_hash, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'CREATED')
+      ON CONFLICT (paypal_order_id) DO NOTHING`,
+      [req.user.id, order.id, quote.planId, quote.finalPrice, quote.currency, quote.discountPercent, quote.couponHash]
+    );
+
+    res.status(201).json({ success: true, orderId: order.id });
+  } catch (error) {
+    console.error('Create PayPal membership order error:', error.message);
+    res.status(error.statusCode || 500).json({ success: false, error: error.message || 'Unable to create membership order' });
+  }
+});
+
+app.post('/api/subscriptions/paypal/capture', authenticateToken, async (req, res) => {
+  try {
+    const orderId = typeof req.body.orderId === 'string' ? req.body.orderId.trim() : '';
+    if (!orderId) return res.status(400).json({ success: false, error: 'PayPal order ID is required' });
+
+    const storedOrderResult = await pool.query(
+      'SELECT * FROM paypal_orders WHERE paypal_order_id = $1 AND user_id = $2',
+      [orderId, req.user.id]
+    );
+    if (storedOrderResult.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'This PayPal order does not belong to the current account' });
+    }
+
+    const existingSubscription = await pool.query(
+      'SELECT * FROM subscriptions WHERE paypal_order_id = $1 LIMIT 1',
+      [orderId]
+    );
+    if (existingSubscription.rows.length > 0) {
+      return res.json({
+        success: true,
+        subscription: serializeSubscription(existingSubscription.rows[0]),
+        message: 'Your membership is active.'
+      });
+    }
+
+    const capturedOrder = await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
+      method: 'POST',
+      requestId: `capture-${orderId}`
+    });
+    const purchaseUnit = capturedOrder.purchase_units?.[0];
+    const capture = purchaseUnit?.payments?.captures?.find((item) => item.status === 'COMPLETED');
+    if (capturedOrder.status !== 'COMPLETED' || !capture?.id || !capture.amount) {
+      throw Object.assign(new Error('PayPal payment was not completed'), { statusCode: 400 });
+    }
+    if (String(purchaseUnit.custom_id) !== String(req.user.id)) {
+      throw Object.assign(new Error('PayPal payment account did not match'), { statusCode: 400 });
+    }
+
+    const persisted = await persistCompletedMembershipPayment({
+      orderId,
+      captureId: capture.id,
+      amount: capture.amount.value,
+      currency: capture.amount.currency_code
+    });
     res.json({
       success: true,
-      hasActiveSubscription: false,
-      subscription: null
+      subscription: serializeSubscription(persisted.subscription),
+      message: 'Welcome to Ventus Travel. Your membership is now active.'
+    });
+  } catch (error) {
+    console.error('Capture PayPal membership order error:', error.message);
+    res.status(error.statusCode || 500).json({ success: false, error: error.message || 'Unable to activate membership' });
+  }
+});
+
+app.post('/api/subscriptions/complimentary', authenticateToken, async (req, res) => {
+  try {
+    const existingSubscription = await getActiveSubscription(req.user.id);
+    if (existingSubscription) {
+      return res.json({ success: true, subscription: serializeSubscription(existingSubscription), message: 'Your membership is active.' });
+    }
+    const quote = getMembershipQuote(req.body.planId || MEMBERSHIP_PLAN_ID, req.body.couponCode);
+    const subscription = await activateComplimentaryMembership(req.user.id, quote);
+    res.status(201).json({
+      success: true,
+      subscription: serializeSubscription(subscription),
+      message: 'Welcome to Ventus Travel. Your membership is now active.'
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ success: false, error: error.message || 'Unable to activate membership' });
+  }
+});
+
+// Keep the original endpoint as a safe compatibility layer for old clients.
+app.post('/api/subscriptions/subscribe', authenticateToken, async (req, res) => {
+  res.status(410).json({
+    success: false,
+    error: 'Please refresh the page and complete the secure membership checkout.'
+  });
+});
+
+app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
+  try {
+    const subscription = await getActiveSubscription(req.user.id);
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      success: true,
+      hasActiveSubscription: Boolean(subscription),
+      subscription: serializeSubscription(subscription)
     });
   } catch (error) {
     console.error('Get subscription status error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get subscription status'
+    res.status(500).json({ success: false, error: 'Failed to get subscription status' });
+  }
+});
+
+app.post('/api/booking-requests', authenticateToken, async (req, res) => {
+  try {
+    const subscription = await getActiveSubscription(req.user.id);
+    if (!subscription) {
+      return res.status(403).json({
+        success: false,
+        error: 'An active Ventus Travel membership is required to request a booking.'
+      });
+    }
+
+    const hotelId = Number(req.body.hotelId);
+    const hotelName = typeof req.body.hotelName === 'string' ? req.body.hotelName.trim().slice(0, 255) : '';
+    const sessionId = typeof req.body.sessionId === 'string' ? req.body.sessionId.trim().slice(0, 255) : '';
+    const rateIndex = typeof req.body.rateIndex === 'string' ? req.body.rateIndex.trim().slice(0, 255) : '';
+    const startDate = typeof req.body.startDate === 'string' ? req.body.startDate.trim() : '';
+    const endDate = typeof req.body.endDate === 'string' ? req.body.endDate.trim() : '';
+    const guestName = typeof req.body.guestName === 'string' ? req.body.guestName.trim().slice(0, 200) : '';
+    const guestEmail = typeof req.body.guestEmail === 'string' ? req.body.guestEmail.trim().toLowerCase().slice(0, 255) : '';
+    const guestPhone = typeof req.body.guestPhone === 'string' ? req.body.guestPhone.trim().slice(0, 80) : '';
+    const roomType = typeof req.body.roomType === 'string' ? req.body.roomType.trim().slice(0, 255) : '';
+    const specialRequests = typeof req.body.specialRequests === 'string' ? req.body.specialRequests.trim().slice(0, 4000) : '';
+    const rooms = Array.isArray(req.body.rooms) ? req.body.rooms.slice(0, 10) : [];
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!Number.isInteger(hotelId) || hotelId <= 0 || !hotelName || !sessionId || !rateIndex) {
+      return res.status(400).json({ success: false, error: 'A valid hotel and selected rate are required.' });
+    }
+    if (!datePattern.test(startDate) || !datePattern.test(endDate) || endDate <= startDate) {
+      return res.status(400).json({ success: false, error: 'Check-out must be at least one day after check-in.' });
+    }
+    if (!guestName || !emailPattern.test(guestEmail) || !guestPhone) {
+      return res.status(400).json({ success: false, error: 'A valid guest name, email and phone number are required.' });
+    }
+    if (rooms.length === 0 || rooms.some((room) => {
+      const adults = Number(room?.adults);
+      const children = Array.isArray(room?.children) ? room.children : [];
+      return !Number.isInteger(adults) || adults < 1 || adults > 20 || children.length > 10 ||
+        children.some((child) => !Number.isInteger(Number(child?.age)) || Number(child.age) < 0 || Number(child.age) > 17);
+    })) {
+      return res.status(400).json({ success: false, error: 'The room and guest configuration is invalid.' });
+    }
+
+    const normalizedRooms = rooms.map((room) => ({
+      adults: Number(room.adults),
+      children: (Array.isArray(room.children) ? room.children : []).map((child) => ({ age: Number(child.age) }))
+    }));
+    const quotedAmountValue = Number(req.body.quotedAmount);
+    const quotedAmount = Number.isFinite(quotedAmountValue) && quotedAmountValue >= 0
+      ? Number(quotedAmountValue.toFixed(2))
+      : null;
+    const quotedCurrency = typeof req.body.quotedCurrency === 'string' && /^[A-Za-z]{3}$/.test(req.body.quotedCurrency.trim())
+      ? req.body.quotedCurrency.trim().toUpperCase()
+      : null;
+    const reference = `VT-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    await pool.query(
+      `INSERT INTO booking_requests (
+        request_reference, user_id, hotel_id, hotel_name, session_id, rate_index,
+        start_date, end_date, guest_name, guest_email, guest_phone, room_type,
+        rooms, quoted_amount, quoted_currency, special_requests
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16)`,
+      [
+        reference, req.user.id, hotelId, hotelName, sessionId, rateIndex,
+        startDate, endDate, guestName, guestEmail, guestPhone, roomType || null,
+        JSON.stringify(normalizedRooms), quotedAmount, quotedCurrency, specialRequests || null
+      ]
+    );
+
+    const notification = {
+      reference, hotelId, hotelName, startDate, endDate, guestName, guestEmail,
+      guestPhone, roomType, rooms: normalizedRooms, quotedAmount, quotedCurrency,
+      specialRequests
+    };
+    void sendBookingRequestNotification(notification).then((sent) => {
+      if (!sent) console.warn(`Booking request ${reference} saved without email notification: provider not configured`);
+    }).catch((error) => {
+      console.error(`Booking request ${reference} email notification failed:`, error.message);
     });
+
+    res.status(201).json({
+      success: true,
+      bookingId: reference,
+      message: `Your booking request has been received. Ventus will confirm availability and the final total before any payment. Reference: ${reference}`
+    });
+  } catch (error) {
+    console.error('Create booking request error:', error);
+    res.status(500).json({ success: false, error: 'Unable to save your booking request. Please try again.' });
+  }
+});
+
+app.post('/api/paypal/webhook', async (req, res) => {
+  try {
+    if (!process.env.PAYPAL_WEBHOOK_ID) {
+      return res.status(503).json({ success: false, error: 'PayPal webhook is not configured' });
+    }
+    const transmissionId = req.header('paypal-transmission-id');
+    const transmissionTime = req.header('paypal-transmission-time');
+    const transmissionSig = req.header('paypal-transmission-sig');
+    const certUrl = req.header('paypal-cert-url');
+    const authAlgo = req.header('paypal-auth-algo');
+    if (!transmissionId || !transmissionTime || !transmissionSig || !certUrl || !authAlgo) {
+      return res.status(400).json({ success: false, error: 'Missing PayPal webhook verification headers' });
+    }
+
+    const verification = await paypalRequest('/v1/notifications/verify-webhook-signature', {
+      method: 'POST',
+      body: {
+        auth_algo: authAlgo,
+        cert_url: certUrl,
+        transmission_id: transmissionId,
+        transmission_sig: transmissionSig,
+        transmission_time: transmissionTime,
+        webhook_id: process.env.PAYPAL_WEBHOOK_ID,
+        webhook_event: req.body
+      }
+    });
+    if (verification.verification_status !== 'SUCCESS') {
+      return res.status(400).json({ success: false, error: 'Invalid PayPal webhook signature' });
+    }
+
+    const resource = req.body?.resource || {};
+    const captureId = resource.id;
+    const orderId = resource.supplementary_data?.related_ids?.order_id;
+    if (req.body?.event_type === 'PAYMENT.CAPTURE.COMPLETED' && orderId && captureId && resource.amount) {
+      await persistCompletedMembershipPayment({
+        orderId,
+        captureId,
+        amount: resource.amount.value,
+        currency: resource.amount.currency_code
+      });
+    }
+    if (['PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED', 'PAYMENT.CAPTURE.DENIED'].includes(req.body?.event_type)) {
+      const revokedStatus = req.body.event_type === 'PAYMENT.CAPTURE.REFUNDED' ? 'refunded' : 'revoked';
+      await pool.query(
+        `UPDATE subscriptions SET status = $2, updated_at = NOW() WHERE paypal_capture_id = $1`,
+        [captureId, revokedStatus]
+      );
+      await pool.query(
+        `UPDATE paypal_orders SET status = $2, updated_at = NOW() WHERE paypal_capture_id = $1`,
+        [captureId, revokedStatus.toUpperCase()]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('PayPal webhook error:', error.message);
+    res.status(error.statusCode || 500).json({ success: false, error: 'Unable to process PayPal webhook' });
   }
 });
 
@@ -847,7 +1499,7 @@ app.get('/api/subscriptions/status', authenticateToken, async (req, res) => {
 // Proxies hotel search/availability/booking to api-staging.littleemperors.com so the
 // staging frontend can call this backend (same CORS origin) instead of public CORS proxies.
 const HOTEL_API_BASE = process.env.HOTEL_API_BASE || 'https://api-staging.littleemperors.com';
-const HOTEL_API_TOKEN = process.env.HOTEL_API_TOKEN || process.env.REACT_APP_API_TOKEN || '';
+const HOTEL_API_TOKEN = process.env.HOTEL_API_TOKEN || '';
 const HOTEL_API_CACHE_MAX_ENTRIES = 300;
 const hotelApiCache = new Map();
 const hotelApiInflight = new Map();
@@ -903,6 +1555,27 @@ const storeHotelApiCacheEntry = (key, entry) => {
   hotelApiCache.set(key, entry);
 };
 
+const getAuthenticatedUserFromRequest = (req) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) throw Object.assign(new Error('Member login required'), { statusCode: 401 });
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    throw Object.assign(new Error('Invalid or expired member login'), { statusCode: 403 });
+  }
+};
+
+const hotelRequestRequiresMembership = (req) => {
+  const requestUrl = new URL(req.originalUrl, 'http://membership.local');
+  const path = requestUrl.pathname.replace(/\/$/, '');
+  return (
+    /^\/v2\/hotels\/\d+\/calendar$/.test(path) ||
+    path === '/v2/hotels/availability' ||
+    path === '/v2/hotels/bookings'
+  );
+};
+
 // Inspiration collections include full hotel records even though the results
 // page only needs summary-card fields. Compacting them at the proxy cuts the
 // cached response substantially without changing the hotel detail endpoint.
@@ -930,7 +1603,75 @@ const compactInspirationCollection = (data) => {
   };
 };
 
+// One browser request can enrich an entire result page. Individual detail records
+// still use the same 15-minute server cache, so repeated searches avoid upstream work.
+app.post('/api/hotels/details-batch', async (req, res) => {
+  const rawIds = Array.isArray(req.body?.hotelIds) ? req.body.hotelIds : [];
+  const hotelIds = Array.from(new Set(rawIds.map(Number).filter((id) => Number.isInteger(id) && id > 0))).slice(0, 30);
+  if (hotelIds.length === 0) {
+    return res.status(400).json({ success: false, error: 'At least one valid hotel ID is required' });
+  }
+
+  const results = new Array(hotelIds.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < hotelIds.length) {
+      const index = cursor++;
+      const hotelId = hotelIds[index];
+      const cacheKey = `/v2/hotels/${hotelId}`;
+      const cached = hotelApiCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        results[index] = cached.data;
+        continue;
+      }
+
+      try {
+        const response = await fetch(`${HOTEL_API_BASE}${cacheKey}`, {
+          signal: AbortSignal.timeout(15000),
+          headers: {
+            Accept: 'application/json',
+            ...(HOTEL_API_TOKEN && { Authorization: `Bearer ${HOTEL_API_TOKEN}` })
+          }
+        });
+        if (!response.ok) continue;
+        const data = await response.json();
+        const cachedAt = Date.now();
+        storeHotelApiCacheEntry(cacheKey, {
+          status: response.status,
+          contentType: response.headers.get('content-type') || 'application/json',
+          data,
+          cachedAt,
+          expiresAt: cachedAt + 15 * 60 * 1000,
+          staleUntil: cachedAt + 24 * 60 * 60 * 1000
+        });
+        results[index] = data;
+      } catch (error) {
+        console.warn(`Hotel detail batch request failed for ${hotelId}:`, error.message);
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(6, hotelIds.length) }, worker));
+  res.set('Cache-Control', 'private, max-age=60');
+  res.json({ success: true, content: results.filter(Boolean) });
+});
+
 app.use('/v2', express.json(), async (req, res) => {
+  if (hotelRequestRequiresMembership(req)) {
+    try {
+      const user = getAuthenticatedUserFromRequest(req);
+      const subscription = await getActiveSubscription(user.id);
+      if (!subscription) {
+        return res.status(403).json({
+          success: false,
+          error: 'An active Ventus Travel membership is required to view live rates or book.'
+        });
+      }
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ success: false, error: error.message });
+    }
+  }
+
   const targetUrl = `${HOTEL_API_BASE}${req.originalUrl}`;
   const cachePolicy = getHotelApiCachePolicy(req);
   const cacheKey = cachePolicy ? getHotelApiCacheKey(req) : null;
@@ -1052,11 +1793,21 @@ const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
 const startServer = async () => {
+  assertProductionConfiguration();
+
   try {
     await ensurePasswordResetSchema();
     console.log('✓ Password reset schema ready');
   } catch (error) {
     console.error('Password reset schema initialization failed:', error);
+  }
+
+  try {
+    await ensureSubscriptionSchema();
+    console.log('✓ Membership schema ready');
+  } catch (error) {
+    console.error('Membership schema initialization failed:', error);
+    throw error;
   }
 
   app.listen(PORT, HOST, () => {

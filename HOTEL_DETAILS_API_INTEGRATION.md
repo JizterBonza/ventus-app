@@ -194,7 +194,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
 The API token is configured in `src/utils/api.ts`:
 
 ```typescript
-const API_TOKEN = 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
+const API_TOKEN = process.env.HOTEL_API_TOKEN;
 ```
 
 **Note**: In a production environment, this should be stored in environment variables.

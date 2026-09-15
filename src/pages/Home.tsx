@@ -731,9 +731,9 @@ const Home: React.FC = () => {
                                                     <div className="card-content">
                                                         <h4>{displayHotel.name}</h4>
                                                         <div className="card-description">
-                                                        <a>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                                        <span>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
 <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
-</svg></a>
+</svg></span>
                                                             {/* 
                                                             {displayHotel.description
                                                                 ? displayHotel.description.length > 150

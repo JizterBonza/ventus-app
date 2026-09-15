@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { AvailabilityResponse, Hotel, RateInfo } from "../types/search";
-import { getHotelDetails, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
+import { getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
 import {
     SEARCH_SESSION_COOKIES,
@@ -191,7 +191,7 @@ const SearchResults: React.FC = () => {
     const currentSearchKey = urlSearchParams.toString();
     const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location");
     const { hotels, loading, error, searchAdvanced, clearResults } = useSearch();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, hasActiveMembership } = useAuth();
     
     const [searchParams, setSearchParams] = useState({
         location: "",
@@ -457,21 +457,13 @@ const SearchResults: React.FC = () => {
         }
 
         setLoadingFilterOptions(true);
-        void settleWithConcurrency(hotelIds, 4, async (hotelId) => {
-            const detailedHotel = await getHotelDetails(hotelId);
-            if (detailsRequestRef.current !== requestId) return;
-
-            setDetailedHotels((current) => {
-                const existingIndex = current.findIndex((hotel) => hotel.id === detailedHotel.id);
-                if (existingIndex === -1) return [...current, detailedHotel];
-
-                const next = [...current];
-                next[existingIndex] = detailedHotel;
-                return next;
+        void getHotelDetailsBatch(hotelIds)
+            .then((details) => {
+                if (detailsRequestRef.current === requestId) setDetailedHotels(details);
+            })
+            .finally(() => {
+                if (detailsRequestRef.current === requestId) setLoadingFilterOptions(false);
             });
-        }).finally(() => {
-            if (detailsRequestRef.current === requestId) setLoadingFilterOptions(false);
-        });
 
         return () => {
             if (detailsRequestRef.current === requestId) detailsRequestRef.current += 1;
@@ -486,14 +478,14 @@ const SearchResults: React.FC = () => {
     }, [currentSearchKey]);
 
     useEffect(() => {
-        if (!isAuthenticated) {
+        if (!hasActiveMembership) {
             setSearchParams((current) =>
                 current.sortBy === "price-high" || current.sortBy === "price-low"
                     ? { ...current, sortBy: "recommended" }
                     : current
             );
         }
-    }, [isAuthenticated]);
+    }, [hasActiveMembership]);
 
     useEffect(() => {
         if (!filtersOpen) return;
@@ -541,7 +533,7 @@ const SearchResults: React.FC = () => {
     // batch only (max 10 at a time -- "View More" reveals the next batch). Keeping the batch small means
     // every card's tag resolves quickly instead of the whole page waiting on a large city search.
     useEffect(() => {
-        if (visibleHotels.length === 0) {
+        if (!hasActiveMembership || visibleHotels.length === 0) {
             setStartingFromPrices({});
             setHotelAvailability({});
             setAvailabilityMemberBenefits({});
@@ -577,7 +569,7 @@ const SearchResults: React.FC = () => {
                     nextAvailability[hotel.id] = !!first?.is_available;
                     const exactBenefits = first ? getAvailabilityMemberBenefits(first) : null;
                     if (exactBenefits) nextBenefits[hotel.id] = exactBenefits;
-                    if (!isAuthenticated || !first?.is_available || first.lowest_rate == null) return;
+                    if (!first?.is_available || first.lowest_rate == null) return;
                     const lr = first.lowest_rate;
                     const rateValue =
                         typeof lr === "number"
@@ -612,7 +604,7 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, visibleHotelIdsKey, searchDatesAndRoomsKey]);
+    }, [hasActiveMembership, visibleHotelIdsKey, searchDatesAndRoomsKey]);
 
     return (
         <div className="search-page">
@@ -678,8 +670,8 @@ const SearchResults: React.FC = () => {
                                                 <legend>Sort by</legend>
                                                 {[
                                                     { value: "recommended", label: "Recommended", disabled: false },
-                                                    { value: "price-high", label: "Price (high to low)", disabled: !isAuthenticated },
-                                                    { value: "price-low", label: "Price (low to high)", disabled: !isAuthenticated },
+                                                    { value: "price-high", label: "Price (high to low)", disabled: !hasActiveMembership },
+                                                    { value: "price-low", label: "Price (low to high)", disabled: !hasActiveMembership },
                                                     { value: "opening-date", label: "Opening date", disabled: false },
                                                 ].map((option) => (
                                                     <label className="search-filter-option search-filter-radio" key={option.value}>
@@ -698,8 +690,8 @@ const SearchResults: React.FC = () => {
                                                         <span className="search-filter-label">{option.label}</span>
                                                     </label>
                                                 ))}
-                                                {!isAuthenticated && (
-                                                    <p className="search-filter-section-note">Log in to sort by live member prices.</p>
+                                                {!hasActiveMembership && (
+                                                    <p className="search-filter-section-note">Complete membership to sort by live member prices.</p>
                                                 )}
                                             </fieldset>
 
@@ -823,10 +815,10 @@ const SearchResults: React.FC = () => {
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
                                         const exactMemberBenefits = availabilityMemberBenefits[hotel.id];
-                                        const memberBenefits = isAuthenticated
+                                        const memberBenefits = hasActiveMembership
                                             ? exactMemberBenefits?.benefits || Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
                                             : [];
-                                        const benefitFootnotes = isAuthenticated
+                                        const benefitFootnotes = hasActiveMembership
                                             ? exactMemberBenefits?.footnotes || Array.from(new Set((displayHotel.benefits_footnotes || []).filter((footnote) => footnote.trim())))
                                             : [];
 
@@ -871,7 +863,7 @@ const SearchResults: React.FC = () => {
                                                                     Not available for these dates — view hotel to check other dates
                                                                 </p>
                                                             )}
-                                                            {isAuthenticated && (() => {
+                                                            {hasActiveMembership && (() => {
                                                                 const priceInfo = startingFromPrices[hotel.id];
                                                                 const isLoading = loadingStartingFromPrices && priceInfo == null;
                                                                 if (isLoading) {
@@ -943,11 +935,11 @@ const SearchResults: React.FC = () => {
                                                                 View Hotel{" "}
                                                                
                                                             </Link>
-                                                            {!isAuthenticated && (
+                                                            {!hasActiveMembership && (
                                                                 <Link 
                                                                 className="text-link"
-                                                                    to="/login" >
-                                                                    Login to view benefits{" "}
+                                                                    to={isAuthenticated ? "/subscription" : "/login"} >
+                                                                    {isAuthenticated ? "Complete membership to view benefits" : "Login to view benefits"}{" "}
                                                                   
                                                                 </Link>
                                                             )}

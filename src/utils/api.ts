@@ -1,8 +1,8 @@
 import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse, HotelCalendarRate } from '../types/search';
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
-import { isAuthenticated } from './authService';
+import { getAuthToken, isAuthenticated } from './authService';
 
-const DEFAULT_API_BASE = 'https://api-staging.littleemperors.com/v2';
+const DEFAULT_API_BASE = 'https://ventus-backend.onrender.com/v2';
 
 // API base: development uses dev proxy; production uses REACT_APP_API_BASE (backend proxy) or direct API.
 const getApiBaseUrl = () => {
@@ -96,8 +96,9 @@ const getActualApiUrl = (url: string): string => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
-// Use REACT_APP_API_TOKEN in .env to override (e.g. if token expired); required for hotel details
-const API_TOKEN = process.env.REACT_APP_API_TOKEN || 'lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY';
+// Supplier credentials are deliberately never bundled into the browser. The Ventus
+// backend owns the Little Emperors token and forwards only authorised requests.
+const API_TOKEN = '';
 
 // Fallback CORS proxies if primary fails (e.g. CORS blocked, rate limit, or preflight issue)
 const FALLBACK_PROXIES = [
@@ -135,10 +136,12 @@ const urlWithAuthIfProxied = (actualUrl: string, useProxy: boolean): string => {
 const makeApiRequest = async (url: string, options: RequestInit): Promise<Response> => {
   // Check if we're using backend proxy FIRST (before converting URL)
   const authApiUrl = process.env.REACT_APP_AUTH_API_URL;
-  const backendBase = authApiUrl ? authApiUrl.replace(/\/api\/auth.*$/, '') : '';
-  const usingBackendProxy = backendBase && 
+  const backendBase = authApiUrl
+    ? authApiUrl.replace(/\/api\/auth.*$/, '')
+    : 'https://ventus-backend.onrender.com';
+  const usingBackendProxy = Boolean(backendBase) &&
                             !process.env.REACT_APP_API_DIRECT && 
-                            (url.startsWith(backendBase) || API_BASE_URL.startsWith(backendBase));
+                            (url.startsWith('/v2') || url.startsWith(backendBase) || API_BASE_URL.startsWith(backendBase));
   
   // Get actual API URL for logging purposes only
   const actualUrl = getActualApiUrl(url);
@@ -173,9 +176,17 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
 
   // When calling a proxy, use a "simple" request (no custom headers) so the
   // browser does not send OPTIONS preflight; public proxies often fail preflight.
-  const requestOptions: RequestInit = useProxy && (options.method === 'GET' || options.method === undefined)
+  let requestOptions: RequestInit = useProxy && (options.method === 'GET' || options.method === undefined)
     ? { method: 'GET' }
     : options;
+
+  if (usingBackendProxy) {
+    const headers = new Headers(options.headers || {});
+    headers.delete('Authorization');
+    const memberToken = getAuthToken();
+    if (memberToken) headers.set('Authorization', `Bearer ${memberToken}`);
+    requestOptions = { ...options, headers };
+  }
 
   // Enhanced debug logging (comment back in to view fetch details)
   // if (process.env.NODE_ENV === 'production') {
@@ -532,9 +543,7 @@ const fetchHotelDetails = async (hotelId: number): Promise<Hotel> => {
     
     // Handle API auth error (e.g. missing/invalid token, or proxy stripped headers)
     if (data && (data.error === 'authentication' || data.message === 'Unauthenticated.')) {
-      throw new Error(
-        'Hotel details require a valid API token. In staging/production the app uses a CORS proxy and sends the token as access_token in the URL; if the API only accepts Bearer header (like Postman), set REACT_APP_API_DIRECT=true in your staging env and ensure the API allows CORS from your origin. Also set REACT_APP_API_TOKEN to the same token that works in Postman.'
-      );
+      throw new Error('Hotel details are temporarily unavailable from the Ventus service.');
     }
     
     // Handle API error responses
@@ -577,10 +586,10 @@ const fetchHotelDetails = async (hotelId: number): Promise<Hotel> => {
       price: numericPrice(hotelData.price) ?? numericPrice(hotelData.min_price) ?? numericPrice(hotelData.lowest_rate) ?? undefined,
       image: hotelData.images && hotelData.images.length > 0 ? hotelData.images[0].url : undefined,
       available: true,
-      distance: hotelData.distance || `${Math.floor(Math.random() * 10) + 1} km from city center`,
-      reviewCount: hotelData.reviewCount || Math.floor(Math.random() * 500) + 50,
-      phone: hotelData.phone || '+63 2 1234 5678',
-      email: hotelData.email || 'info@example.com'
+      distance: hotelData.distance || undefined,
+      reviewCount: hotelData.reviewCount || undefined,
+      phone: hotelData.phone || undefined,
+      email: hotelData.email || undefined
     };
   } catch (error) {
     console.error('getHotelDetails error:', error);
@@ -763,31 +772,38 @@ export const testApiEndpoint = async (): Promise<{ success: boolean; message: st
  * Fetch hotel details for multiple hotels in parallel
  */
 export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]> => {
-  // console.log('Fetching hotel details for batch:', hotelIds);
-  //
   try {
-    // Fetch all hotel details in parallel
-    const hotelPromises = hotelIds.map(id => getHotelDetails(id));
-    const hotels = await Promise.allSettled(hotelPromises);
-    
-    // Filter out failed requests and return successful ones
-    const successfulHotels = hotels
-      .filter((result): result is PromiseFulfilledResult<Hotel> => result.status === 'fulfilled')
-      .map(result => result.value);
-    
-    const failedHotels = hotels
-      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-      .map(result => result.reason);
-    
-    if (failedHotels.length > 0) {
-      console.warn('Some hotel details failed to fetch:', failedHotels);
-    }
-    
-    // console.log(`Successfully fetched ${successfulHotels.length} out of ${hotelIds.length} hotel details`);
-    return successfulHotels;
+    const authApiUrl = process.env.REACT_APP_AUTH_API_URL || 'https://ventus-backend.onrender.com/api/auth';
+    const backendBase = authApiUrl.replace(/\/api\/auth.*$/, '');
+    const response = await fetch(`${backendBase}/api/hotels/details-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hotelIds }),
+    });
+    if (!response.ok) throw new Error(`Hotel detail batch failed (${response.status})`);
+    const data = await response.json();
+    const content = Array.isArray(data?.content) ? data.content : [];
+    return content.map((hotelData: any) => ({
+      ...hotelData,
+      id: Number(hotelData.id),
+      name: hotelData.name || 'Unknown Hotel',
+      location: hotelData.location || 'Unknown Location',
+      description: hotelData.description || '',
+      hotel_information: hotelData.hotel_information || [],
+      amenities: hotelData.amenities || [],
+      benefits: hotelData.benefits || [],
+      benefits_footnotes: hotelData.benefits_footnotes || [],
+      images: hotelData.images || [],
+      price: numericPrice(hotelData.price) ?? numericPrice(hotelData.min_price) ?? numericPrice(hotelData.lowest_rate) ?? undefined,
+      image: hotelData.images?.[0]?.url,
+      available: true,
+    } as Hotel));
   } catch (error) {
-    console.error('getHotelDetailsBatch error:', error);
-    throw error;
+    console.warn('Batch enrichment unavailable; using cached individual hotel details.', error);
+    const hotels = await Promise.allSettled(hotelIds.map((id) => getHotelDetails(id)));
+    return hotels
+      .filter((result): result is PromiseFulfilledResult<Hotel> => result.status === 'fulfilled')
+      .map((result) => result.value);
   }
 };
 
@@ -1365,4 +1381,55 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
       message: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
     };
   }
+};
+
+export interface BookingRequestSubmission {
+  hotelId: number;
+  hotelName: string;
+  sessionId: string;
+  rateIndex: string;
+  startDate: string;
+  endDate: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  roomType?: string;
+  specialRequests?: string;
+  rooms: Array<{
+    adults: number;
+    children?: Array<{ age: number }>;
+  }>;
+  quotedAmount?: number | null;
+  quotedCurrency?: string;
+}
+
+/**
+ * Records a member booking request without taking payment. Ventus confirms the
+ * live rate and benefits before a booking or charge is made.
+ */
+export const submitBookingRequest = async (
+  bookingData: BookingRequestSubmission
+): Promise<BookingResponse> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please log in to request this booking.');
+
+  const backendBase = getActualApiBaseUrl().replace(/\/v2\/?$/, '');
+  const response = await fetch(`${backendBase}/api/booking-requests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(bookingData),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Unable to send this booking request.');
+  }
+  return {
+    success: true,
+    message: data.message || 'Your booking request has been received.',
+    bookingId: data.bookingId,
+  };
 };

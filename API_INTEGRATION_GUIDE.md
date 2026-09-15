@@ -11,7 +11,7 @@ https://api-staging.littleemperors.com/v2/search?query=Philippines&limit=20
 
 ### Base Configuration
 - **Base URL**: `https://api-staging.littleemperors.com/v2`
-- **API Token**: `lev2_U4Jp8lyg5iXR2mTQVJEn_sbfi9YLSzE3NTIxNDQxODY`
+- **API Token**: configure `HOTEL_API_TOKEN` on the backend; never place it in frontend code or documentation.
 - **Endpoint**: `/search`
 
 ### Request Format

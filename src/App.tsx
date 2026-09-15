@@ -10,7 +10,6 @@ import Destinations from "./pages/Destinations";
 import HotelDetail from "./pages/HotelDetail";
 import SearchResults from "./pages/SearchResults";
 import Booking from "./pages/Booking";
-import BookingTest from "./pages/BookingTest";
 import Magazine from "./pages/Magazine";
 import MagazinePost from "./pages/MagazinePost";
 import BuyOuts from "./pages/Buyouts";
@@ -86,14 +85,6 @@ function App() {
                             element={
                                 <ProtectedRoute>
                                     <Booking />
-                                </ProtectedRoute>
-                            } 
-                        />
-                        <Route 
-                            path="/booking-test" 
-                            element={
-                                <ProtectedRoute>
-                                    <BookingTest />
                                 </ProtectedRoute>
                             } 
                         />
