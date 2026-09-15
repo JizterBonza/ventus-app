@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 
 
 const Footer: React.FC = () => {
+    const currentYear = new Date().getFullYear();
     return (
         <>
            
@@ -60,7 +61,7 @@ const Footer: React.FC = () => {
                     </div>
                     
                     <div className="footer-bottom">
-                        <div className="copyright">© 2025 Ventus Luxury Travel. All rights reserved. Powered by Little Emperors.</div>
+                        <div className="copyright">© {currentYear} Ventus Luxury Travel. All rights reserved. Powered by Little Emperors.</div>
                         <ul>
                             <li>
                                 <Link to="/privacy-policy">Privacy Policy</Link>
