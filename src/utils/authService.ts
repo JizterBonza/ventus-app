@@ -145,9 +145,11 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
         body: JSON.stringify({
           email: normalizedEmail,
           password: data.password,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          phone: data.phone?.trim(),
+          cityOfResidence: data.cityOfResidence.trim(),
+          agreeToTerms: data.agreeToTerms
         })
       });
     } catch (fetchError) {
