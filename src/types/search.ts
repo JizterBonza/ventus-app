@@ -93,6 +93,13 @@ export interface SearchResponse {
   message?: string;
 }
 
+export interface PredictiveSearchResult {
+  id: number;
+  text: string;
+  type: "hotel" | "location" | "inspiration";
+  location?: string;
+}
+
 export interface ApiError {
   success: false;
   message: string;
@@ -119,11 +126,15 @@ export interface BookingResponse {
   success: boolean;
   message: string;
   bookingId?: string;
+  confirmationNumber?: string;
+  state?: string;
 }
 
 // Availability related types
 export interface AvailabilityParams {
-  hotel_id: number;
+  hotel_id?: number;
+  location_id?: number;
+  inspiration_id?: number;
   start_date: string; // YYYY-MM-DD
   end_date: string; // YYYY-MM-DD
   currency: string;

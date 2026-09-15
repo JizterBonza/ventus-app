@@ -1,4 +1,4 @@
-import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse, HotelCalendarRate } from '../types/search';
+import { SearchParams, SearchResponse, ApiError, Hotel, BookingDetails, BookingResponse, AvailabilityParams, AvailabilityResponse, HotelCalendarRate, PredictiveSearchResult } from '../types/search';
 import { sendBookingEmailViaEmailJS, sendBookingEmailViaFormService, sendBookingEmailViaMailto } from './emailService';
 import { getAuthToken, isAuthenticated } from './authService';
 
@@ -314,52 +314,58 @@ const numericPrice = (value: any): number | undefined => {
   return undefined;
 };
 
-/**
- * Transforms API response data into Hotel objects
- */
-const transformApiDataToHotels = (apiData: any[]): Hotel[] => {
-  return apiData
-    .filter(item => item.type === 'hotel') // Only include hotel items
-    .map((item, index) => {
-      const images = Array.isArray(item.images)
-        ? item.images
-            .map((image: any) => typeof image === 'string'
-              ? { url: image, thumbnail_url: image, description: item.text || 'Hotel image' }
-              : image)
-            .filter((image: any) => image?.url)
-        : item.image
-          ? [{ url: item.image, thumbnail_url: item.image, description: item.text || 'Hotel image' }]
-          : [];
+const mapApiItemToHotel = (item: any, index = 0): Hotel => {
+  const images = Array.isArray(item.images)
+    ? item.images
+        .map((image: any) => typeof image === 'string'
+          ? { url: image, thumbnail_url: image, description: item.text || item.name || 'Hotel image' }
+          : image)
+        .filter((image: any) => image?.url)
+    : item.image
+      ? [{ url: item.image, thumbnail_url: item.image, description: item.text || item.name || 'Hotel image' }]
+      : [];
 
-      return {
-        id: item.id || index + 1,
-        name: item.text || item.name || 'Unknown Hotel',
-        location: item.location || '',
-        rating: item.rating ?? undefined,
-        price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
-        image: images[0]?.url,
-        amenities: item.amenities || [],
-        description: item.description || '',
-        available: item.available ?? true,
-        distance: item.distance,
-        reviewCount: item.reviewCount,
-        address: item.address,
-        phone: item.phone,
-        email: item.email,
-        website: item.website,
-        latitude: item.latitude,
-        longitude: item.longitude,
-        images,
-        videos: item.videos || [],
-        links: item.links || {
-          self: {
-            href: `${API_BASE_URL}/hotels/${item.id || index + 1}`,
-            method: 'GET'
-          }
-        }
-      };
-    });
+  return {
+    id: item.id || item.hotel_id || index + 1,
+    name: item.text || item.name || item.hotel_name || 'Unknown Hotel',
+    hotel_groups: item.hotel_groups || [],
+    location: item.location || '',
+    rating: item.rating ?? undefined,
+    price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
+    image: images[0]?.url,
+    amenities: item.amenities || [],
+    description: item.description || '',
+    available: item.available ?? item.is_available ?? true,
+    distance: item.distance,
+    reviewCount: item.reviewCount,
+    address: item.address,
+    phone: item.phone,
+    email: item.email,
+    website: item.website,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    display_order: item.display_order,
+    sustainability_initiative: item.sustainability_initiative,
+    sustainability_rating: item.sustainability_rating,
+    short_info: item.short_info,
+    hotel_information: item.hotel_information || [],
+    benefits: item.benefits || [],
+    benefits_footnotes: item.benefits_footnotes || [],
+    images,
+    videos: item.videos || [],
+    links: item.links || {
+      self: {
+        href: `${API_BASE_URL}/hotels/${item.id || item.hotel_id || index + 1}`,
+        method: 'GET'
+      }
+    }
+  };
 };
+
+/** Transforms predictive-search hotel matches into result-card records. */
+const transformApiDataToHotels = (apiData: any[]): Hotel[] => apiData
+  .filter(item => item.type === 'hotel')
+  .map(mapApiItemToHotel);
 
 /**
  * Makes a search request to the API with authorization
@@ -842,32 +848,60 @@ export const getHotelDetailsBatch = async (hotelIds: number[]): Promise<Hotel[]>
   }
 };
 
-/**
- * Fetch hotels by inspiration ID using the /hotels endpoint
- */
-const INSPIRATION_RESULTS_CACHE_TTL_MS = 30 * 60 * 1000;
-const INSPIRATION_RESULTS_STORAGE_PREFIX = 'ventus:inspiration:v1:';
-const inspirationResultsMemoryCache = new Map<string, { hotels: Hotel[]; expiresAt: number }>();
-const inspirationResultsInflight = new Map<string, Promise<Hotel[]>>();
+/** Return the supplier's raw hotel/location/inspiration matches. */
+export const searchPredictions = async (
+  query: string,
+  limit = 20,
+  types: PredictiveSearchResult['type'][] = ['hotel', 'location', 'inspiration'],
+): Promise<PredictiveSearchResult[]> => {
+  const params = new URLSearchParams({
+    query: query.trim(),
+    limit: String(Math.max(1, Math.min(limit, 100))),
+  });
+  types.forEach((type) => params.append('types[]', type));
+  const response = await makeApiRequest(`${API_BASE_URL}/search?${params.toString()}`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) throw new Error(`Hotel search failed (${response.status})`);
+  const data = await response.json();
+  const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+  return items.filter((item: any): item is PredictiveSearchResult =>
+    Number.isInteger(Number(item?.id)) &&
+    typeof item?.text === 'string' &&
+    ['hotel', 'location', 'inspiration'].includes(item?.type)
+  ).map((item: any) => ({
+    id: Number(item.id),
+    text: item.text,
+    type: item.type,
+    location: item.location,
+  }));
+};
 
-const getInspirationResultsCacheKey = (inspirationId: number, perPage: number) =>
-  `${inspirationId}:${perPage}`;
+/** Fetch complete destination/inspiration collections from the supplier's paginated hotel endpoint. */
+const COLLECTION_RESULTS_CACHE_TTL_MS = 30 * 60 * 1000;
+const COLLECTION_RESULTS_STORAGE_PREFIX = 'ventus:hotel-collection:v2:';
+const collectionResultsMemoryCache = new Map<string, { hotels: Hotel[]; expiresAt: number }>();
+const collectionResultsInflight = new Map<string, Promise<Hotel[]>>();
 
-const readCachedInspirationResults = (cacheKey: string): Hotel[] | null => {
-  const memoryEntry = inspirationResultsMemoryCache.get(cacheKey);
+const getCollectionResultsCacheKey = (target: 'location' | 'inspiration', id: number, perPage: number) =>
+  `${target}:${id}:${perPage}`;
+
+const readCachedCollectionResults = (cacheKey: string): Hotel[] | null => {
+  const memoryEntry = collectionResultsMemoryCache.get(cacheKey);
   if (memoryEntry && memoryEntry.expiresAt > Date.now()) return memoryEntry.hotels;
-  if (memoryEntry) inspirationResultsMemoryCache.delete(cacheKey);
+  if (memoryEntry) collectionResultsMemoryCache.delete(cacheKey);
 
   if (typeof window === 'undefined') return null;
   try {
-    const rawEntry = window.localStorage.getItem(`${INSPIRATION_RESULTS_STORAGE_PREFIX}${cacheKey}`);
+    const rawEntry = window.localStorage.getItem(`${COLLECTION_RESULTS_STORAGE_PREFIX}${cacheKey}`);
     if (!rawEntry) return null;
     const storedEntry = JSON.parse(rawEntry) as { hotels?: Hotel[]; expiresAt?: number };
     if (!Array.isArray(storedEntry.hotels) || !storedEntry.expiresAt || storedEntry.expiresAt <= Date.now()) {
-      window.localStorage.removeItem(`${INSPIRATION_RESULTS_STORAGE_PREFIX}${cacheKey}`);
+      window.localStorage.removeItem(`${COLLECTION_RESULTS_STORAGE_PREFIX}${cacheKey}`);
       return null;
     }
-    inspirationResultsMemoryCache.set(cacheKey, {
+    collectionResultsMemoryCache.set(cacheKey, {
       hotels: storedEntry.hotels,
       expiresAt: storedEntry.expiresAt,
     });
@@ -877,66 +911,70 @@ const readCachedInspirationResults = (cacheKey: string): Hotel[] | null => {
   }
 };
 
-const cacheInspirationResults = (cacheKey: string, hotels: Hotel[]) => {
-  const entry = { hotels, expiresAt: Date.now() + INSPIRATION_RESULTS_CACHE_TTL_MS };
-  inspirationResultsMemoryCache.set(cacheKey, entry);
+const cacheCollectionResults = (cacheKey: string, hotels: Hotel[]) => {
+  const entry = { hotels, expiresAt: Date.now() + COLLECTION_RESULTS_CACHE_TTL_MS };
+  collectionResultsMemoryCache.set(cacheKey, entry);
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(`${INSPIRATION_RESULTS_STORAGE_PREFIX}${cacheKey}`, JSON.stringify(entry));
+    window.localStorage.setItem(`${COLLECTION_RESULTS_STORAGE_PREFIX}${cacheKey}`, JSON.stringify(entry));
   } catch {
     // Storage may be disabled or full; the in-memory cache still works.
   }
 };
 
-export const searchHotelsByInspiration = async (inspirationId: number, perPage: number = 20): Promise<Hotel[]> => {
-  const cacheKey = getInspirationResultsCacheKey(inspirationId, perPage);
-  const cachedResults = readCachedInspirationResults(cacheKey);
+const searchHotelCollection = async (
+  target: 'location' | 'inspiration',
+  id: number,
+  perPage = 10,
+): Promise<Hotel[]> => {
+  const cacheKey = getCollectionResultsCacheKey(target, id, perPage);
+  const cachedResults = readCachedCollectionResults(cacheKey);
   if (cachedResults) return cachedResults;
 
-  const inflightRequest = inspirationResultsInflight.get(cacheKey);
+  const inflightRequest = collectionResultsInflight.get(cacheKey);
   if (inflightRequest) return inflightRequest;
 
-  const url = `${API_BASE_URL}/hotels?inspiration_id=${inspirationId}&per_page=${perPage}`;
+  const targetParam = target === 'location' ? 'location_id' : 'inspiration_id';
   const request = (async () => {
     try {
-      const response = await makeApiRequest(url, { method: 'GET' });
+      const fetchPage = async (page: number) => {
+        const url = `${API_BASE_URL}/hotels?${targetParam}=${id}&per_page=${perPage}&page=${page}`;
+        const response = await makeApiRequest(url, { method: 'GET' });
+        if (!response.ok) throw new Error(`Hotel results page ${page} failed (${response.status})`);
+        return response.json();
+      };
 
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+      const firstPage = await fetchPage(1);
+      const totalPages = Math.max(1, Number(firstPage?.page?.total_pages) || 1);
+      const pages: any[] = [firstPage];
+      const remainingPages = Array.from({ length: totalPages - 1 }, (_, index) => index + 2);
+      for (let index = 0; index < remainingPages.length; index += 6) {
+        const pageNumbers = remainingPages.slice(index, index + 6);
+        const pageResults = await Promise.all(pageNumbers.map(fetchPage));
+        pages.push(...pageResults);
       }
-
-      const data = await response.json();
-      const items: any[] = data.data || data.content || [];
-      const hotels = items.map((item: any) => {
-        const firstImage = Array.isArray(item.images) ? item.images.find((image: any) => image?.url) : null;
-        const images = firstImage ? [firstImage] : [];
-        return {
-          id: item.id,
-          name: item.name || item.text || 'Unknown Hotel',
-          location: item.location || '',
-          description: item.description || '',
-          amenities: [],
-          images,
-          image: firstImage?.url,
-          videos: [],
-          links: item.links || { self: { href: '', method: 'GET' } },
-          rating: item.rating ?? undefined,
-          price: numericPrice(item.price) ?? numericPrice(item.min_price) ?? numericPrice(item.lowest_rate) ?? undefined,
-        } as Hotel;
-      });
-      cacheInspirationResults(cacheKey, hotels);
+      const hotels = pages
+        .flatMap((data) => data.data || data.content || [])
+        .map(mapApiItemToHotel);
+      cacheCollectionResults(cacheKey, hotels);
       return hotels;
     } catch (error) {
-      console.error('searchHotelsByInspiration error:', error);
+      console.error(`searchHotelsBy${target === 'location' ? 'Location' : 'Inspiration'} error:`, error);
       throw error;
     }
-  })().finally(() => inspirationResultsInflight.delete(cacheKey));
+  })().finally(() => collectionResultsInflight.delete(cacheKey));
 
-  inspirationResultsInflight.set(cacheKey, request);
+  collectionResultsInflight.set(cacheKey, request);
   return request;
 };
 
-export const prefetchInspirationHotels = async (inspirationId: number, perPage: number = 20): Promise<void> => {
+export const searchHotelsByLocation = (locationId: number, perPage = 10): Promise<Hotel[]> =>
+  searchHotelCollection('location', locationId, perPage);
+
+export const searchHotelsByInspiration = (inspirationId: number, perPage = 10): Promise<Hotel[]> =>
+  searchHotelCollection('inspiration', inspirationId, perPage);
+
+export const prefetchInspirationHotels = async (inspirationId: number, perPage: number = 10): Promise<void> => {
   try {
     await searchHotelsByInspiration(inspirationId, perPage);
   } catch {
@@ -1276,11 +1314,7 @@ export interface BookingRequest {
   rateIndex: string;
   guestName: string;
   guestEmail: string;
-  paymentMethod: {
-    type: 'paypal';
-    orderId?: string;
-    payerId?: string;
-  };
+  eta?: string;
   rooms: Array<{
     adults: number;
     children?: Array<{ age: number }>;
@@ -1289,170 +1323,68 @@ export interface BookingRequest {
 
 export const submitBooking = async (bookingData: BookingRequest): Promise<BookingResponse> => {
   const url = `${API_BASE_URL}/hotels/bookings`;
-  //
-  // console.log('Submitting booking with data:', bookingData);
-  //
-  try {
-    // Check if user is authenticated
-    if (!isAuthenticated()) {
-      throw new Error('You must be logged in to make a booking. Please log in and try again.');
-    }
-    
-    // Validate required fields
-    if (!bookingData.sessionId || bookingData.sessionId.trim() === '') {
-      throw new Error('Session ID is required. Please ensure you have completed the availability check.');
-    }
-    
-    // Validate PayPal payment
-    if (!bookingData.paymentMethod || bookingData.paymentMethod.type !== 'paypal') {
-      throw new Error('PayPal payment is required.');
-    }
-    
-    if (!bookingData.paymentMethod.orderId) {
-      throw new Error('PayPal order ID is required. Please complete the PayPal payment.');
-    }
-    
-    // Log the actual API URL (without proxy) for clarity
-    const actualApiUrl = `${getActualApiBaseUrl()}/hotels/bookings`;
-    // console.log('Booking API URL:', actualApiUrl);
-    //
-    // Validate rateIndex is provided
-    if (!bookingData.rateIndex || bookingData.rateIndex.trim() === '') {
-      throw new Error('Rate index is required. Please select a valid room type from the availability check.');
-    }
-    
-    const trimmedRateIndex = bookingData.rateIndex.trim();
-    
-    // rateIndex can be either a string identifier (e.g., "SODR79-R7O") or a numeric string
-    // Try to parse as number if it's numeric, otherwise keep as string
-    let rateIndexValue: string | number = trimmedRateIndex;
-    const parsedInt = parseInt(trimmedRateIndex, 10);
-    if (!isNaN(parsedInt) && String(parsedInt) === trimmedRateIndex) {
-      // It's a valid integer string, send as number
-      rateIndexValue = parsedInt;
-    }
-    // Otherwise keep as string (for identifiers like "SODR79-R7O")
-    
-    // Prepare JSON body with proper data types
-    const requestBody: Record<string, unknown> = {
-      start_date: bookingData.startDate,
-      end_date: bookingData.endDate,
-      session_id: bookingData.sessionId,
-      rate_index: rateIndexValue,
-      hotel_id: bookingData.hotelId,
-      guest_name: bookingData.guestName,
-      guest_email: bookingData.guestEmail,
-      payment_method: {
-        type: 'paypal',
-        order_id: bookingData.paymentMethod.orderId,
-        payer_id: bookingData.paymentMethod.payerId,
-      },
-      rooms: bookingData.rooms.map(room => ({
-        adults: room.adults,
-        children: room.children || [],
-      })),
-    };
-    //
-    // console.log('Booking request body:', JSON.stringify(requestBody, null, 2));
-    //
-    const response = await makeApiRequest(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-    //
-    // console.log('Booking response status:', response.status);
-    //
-    if (!response.ok) {
-      const errorText = await response.text();
-      // console.error('Booking error response:', errorText);
-      
-      // Try to parse error response for better error messages
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.errors) {
-          // Check for generic errors (usually in the "_" field)
-          if (errorData.errors._) {
-            const genericError = Array.isArray(errorData.errors._) 
-              ? errorData.errors._[0] 
-              : errorData.errors._;
-            throw new Error(genericError);
-          }
-          // Check for rate_index errors
-          if (errorData.errors.rate_index) {
-            const rateError = Array.isArray(errorData.errors.rate_index) 
-              ? errorData.errors.rate_index[0] 
-              : errorData.errors.rate_index;
-            if (rateError.includes('not found') || rateError.includes('invalid')) {
-              throw new Error('The provided rate_index is not found in this session. Please check availability again to get a valid rate index.');
-            }
-            throw new Error(`Rate index error: ${rateError}. Please check availability again and select a valid rate.`);
-          }
-          // Check for session_id errors
-          if (errorData.errors.session_id) {
-            const sessionError = Array.isArray(errorData.errors.session_id)
-              ? errorData.errors.session_id[0]
-              : errorData.errors.session_id;
-            if (sessionError.includes('invalid') || sessionError.includes('expired')) {
-              throw new Error('The session has expired or is invalid. Please check availability again to get a new session ID.');
-            }
-            throw new Error(`Session error: ${sessionError}. Please check availability again.`);
-          }
-          // Check for other field-specific errors
-          const errorKeys = Object.keys(errorData.errors);
-          if (errorKeys.length > 0) {
-            // Get the first error field and its message
-            const firstErrorKey = errorKeys[0];
-            const firstError = Array.isArray(errorData.errors[firstErrorKey])
-              ? errorData.errors[firstErrorKey][0]
-              : errorData.errors[firstErrorKey];
-            throw new Error(`${firstErrorKey}: ${firstError}`);
-          }
-        }
-        if (errorData.message) {
-          throw new Error(errorData.message);
-        }
-      } catch (parseError) {
-        // If parsing fails, check if it's a rate_index or session-related error in the text
-        if (errorText.includes('rate_index') || errorText.includes('rate index')) {
-          throw new Error('The provided rate_index is not found in this session. Please check availability again to get a valid rate index.');
-        }
-        if (errorText.includes('session_id') && (errorText.includes('invalid') || errorText.includes('expired'))) {
-          throw new Error('The session has expired or is invalid. Please check availability again to get a new session ID.');
-        }
-        // If parsing fails, use the original error text
-      }
-      
-      throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}. Response: ${errorText}`);
-    }
-    //
-    const data = await response.json();
-    // console.log('Booking response data:', data);
-    //
-    // Handle API error responses
-    if (!data.success && data.success !== undefined) {
-      return {
-        success: false,
-        message: data.message || 'Booking failed',
-      };
-    }
-    
-    return {
-      success: true,
-      message: data.message || 'Booking submitted successfully!',
-      bookingId: data.booking_id || data.id || undefined,
-    };
-  } catch (error) {
-    console.error('submitBooking error:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
-    };
+  if (!isAuthenticated()) {
+    throw new Error('You must be logged in to make a booking. Please log in and try again.');
   }
+  if (!bookingData.sessionId.trim() || !bookingData.rateIndex.trim()) {
+    throw new Error('Your room selection has expired. Please check availability and select the rate again.');
+  }
+
+  // The supplier's secure iframe has already attached the card to this session.
+  // No card number, CVC or payment token is handled by Ventus here.
+  const requestBody: Record<string, unknown> = {
+    start_date: bookingData.startDate,
+    end_date: bookingData.endDate,
+    session_id: bookingData.sessionId.trim(),
+    rate_index: bookingData.rateIndex.trim(),
+    hotel_id: bookingData.hotelId,
+    guest_name: bookingData.guestName.trim(),
+    guest_email: bookingData.guestEmail.trim(),
+    ...(bookingData.eta ? { eta: bookingData.eta } : {}),
+    rooms: bookingData.rooms.map((room, index) => ({
+      adults: room.adults,
+      children: room.children || [],
+      ...(index === 0 ? {
+        guest_name: bookingData.guestName.trim(),
+        guest_email: bookingData.guestEmail.trim(),
+        send_email_to_guest: true,
+      } : {}),
+    })),
+  };
+
+  const response = await makeApiRequest(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${API_TOKEN}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (data?.errors?.session_id || data?.errors?.rate_index) {
+      throw new Error('This live rate has expired. Please check availability and select the room again.');
+    }
+    const firstError = data?.errors
+      ? Object.values(data.errors).flat().find((value) => typeof value === 'string')
+      : null;
+    throw new Error(
+      (typeof firstError === 'string' && firstError) ||
+      data?.message ||
+      'The hotel could not confirm this booking. Please try again.'
+    );
+  }
+
+  return {
+    success: true,
+    message: data.confirmation_number
+      ? `Booking confirmed. Confirmation number: ${data.confirmation_number}`
+      : 'Booking confirmed successfully.',
+    bookingId: data.id != null ? String(data.id) : undefined,
+    confirmationNumber: data.confirmation_number || undefined,
+    state: data.state || undefined,
+  };
 };
 
 export interface BookingRequestSubmission {

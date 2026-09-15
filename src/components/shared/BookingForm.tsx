@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AvailabilityResponse, BookingResponse, Rate, RoomType } from "../../types/search";
-import { submitBookingRequest } from "../../utils/api";
+import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { ensureMinimumCheckOutDateString } from "../../utils/searchSession";
 
@@ -18,6 +18,8 @@ interface BookingFormProps {
     initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     availabilityResult?: AvailabilityResponse | null;
 }
+
+const CARD_WIDGET_ORIGIN = "https://api.littleemperors.com";
 
 const readRateAmount = (rate: Rate | undefined): number | null => {
     if (!rate) return null;
@@ -76,24 +78,64 @@ const BookingForm: React.FC<BookingFormProps> = ({
         || selected.roomType?.currency
         || availabilityResult?.default_currency
         || "GBP";
-    const [guestName, setGuestName] = useState(
-        user ? `${user.firstName} ${user.lastName}`.trim() : "",
-    );
-    const [guestEmail, setGuestEmail] = useState(user?.email || "");
-    const [guestPhone, setGuestPhone] = useState(user?.phone || "");
-    const [specialRequests, setSpecialRequests] = useState("");
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
-    const [message, setMessage] = useState("");
-
     const safeEndDate = ensureMinimumCheckOutDateString(startDate, endDate);
     const totalGuests = rooms.reduce(
         (total, room) => total + room.adults + (room.children?.length || 0),
         0,
     );
+    const benefits = Array.from(new Set([
+        ...(selected.rate?.benefits || []),
+        ...(selected.rate?.additional_benefits || []),
+    ].filter((item): item is string => typeof item === "string" && Boolean(item.trim()))));
+    const footnotes = (selected.rate?.benefits_footnotes || []).filter(
+        (item): item is string => typeof item === "string" && Boolean(item.trim()),
+    );
+    const rawStayRequirements = selected.rate?.stay_requirements;
+    const stayRequirements = Array.isArray(rawStayRequirements)
+        ? rawStayRequirements.filter((item: unknown): item is string => typeof item === "string")
+        : [];
+
+    const [guestName, setGuestName] = useState(
+        user ? `${user.firstName} ${user.lastName}`.trim() : "",
+    );
+    const [guestEmail, setGuestEmail] = useState(user?.email || "");
+    const [eta, setEta] = useState("");
+    const [cardStored, setCardStored] = useState(false);
+    const [cardMessage, setCardMessage] = useState("");
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+    const [message, setMessage] = useState("");
+    const submittingRef = useRef(false);
+
+    useEffect(() => {
+        setCardStored(false);
+        setCardMessage("");
+        setTermsAccepted(false);
+        setStatus("idle");
+        setMessage("");
+    }, [sessionId, rateIndex]);
+
+    useEffect(() => {
+        const handleCardMessage = (event: MessageEvent) => {
+            if (event.origin !== CARD_WIDGET_ORIGIN || !event.data || typeof event.data !== "object") return;
+            if (event.data.success === true) {
+                setCardStored(true);
+                setCardMessage("Card details secured. You can now confirm the booking.");
+                return;
+            }
+            if (event.data.errorMessage) {
+                setCardStored(false);
+                setCardMessage(String(event.data.errorMessage));
+            }
+        };
+        window.addEventListener("message", handleCardMessage);
+        return () => window.removeEventListener("message", handleCardMessage);
+    }, []);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+        if (submittingRef.current) return;
         if (!isAuthenticated || !hasActiveMembership) {
             setStatus("error");
             setMessage("An active Ventus Travel membership is required.");
@@ -104,41 +146,48 @@ const BookingForm: React.FC<BookingFormProps> = ({
             setMessage("Please check availability and select a room rate again.");
             return;
         }
-        if (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim()) {
+        if (!guestName.trim() || !guestEmail.trim()) {
             setStatus("error");
-            setMessage("Please enter your name, email address and phone number.");
+            setMessage("Please enter the lead guest's full name and email address.");
+            return;
+        }
+        if (!cardStored) {
+            setStatus("error");
+            setMessage("Please submit your card details securely above before confirming.");
+            return;
+        }
+        if (!termsAccepted) {
+            setStatus("error");
+            setMessage("Please confirm that you accept the selected rate and cancellation terms.");
             return;
         }
 
+        submittingRef.current = true;
         setIsSubmitting(true);
         setStatus("idle");
         setMessage("");
         try {
-            const response = await submitBookingRequest({
+            const response = await submitBooking({
                 hotelId,
-                hotelName,
                 sessionId,
                 rateIndex,
                 startDate,
                 endDate: safeEndDate,
                 guestName: guestName.trim(),
                 guestEmail: guestEmail.trim(),
-                guestPhone: guestPhone.trim(),
-                specialRequests: specialRequests.trim(),
+                eta: eta || undefined,
                 rooms,
-                quotedAmount: amount,
-                quotedCurrency: currency,
-                roomType: selected.roomType?.name || selected.rate?.title || "Selected room",
             });
             setStatus("success");
             setMessage(response.message);
             onBookingSuccess?.(response);
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Unable to send this booking request.";
+            const errorMessage = error instanceof Error ? error.message : "Unable to confirm this booking.";
             setStatus("error");
             setMessage(errorMessage);
             onBookingError?.(errorMessage);
         } finally {
+            submittingRef.current = false;
             setIsSubmitting(false);
         }
     };
@@ -146,8 +195,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
     if (!isAuthenticated || !hasActiveMembership) {
         return (
             <div className={`global-form ${className}`}>
-                <h2>Request this booking</h2>
-                <p>Sign in with an active membership to request this room and access Ventus benefits.</p>
+                <h2>Book this room</h2>
+                <p>Sign in with an active membership to see the full rate details and complete your booking.</p>
                 <Link className="btn btn-primary" to={isAuthenticated ? "/subscription" : "/login"}>
                     {isAuthenticated ? "Complete membership" : "Login to continue"}
                 </Link>
@@ -158,46 +207,95 @@ const BookingForm: React.FC<BookingFormProps> = ({
     return (
         <div className={`global-form ${className}`}>
             <div className="booking-request-heading">
-                <h2>Request this booking</h2>
-                <p>
-                    Send your selected stay to Ventus. No payment is taken now; the team will confirm availability,
-                    benefits and the final total before booking.
-                </p>
+                <h2>Complete your booking</h2>
+                <p>Review the selected live rate, enter the lead guest details and confirm securely with Little Emperors.</p>
             </div>
 
             <div className="booking-request-summary">
                 <div><span>Hotel</span><strong>{hotelName}</strong></div>
                 <div><span>Stay</span><strong>{startDate} to {safeEndDate}</strong></div>
                 <div><span>Guests</span><strong>{totalGuests} guest{totalGuests === 1 ? "" : "s"}, {rooms.length} room{rooms.length === 1 ? "" : "s"}</strong></div>
-                <div><span>Selected rate</span><strong>{selected.roomType?.name || selected.rate?.title || "Selected room"}</strong></div>
-                {amount !== null && <div><span>Quoted total</span><strong>{currency} {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>}
+                <div><span>Selected room</span><strong>{selected.roomType?.name || "Selected room"}</strong></div>
+                <div><span>Rate</span><strong>{selected.rate?.title || "Selected rate"}</strong></div>
+                {amount !== null && <div><span>Total</span><strong>{currency} {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>}
             </div>
 
-            <form className="form booking-request-form" onSubmit={handleSubmit}>
-                <div className="form-column">
-                    <label htmlFor="bookingGuestName" className="form-label">Full name *</label>
-                    <input id="bookingGuestName" className="form-control" value={guestName} onChange={(event) => setGuestName(event.target.value)} autoComplete="name" required />
-                    <label htmlFor="bookingGuestEmail" className="form-label">Email *</label>
-                    <input id="bookingGuestEmail" className="form-control" type="email" value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} autoComplete="email" required />
-                    <label htmlFor="bookingGuestPhone" className="form-label">Phone *</label>
-                    <input id="bookingGuestPhone" className="form-control" type="tel" value={guestPhone} onChange={(event) => setGuestPhone(event.target.value)} autoComplete="tel" required />
-                </div>
-                <div className="form-column">
-                    <label htmlFor="bookingSpecialRequests" className="form-label">Special requests</label>
-                    <textarea id="bookingSpecialRequests" className="form-control" rows={7} value={specialRequests} onChange={(event) => setSpecialRequests(event.target.value)} placeholder="Airport transfers, bedding preferences, celebrations or anything else we should know" />
-                </div>
+            <div className="booking-rate-details">
+                {selected.rate?.description && <p>{selected.rate.description}</p>}
+                {selected.rate?.payment_description && <p><strong>Payment:</strong> {selected.rate.payment_description}</p>}
+                {selected.rate?.cancellation_policy && <p><strong>Cancellation:</strong> {selected.rate.cancellation_policy}</p>}
+                {selected.rate?.cancellation_deadline && <p><strong>Cancellation deadline:</strong> {selected.rate.cancellation_deadline}</p>}
+                {typeof selected.rate?.is_tax_included === "boolean" && (
+                    <p><strong>Taxes:</strong> {selected.rate.is_tax_included ? "Included in the total" : "Not included in the total"}</p>
+                )}
+                {benefits.length > 0 && (
+                    <div>
+                        <strong>Included benefits</strong>
+                        <ul>{benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
+                        {footnotes.map((footnote) => <small key={footnote}>{footnote}</small>)}
+                    </div>
+                )}
+                {stayRequirements.length > 0 && (
+                    <div>
+                        <strong>Stay requirements</strong>
+                        <ul>{stayRequirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul>
+                    </div>
+                )}
+            </div>
 
-                <div className="d-grid submit-section">
-                    {status !== "idle" && (
-                        <div className={`alert ${status === "success" ? "alert-success" : "alert-danger"}`} role="status">
-                            {message}
-                        </div>
-                    )}
-                    <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || status === "success"}>
-                        {isSubmitting ? "Sending request…" : status === "success" ? "Request sent" : "Send booking request"}
-                    </button>
+            {status === "success" ? (
+                <div className="alert alert-success booking-confirmation" role="status">
+                    <h3>Booking confirmed</h3>
+                    <p>{message}</p>
+                    <p>A confirmation email will be sent to {guestEmail}.</p>
                 </div>
-            </form>
+            ) : (
+                <form className="form booking-request-form" onSubmit={handleSubmit}>
+                    <div className="form-column">
+                        <label htmlFor="bookingGuestName" className="form-label">Lead guest full name *</label>
+                        <input id="bookingGuestName" className="form-control" value={guestName} onChange={(event) => setGuestName(event.target.value)} autoComplete="name" required />
+                        <label htmlFor="bookingGuestEmail" className="form-label">Email *</label>
+                        <input id="bookingGuestEmail" className="form-control" type="email" value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} autoComplete="email" required />
+                        <label htmlFor="bookingEta" className="form-label">Estimated arrival time</label>
+                        <select id="bookingEta" className="form-control" value={eta} onChange={(event) => setEta(event.target.value)}>
+                            <option value="">Select an hour (optional)</option>
+                            {Array.from({ length: 24 }, (_, hour) => (
+                                <option key={hour} value={String(hour)}>{String(hour).padStart(2, "0")}:00</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="booking-secure-card">
+                        <h3>Secure card details</h3>
+                        <p>Your card details are entered directly into Little Emperors’ secure form. Ventus never receives or stores them.</p>
+                        <iframe
+                            key={sessionId}
+                            title="Secure card details"
+                            src={`${CARD_WIDGET_ORIGIN}/widgets/credit-card?session_id=${encodeURIComponent(sessionId)}`}
+                            className="booking-card-widget"
+                            allow="payment"
+                        />
+                        {cardMessage && (
+                            <p className={cardStored ? "booking-card-success" : "booking-card-error"} role="status">
+                                {cardMessage}
+                            </p>
+                        )}
+                    </div>
+
+                    <label className="booking-terms-confirmation">
+                        <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} />
+                        <span>I accept this rate, its payment and cancellation terms, and the <Link to="/terms-of-service">Ventus terms of service</Link>.</span>
+                    </label>
+
+                    <div className="d-grid submit-section">
+                        {status === "error" && <div className="alert alert-danger" role="alert">{message}</div>}
+                        <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || !cardStored || !termsAccepted}>
+                            {isSubmitting ? "Confirming booking…" : amount !== null ? `Confirm booking — ${currency} ${amount.toLocaleString()}` : "Confirm booking"}
+                        </button>
+                        <small>Only click confirm once. The hotel booking will be submitted immediately.</small>
+                    </div>
+                </form>
+            )}
         </div>
     );
 };

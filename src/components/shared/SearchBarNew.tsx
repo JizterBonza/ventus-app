@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import { getHotelCalendarRates, searchHotelsByQuery } from "../../utils/api";
+import { getHotelCalendarRates, searchPredictions } from "../../utils/api";
 import { getVisitorCurrency } from "../../utils/currency";
 import { useAuth } from "../../contexts/AuthContext";
 import type { HotelCalendarRate } from "../../types/search";
@@ -215,6 +215,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const [suggestionsLoading, setSuggestionsLoading] = useState(false);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [selectedHotelId, setSelectedHotelId] = useState<number | null>(null);
+    const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
     const [calendarRates, setCalendarRates] = useState<Record<string, HotelCalendarRate>>({});
     const [calendarRatesLoading, setCalendarRatesLoading] = useState(false);
 
@@ -233,9 +234,11 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         const urlRooms = urlSearchParams.get("rooms");
         const urlRoomSlots = urlSearchParams.get("roomSlots");
         const urlHotelId = Number(urlSearchParams.get("hotelId"));
+        const urlLocationId = Number(urlSearchParams.get("locationId"));
 
         if (urlLoc) setLocation(urlLoc);
         setSelectedHotelId(Number.isInteger(urlHotelId) && urlHotelId > 0 ? urlHotelId : null);
+        setSelectedLocationId(Number.isInteger(urlLocationId) && urlLocationId > 0 ? urlLocationId : null);
         const ci = parseDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
         const normalizedCheckOut = ensureMinimumCheckOutDate(ci, co);
@@ -324,7 +327,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         const parts = (hotelLocation || "").split(",").map((part) => part.trim()).filter(Boolean);
         return {
             city: parts[0] || "",
-            country: parts[parts.length - 1] || "",
+            country: parts.length > 1 ? parts[parts.length - 1] : "",
         };
     };
 
@@ -358,27 +361,24 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
             setSuggestionsLoading(true);
             setShowSuggestions(true);
             try {
-                // Match the results-page limit so autocomplete also primes its cache.
-                const hotels = await searchHotelsByQuery(q, 20);
+                const matches = await searchPredictions(q, 20, ['location', 'hotel']);
                 if (suggestionRequestRef.current !== requestId) return;
 
-                const apiDestinations: LocationSuggestion[] = Array.from(
-                    new Map(
-                        hotels
-                            .map((hotel) => splitHotelLocation(hotel.location))
-                            .filter(({ city }) => Boolean(city))
-                            .map(({ city, country }) => [
-                                city.toLowerCase(),
-                                {
-                                    id: `destination-${city.toLowerCase().replace(/\s+/g, "-")}`,
-                                    type: "destination" as const,
-                                    title: city,
-                                    subtitle: country,
-                                    value: city,
-                                },
-                            ])
-                    ).values()
-                );
+                const apiDestinations: LocationSuggestion[] = matches
+                    .filter((match) => match.type === 'location')
+                    .map((match) => {
+                        const { city, country } = splitHotelLocation(match.text);
+                        const curatedCountry = FEATURED_DESTINATIONS.find(
+                            (destination) => destination.title.toLowerCase() === (city || match.text).toLowerCase()
+                        )?.country;
+                        return {
+                            id: `location-${match.id}`,
+                            type: "destination" as const,
+                            title: city || match.text,
+                            subtitle: country || curatedCountry || match.location,
+                            value: match.text,
+                        };
+                    });
 
                 const destinationSuggestions = Array.from(
                     new Map(
@@ -389,12 +389,15 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                     ).values()
                 ).slice(0, 3);
 
-                const hotelSuggestions: LocationSuggestion[] = hotels.slice(0, 9).map((hotel) => ({
+                const hotelSuggestions: LocationSuggestion[] = matches
+                    .filter((match) => match.type === 'hotel')
+                    .slice(0, 9)
+                    .map((hotel) => ({
                     id: `hotel-${hotel.id}`,
                     type: "hotel",
-                    title: hotel.name,
+                    title: hotel.text,
                     subtitle: hotel.location,
-                    value: hotel.name,
+                    value: hotel.text,
                 }));
 
                 const mergedSuggestions = [...destinationSuggestions, ...hotelSuggestions];
@@ -423,6 +426,11 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         setSelectedHotelId(
             suggestion.type === "hotel" ? Number(suggestion.id.replace(/^hotel-/, "")) : null
         );
+        setSelectedLocationId(
+            suggestion.type === "destination" && suggestion.id.startsWith("location-")
+                ? Number(suggestion.id.replace(/^location-/, ""))
+                : null
+        );
         setLocationError(null);
         setShowSuggestions(false);
     };
@@ -432,6 +440,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         suggestionRequestRef.current += 1;
         setLocation("");
         setSelectedHotelId(null);
+        setSelectedLocationId(null);
         setSuggestions([]);
         setShowSuggestions(false);
         setSuggestionsLoading(false);
@@ -569,6 +578,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         const urlParams = new URLSearchParams();
         urlParams.set("location", trimmedLocation);
         if (selectedHotelId) urlParams.set("hotelId", String(selectedHotelId));
+        if (selectedLocationId) urlParams.set("locationId", String(selectedLocationId));
         if (checkIn) urlParams.set("checkIn", toStorageStr(checkIn));
         if (normalizedCheckOut) urlParams.set("checkOut", toStorageStr(normalizedCheckOut));
         urlParams.set("roomSlots", JSON.stringify(roomSlots));
@@ -602,6 +612,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
                                 locationChangedByUserRef.current = true;
                                 setLocation(e.target.value);
                                 setSelectedHotelId(null);
+                                setSelectedLocationId(null);
                                 setLocationError(null);
                             }}
                             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}

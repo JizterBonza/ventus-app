@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { AvailabilityResponse, Hotel, RateInfo } from "../types/search";
-import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
+import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, searchHotelsByLocation, searchPredictions, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
 import {
     SEARCH_SESSION_COOKIES,
@@ -59,11 +59,47 @@ type AvailabilityMemberBenefits = {
     footnotes: string[];
 };
 
+const availabilityResultToHotel = (result: AvailabilityResponse): Hotel => {
+    const info = result.hotel_info || {};
+    const images = Array.isArray(info.images) ? info.images.filter((image: any) => image?.url) : [];
+    const coords = Array.isArray(info.coords) ? info.coords : [];
+    return {
+        id: Number(result.hotel_id),
+        name: result.hotel_name || "Unknown Hotel",
+        location: info.location || "",
+        description: info.description || "",
+        latitude: typeof coords[0] === "number" ? coords[0] : undefined,
+        longitude: typeof coords[1] === "number" ? coords[1] : undefined,
+        display_order: result.display_order ?? undefined,
+        amenities: [],
+        hotel_information: [],
+        benefits: Array.isArray(info.benefits) ? info.benefits : [],
+        benefits_footnotes: Array.isArray(info.benefits_footnotes) ? info.benefits_footnotes : [],
+        images,
+        image: images[0]?.url,
+        videos: [],
+        available: result.is_available,
+        price: typeof result.lowest_rate === "number"
+            ? result.lowest_rate
+            : result.lowest_rate?.rate_in_requested_currency ?? result.lowest_rate?.rate,
+        links: {
+            self: result.links?.hotel || result.links?.self || { href: "", method: "GET" },
+        },
+    };
+};
+
 const getAvailabilityMemberBenefits = (
     result: AvailabilityResponse
 ): AvailabilityMemberBenefits | null => {
     const benefits = new Set<string>();
     const footnotes = new Set<string>();
+
+    for (const benefit of result.hotel_info?.benefits || []) {
+        if (typeof benefit === "string" && benefit.trim()) benefits.add(benefit.trim());
+    }
+    for (const footnote of result.hotel_info?.benefits_footnotes || []) {
+        if (typeof footnote === "string" && footnote.trim()) footnotes.add(footnote.trim());
+    }
 
     for (const roomType of result.room_types || []) {
         for (const rate of roomType.rates || []) {
@@ -206,6 +242,8 @@ const SearchResults: React.FC = () => {
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingInspiration, setLoadingInspiration] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
+    const [availabilityTarget, setAvailabilityTarget] = useState<{ location_id?: number; inspiration_id?: number } | null>(null);
+    const [collectionHasFullDetails, setCollectionHasFullDetails] = useState(false);
     const [completedSearchKey, setCompletedSearchKey] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const detailsRequestRef = useRef(0);
@@ -393,80 +431,115 @@ const SearchResults: React.FC = () => {
         });
         clearResults();
         setInspirationResults([]);
+        setAvailabilityTarget(null);
+        setCollectionHasFullDetails(false);
 
+        const loadFullCollection = async (
+            target: { location_id?: number; inspiration_id?: number },
+            catalogueRequest: Promise<Hotel[]>,
+        ) => {
+            const availabilityRequest = hasActiveMembership
+                ? getVisitorCurrency().then((currency) => checkHotelAvailability({
+                    ...target,
+                    ...searchDatesAndRooms,
+                    currency,
+                }))
+                : Promise.resolve<AvailabilityResponse[]>([]);
+            const [catalogueResult, availabilityResult] = await Promise.allSettled([
+                catalogueRequest,
+                availabilityRequest,
+            ]);
+            const catalogue = catalogueResult.status === "fulfilled" ? catalogueResult.value : [];
+            const aggregateAvailability = availabilityResult.status === "fulfilled" ? availabilityResult.value : [];
+            if (catalogue.length === 0 && aggregateAvailability.length === 0) {
+                throw new Error("No hotel collection could be loaded");
+            }
+
+            const catalogueById = new Map(catalogue.map((hotel) => [hotel.id, hotel]));
+            const availabilityHotels = aggregateAvailability.map((result) => {
+                const summary = availabilityResultToHotel(result);
+                const existing = catalogueById.get(summary.id);
+                catalogueById.delete(summary.id);
+                return existing
+                    ? {
+                        ...summary,
+                        ...existing,
+                        available: result.is_available,
+                        price: summary.price ?? existing.price,
+                    }
+                    : summary;
+            });
+            const hotels = aggregateAvailability.length > 0
+                ? [...availabilityHotels, ...Array.from(catalogueById.values())]
+                : catalogue;
+            if (!cancelled) {
+                setInspirationResults(hotels);
+                setAvailabilityTarget(target);
+                setCollectionHasFullDetails(catalogue.length > 0);
+            }
+        };
+
+        const runSearch = async () => {
         if (requestedHotelId) {
             // A hotel chosen from autocomplete is already unambiguous. Fetching it by ID
             // avoids a second broad supplier search and ensures availability is checked
             // against the exact property the member selected.
-            setLoadingInspiration(true);
-            getHotelDetails(requestedHotelId)
-                .then((hotel) => {
-                    if (!cancelled) setInspirationResults([hotel]);
-                })
-                .catch(async () => {
-                    if (!cancelled && location) {
-                        await searchAdvanced({ query: location, limit: 20 });
-                    }
-                })
-                .finally(() => {
-                    if (!cancelled) {
-                        setLoadingInspiration(false);
-                        setCompletedSearchKey(currentSearchKey);
-                    }
-                });
+            try {
+                const hotel = await getHotelDetails(requestedHotelId);
+                if (!cancelled) setInspirationResults([hotel]);
+            } catch {
+                if (!cancelled && location) await searchAdvanced({ query: location, limit: 100 });
+            }
         } else if (inspirationId) {
             // Use the /hotels?inspiration_id endpoint for category cards,
             // falling back to text search if the ID doesn't exist in this environment
-            setLoadingInspiration(true);
-            searchHotelsByInspiration(Number(inspirationId), 20)
-                .then(async (results) => {
-                    if (cancelled) return;
-                    if (results.length > 0) {
-                        setInspirationResults(results);
-                    } else {
-                        // Fallback: text search using the title
-                        const fallbackQuery = title || "";
-                        if (fallbackQuery) {
-                            await searchAdvanced({ query: fallbackQuery, limit: 20 });
-                        }
-                    }
-                })
-                .catch(async () => {
-                    if (cancelled) return;
-                    // Fallback on error (e.g. ID invalid in staging)
-                    const fallbackQuery = title || "";
-                    if (fallbackQuery) {
-                        await searchAdvanced({ query: fallbackQuery, limit: 20 });
-                    }
-                })
-                .finally(() => {
-                    if (!cancelled) {
-                        setLoadingInspiration(false);
-                        setCompletedSearchKey(currentSearchKey);
-                    }
-                });
+            const numericInspirationId = Number(inspirationId);
+            try {
+                await loadFullCollection(
+                    { inspiration_id: numericInspirationId },
+                    searchHotelsByInspiration(numericInspirationId),
+                );
+            } catch {
+                if (!cancelled && title) await searchAdvanced({ query: title, limit: 100 });
+            }
         } else if (location) {
-            setLoadingInspiration(false);
-            const searchParamsForAPI = {
-                query: location,
-                limit: 20,
-                location: location || undefined,
-                priceRange: priceRange !== "all" ? priceRange : undefined,
-                rating: rating !== "all" ? rating : undefined,
-                sortBy: sortBy !== "recommended" ? sortBy : undefined,
-            };
-            void searchAdvanced(searchParamsForAPI).finally(() => {
-                if (!cancelled) setCompletedSearchKey(currentSearchKey);
-            });
-        } else {
-            setLoadingInspiration(false);
-            setCompletedSearchKey(currentSearchKey);
+            const explicitLocationId = Number(urlSearchParams.get("locationId"));
+            let locationId = Number.isInteger(explicitLocationId) && explicitLocationId > 0
+                ? explicitLocationId
+                : null;
+            try {
+                if (!locationId) {
+                    const matches = await searchPredictions(location, 20, ['location']);
+                    const normalizedLocation = location.trim().toLowerCase();
+                    const exactMatch = matches.find((match) => match.text.trim().toLowerCase() === normalizedLocation);
+                    locationId = exactMatch?.id || matches[0]?.id || null;
+                }
+                if (locationId) {
+                    await loadFullCollection(
+                        { location_id: locationId },
+                        searchHotelsByLocation(locationId),
+                    );
+                } else {
+                    await searchAdvanced({ query: location, limit: 100 });
+                }
+            } catch {
+                if (!cancelled) await searchAdvanced({ query: location, limit: 100 });
+            }
         }
+        };
+
+        setLoadingInspiration(Boolean(requestedHotelId || inspirationId || location));
+        void runSearch().finally(() => {
+            if (!cancelled) {
+                setLoadingInspiration(false);
+                setCompletedSearchKey(currentSearchKey);
+            }
+        });
 
         return () => {
             cancelled = true;
         };
-    }, [urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults]);
+    }, [urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults, hasActiveMembership, searchDatesAndRooms]);
 
     // Enrich every result in the background. Cards remain visible while these calls complete,
     // while the complete detail set gives the filter counts a reliable source of truth.
@@ -476,6 +549,12 @@ const SearchResults: React.FC = () => {
         setDetailedHotels([]);
 
         if (hotelIds.length === 0) {
+            setLoadingFilterOptions(false);
+            return;
+        }
+
+        if (collectionHasFullDetails) {
+            setDetailedHotels(baseHotels);
             setLoadingFilterOptions(false);
             return;
         }
@@ -502,7 +581,7 @@ const SearchResults: React.FC = () => {
         return () => {
             if (detailsRequestRef.current === requestId) detailsRequestRef.current += 1;
         };
-    }, [baseHotelIdsKey, baseHotels, requestedHotelId]);
+    }, [baseHotelIdsKey, baseHotels, requestedHotelId, collectionHasFullDetails]);
 
     useEffect(() => {
         setSelectedFacilities([]);
@@ -563,9 +642,8 @@ const SearchResults: React.FC = () => {
         }
     }, [baseHotels.length, isSearching]);
 
-    // Check real availability (search dates/rooms) and "Starting from" price for the currently visible
-    // batch only (max 10 at a time -- "View More" reveals the next batch). Keeping the batch small means
-    // every card's tag resolves quickly instead of the whole page waiting on a large city search.
+    // A destination/inspiration availability request returns every hotel's price in one response.
+    // Exact-property/fallback searches retain the small progressive batch request.
     useEffect(() => {
         if (!hasActiveMembership || visibleHotels.length === 0) {
             setStartingFromPrices({});
@@ -583,23 +661,64 @@ const SearchResults: React.FC = () => {
             try {
                 const currency = await getVisitorCurrency();
                 if (cancelled) return;
-                const results = await settleWithConcurrency(visibleHotels, 4, (hotel) =>
-                    checkHotelAvailability({
+                let availabilityRows: Array<{ hotel: Hotel; result: AvailabilityResponse }> = [];
+                if (availabilityTarget?.location_id || availabilityTarget?.inspiration_id) {
+                    const aggregateResults = await checkHotelAvailability({
+                        ...availabilityTarget,
+                        start_date,
+                        end_date,
+                        currency,
+                        rooms,
+                    });
+                    const hotelById = new Map(baseHotels.map((hotel) => [hotel.id, hotel]));
+                    const aggregateHotels = aggregateResults.map((result) => {
+                        const summary = availabilityResultToHotel(result);
+                        const existing = hotelById.get(summary.id);
+                        return existing
+                            ? {
+                                ...summary,
+                                ...existing,
+                                available: result.is_available,
+                                price: summary.price ?? existing.price,
+                                benefits: summary.benefits?.length ? summary.benefits : existing.benefits,
+                                benefits_footnotes: summary.benefits_footnotes?.length
+                                    ? summary.benefits_footnotes
+                                    : existing.benefits_footnotes,
+                            }
+                            : summary;
+                    });
+                    availabilityRows = aggregateResults.map((result, index) => ({
+                        hotel: aggregateHotels[index],
+                        result,
+                    }));
+                    if (!cancelled) {
+                        setInspirationResults((current) => {
+                            const currentIds = current.map((hotel) => hotel.id).join(",");
+                            const aggregateIds = aggregateHotels.map((hotel) => hotel.id).join(",");
+                            return currentIds === aggregateIds ? current : aggregateHotels;
+                        });
+                    }
+                } else {
+                    const results = await settleWithConcurrency(visibleHotels, 4, (hotel) =>
+                        checkHotelAvailability({
                             hotel_id: hotel.id,
                             start_date,
                             end_date,
                             currency,
                             rooms,
                         })
-                );
+                    );
+                    availabilityRows = results.flatMap((settled, index) => {
+                        const hotel = visibleHotels[index];
+                        const result = settled.status === "fulfilled" ? settled.value?.[0] : null;
+                        return hotel && result ? [{ hotel, result }] : [];
+                    });
+                }
                 if (cancelled) return;
                 const nextPrices: Record<number, { rate: number; currency: string }> = {};
                 const nextAvailability: Record<number, boolean> = {};
                 const nextBenefits: Record<number, AvailabilityMemberBenefits> = {};
-                results.forEach((settled, index) => {
-                    const hotel = visibleHotels[index];
-                    if (!hotel || settled.status !== "fulfilled" || !settled.value?.length) return;
-                    const first = settled.value[0];
+                availabilityRows.forEach(({ hotel, result: first }) => {
                     nextAvailability[hotel.id] = !!first?.is_available;
                     const exactBenefits = first ? getAvailabilityMemberBenefits(first) : null;
                     if (exactBenefits) nextBenefits[hotel.id] = exactBenefits;
@@ -638,7 +757,9 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [hasActiveMembership, visibleHotelIdsKey, searchDatesAndRoomsKey]);
+        // Stable scalar keys deliberately prevent a price update from retriggering the same search.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasActiveMembership, visibleHotelIdsKey, searchDatesAndRoomsKey, availabilityTarget?.location_id, availabilityTarget?.inspiration_id, baseHotels]);
 
     return (
         <div className="search-page">

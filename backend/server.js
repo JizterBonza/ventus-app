@@ -1504,10 +1504,23 @@ const hotelApiCache = new Map();
 const hotelApiInflight = new Map();
 
 const getHotelApiCachePolicy = (req) => {
-  if (req.method !== 'GET') return null;
-
   const requestUrl = new URL(req.originalUrl, 'http://cache.local');
   const path = requestUrl.pathname.replace(/\/$/, '');
+
+  if (
+    req.method === 'POST' &&
+    path === '/v2/hotels/availability' &&
+    !req.body?.hotel_id &&
+    (req.body?.location_id || req.body?.inspiration_id)
+  ) {
+    return {
+      serverTtlMs: 2 * 60 * 1000,
+      staleTtlMs: 5 * 60 * 1000,
+      cacheControl: 'private, no-store'
+    };
+  }
+
+  if (req.method !== 'GET') return null;
 
   if (/^\/v2\/hotels\/\d+$/.test(path)) {
     return {
@@ -1523,7 +1536,10 @@ const getHotelApiCachePolicy = (req) => {
     };
   }
 
-  if (path === '/v2/hotels' && requestUrl.searchParams.has('inspiration_id')) {
+  if (
+    path === '/v2/hotels' &&
+    (requestUrl.searchParams.has('inspiration_id') || requestUrl.searchParams.has('location_id'))
+  ) {
     return {
       serverTtlMs: 30 * 60 * 1000,
       cacheControl: 'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400'
@@ -1543,7 +1559,9 @@ const getHotelApiCachePolicy = (req) => {
 const getHotelApiCacheKey = (req) => {
   const requestUrl = new URL(req.originalUrl, 'http://cache.local');
   requestUrl.searchParams.sort();
-  return `${requestUrl.pathname}${requestUrl.search}`;
+  if (req.method !== 'POST') return `${requestUrl.pathname}${requestUrl.search}`;
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(req.body || {})).digest('hex');
+  return `POST:${requestUrl.pathname}${requestUrl.search}:${bodyHash}`;
 };
 
 const storeHotelApiCacheEntry = (key, entry) => {
@@ -1575,10 +1593,10 @@ const hotelRequestRequiresMembership = (req) => {
   );
 };
 
-// Inspiration collections include full hotel records even though the results
-// page only needs summary-card fields. Compacting them at the proxy cuts the
-// cached response substantially without changing the hotel detail endpoint.
-const compactInspirationCollection = (data) => {
+// Destination/inspiration collections contain dozens of full-size gallery images
+// per hotel. Result cards need one image plus metadata; compacting here avoids
+// multi-megabyte browser downloads while hotel detail pages remain unchanged.
+const compactHotelCollection = (data) => {
   if (!data || !Array.isArray(data.content)) return data;
   return {
     ...data,
@@ -1589,8 +1607,21 @@ const compactInspirationCollection = (data) => {
       return {
         id: hotel.id,
         name: hotel.name,
+        hotel_groups: hotel.hotel_groups,
         location: hotel.location,
+        address: hotel.address,
         description: hotel.description,
+        website: hotel.website,
+        latitude: hotel.latitude,
+        longitude: hotel.longitude,
+        display_order: hotel.display_order,
+        sustainability_initiative: hotel.sustainability_initiative,
+        sustainability_rating: hotel.sustainability_rating,
+        short_info: hotel.short_info,
+        hotel_information: hotel.hotel_information,
+        amenities: hotel.amenities,
+        benefits: hotel.benefits,
+        benefits_footnotes: hotel.benefits_footnotes,
         images: firstImage ? [firstImage] : [],
         links: hotel.links,
         rating: hotel.rating,
@@ -1675,9 +1706,9 @@ app.use('/v2', express.json(), async (req, res) => {
   const cachePolicy = getHotelApiCachePolicy(req);
   const cacheKey = cachePolicy ? getHotelApiCacheKey(req) : null;
   const requestUrl = new URL(req.originalUrl, 'http://cache.local');
-  const isInspirationCollection = req.method === 'GET' &&
+  const isHotelCollection = req.method === 'GET' &&
     requestUrl.pathname.replace(/\/$/, '') === '/v2/hotels' &&
-    requestUrl.searchParams.has('inspiration_id');
+    (requestUrl.searchParams.has('inspiration_id') || requestUrl.searchParams.has('location_id'));
 
   if (cacheKey) {
     const cached = hotelApiCache.get(cacheKey);
@@ -1715,8 +1746,8 @@ app.use('/v2', express.json(), async (req, res) => {
         let data = contentType.includes('application/json')
           ? await proxyRes.json()
           : await proxyRes.text();
-        if (isInspirationCollection && proxyRes.ok) {
-          data = compactInspirationCollection(data);
+        if (isHotelCollection && proxyRes.ok) {
+          data = compactHotelCollection(data);
         }
         return {
           status: proxyRes.status,
@@ -1736,7 +1767,7 @@ app.use('/v2', express.json(), async (req, res) => {
         ...upstream,
         cachedAt,
         expiresAt: cachedAt + cachePolicy.serverTtlMs,
-        staleUntil: cachedAt + 24 * 60 * 60 * 1000
+        staleUntil: cachedAt + (cachePolicy.staleTtlMs || 24 * 60 * 60 * 1000)
       });
     }
 

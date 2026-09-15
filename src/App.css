@@ -2151,6 +2151,77 @@
   resize: vertical;
 }
 
+.booking-rate-details {
+  background: #f5f5f1;
+  border-left: 3px solid #b69a68;
+  margin-bottom: 30px;
+  padding: 22px 24px;
+}
+
+.booking-rate-details p:last-child,
+.booking-rate-details ul:last-child {
+  margin-bottom: 0;
+}
+
+.booking-rate-details ul {
+  margin: 10px 0;
+  padding-left: 22px;
+}
+
+.booking-rate-details small {
+  color: #666;
+  display: block;
+  margin-top: 5px;
+}
+
+.booking-secure-card {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+}
+
+.booking-secure-card h3 {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+
+.booking-card-widget {
+  background: #fff;
+  border: 1px solid #d9d9d4;
+  display: block;
+  height: 450px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.booking-card-success {
+  color: #2d6b3e;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.booking-card-error {
+  color: #9b2525;
+  margin-top: 12px;
+}
+
+.booking-terms-confirmation {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  grid-column: 1 / -1;
+  margin-top: 18px;
+}
+
+.booking-terms-confirmation input {
+  height: 18px;
+  margin-top: 3px;
+  width: 18px;
+}
+
+.booking-confirmation {
+  margin-top: 24px;
+}
+
 .booking-request-form .submit-section {
   margin-top: 28px;
 }
