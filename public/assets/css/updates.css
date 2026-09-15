@@ -915,6 +915,35 @@ textarea.form-control{
     max-width: 465px;
     margin: 0 auto;
 }
+.signup-form-grid{
+    display: grid;
+    gap: 16px;
+    width: 100%;
+}
+.signup-form-row{
+    display: grid;
+    gap: 10px;
+    width: 100%;
+}
+.signup-form-row--two{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.signup-form-row--phone{
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+.signup-form-field{
+    min-width: 0;
+    width: 100%;
+}
+.signup-form-field .form-control{
+    box-sizing: border-box;
+    font-size: 14.07px;
+    font-weight: 300;
+    height: 53px;
+    line-height: 1.2;
+    margin: 0 !important;
+    width: 100%;
+}
 .auth-card form input:not(.form-check-input){
    background: #fff;
    border-radius: 0;
@@ -984,6 +1013,41 @@ textarea.form-control{
     font-weight: 300;
     line-height: 1.2;
     color: #000;
+}
+.signup-terms{
+    align-items: start;
+    column-gap: 10px;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    padding-left: 0;
+}
+.signup-page .signup-terms .form-check-input[type="checkbox"]{
+    float: none;
+    height: 20px;
+    margin: 0;
+    position: static;
+    top: auto;
+    width: 20px;
+}
+.signup-terms .form-check-label{
+    grid-column: 2;
+}
+.signup-terms .invalid-feedback{
+    grid-column: 2;
+}
+.signup-supporting-copy,
+.signup-supporting-copy a,
+.signup-supporting-copy strong{
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.2;
+}
+@media screen and (max-width: 767px){
+    .signup-form-row--two,
+    .signup-form-row--phone{
+        grid-template-columns: 1fr;
+    }
 }
 .login-page{
     background: #DBE2D6;

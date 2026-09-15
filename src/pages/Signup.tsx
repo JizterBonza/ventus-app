@@ -88,25 +88,31 @@ const Signup: React.FC = () => {
             </div>
             {submitMessage && <div className="alert alert-danger" role="alert">{submitMessage}</div>}
             <form onSubmit={handleSubmit} noValidate>
-              <div className="row g-3">
-                <div className="col-md-6"><input className={fieldClass('firstName')} placeholder="First name *" value={formData.firstName} onChange={(e) => setField('firstName', e.target.value)} />{validationErrors.firstName && <div className="invalid-feedback">{validationErrors.firstName}</div>}</div>
-                <div className="col-md-6"><input className={fieldClass('lastName')} placeholder="Last name *" value={formData.lastName} onChange={(e) => setField('lastName', e.target.value)} />{validationErrors.lastName && <div className="invalid-feedback">{validationErrors.lastName}</div>}</div>
-                <div className="col-12"><input type="email" className={fieldClass('email')} placeholder="Email *" value={formData.email} onChange={(e) => setField('email', e.target.value)} />{validationErrors.email && <div className="invalid-feedback">{validationErrors.email}</div>}</div>
-                <div className="col-md-6"><input type="password" className={fieldClass('password')} placeholder="Password *" value={formData.password} onChange={(e) => setField('password', e.target.value)} />{validationErrors.password && <div className="invalid-feedback">{validationErrors.password}</div>}</div>
-                <div className="col-md-6"><input type="password" className={fieldClass('confirmPassword')} placeholder="Confirm password *" value={formData.confirmPassword} onChange={(e) => setField('confirmPassword', e.target.value)} />{validationErrors.confirmPassword && <div className="invalid-feedback">{validationErrors.confirmPassword}</div>}</div>
-                <div className="col-12"><input className={fieldClass('cityOfResidence')} placeholder="City of residence *" value={formData.cityOfResidence} onChange={(e) => setField('cityOfResidence', e.target.value)} />{validationErrors.cityOfResidence && <div className="invalid-feedback">{validationErrors.cityOfResidence}</div>}</div>
-                <div className="col-md-5"><select className={fieldClass('countryCode')} value={formData.countryCode} onChange={(e) => setField('countryCode', e.target.value)}><option value="">Country code *</option>{COUNTRY_CODES.map((item) => <option key={`${item.code}-${item.country}`} value={item.code}>{item.code} {item.country}</option>)}</select>{validationErrors.countryCode && <div className="invalid-feedback">{validationErrors.countryCode}</div>}</div>
-                <div className="col-md-7"><input type="tel" className={fieldClass('phoneNumber')} placeholder="Phone number *" value={formData.phoneNumber} onChange={(e) => setField('phoneNumber', e.target.value)} />{validationErrors.phoneNumber && <div className="invalid-feedback">{validationErrors.phoneNumber}</div>}</div>
+              <div className="signup-form-grid">
+                <div className="signup-form-row signup-form-row--two">
+                  <div className="signup-form-field"><input className={fieldClass('firstName')} placeholder="First name *" value={formData.firstName} onChange={(e) => setField('firstName', e.target.value)} />{validationErrors.firstName && <div className="invalid-feedback">{validationErrors.firstName}</div>}</div>
+                  <div className="signup-form-field"><input className={fieldClass('lastName')} placeholder="Last name *" value={formData.lastName} onChange={(e) => setField('lastName', e.target.value)} />{validationErrors.lastName && <div className="invalid-feedback">{validationErrors.lastName}</div>}</div>
+                </div>
+                <div className="signup-form-field"><input type="email" className={fieldClass('email')} placeholder="Email *" value={formData.email} onChange={(e) => setField('email', e.target.value)} />{validationErrors.email && <div className="invalid-feedback">{validationErrors.email}</div>}</div>
+                <div className="signup-form-row signup-form-row--two">
+                  <div className="signup-form-field"><input type="password" className={fieldClass('password')} placeholder="Password *" value={formData.password} onChange={(e) => setField('password', e.target.value)} />{validationErrors.password && <div className="invalid-feedback">{validationErrors.password}</div>}</div>
+                  <div className="signup-form-field"><input type="password" className={fieldClass('confirmPassword')} placeholder="Confirm password *" value={formData.confirmPassword} onChange={(e) => setField('confirmPassword', e.target.value)} />{validationErrors.confirmPassword && <div className="invalid-feedback">{validationErrors.confirmPassword}</div>}</div>
+                </div>
+                <div className="signup-form-field"><input className={fieldClass('cityOfResidence')} placeholder="City of residence *" value={formData.cityOfResidence} onChange={(e) => setField('cityOfResidence', e.target.value)} />{validationErrors.cityOfResidence && <div className="invalid-feedback">{validationErrors.cityOfResidence}</div>}</div>
+                <div className="signup-form-row signup-form-row--phone">
+                  <div className="signup-form-field"><select className={fieldClass('countryCode')} value={formData.countryCode} onChange={(e) => setField('countryCode', e.target.value)}><option value="">Country code *</option>{COUNTRY_CODES.map((item) => <option key={`${item.code}-${item.country}`} value={item.code}>{item.code} {item.country}</option>)}</select>{validationErrors.countryCode && <div className="invalid-feedback">{validationErrors.countryCode}</div>}</div>
+                  <div className="signup-form-field"><input type="tel" className={fieldClass('phoneNumber')} placeholder="Phone number *" value={formData.phoneNumber} onChange={(e) => setField('phoneNumber', e.target.value)} />{validationErrors.phoneNumber && <div className="invalid-feedback">{validationErrors.phoneNumber}</div>}</div>
+                </div>
               </div>
-              <div className="form-check mt-4">
+              <div className="form-check signup-terms mt-4">
                 <input id="agreeToTerms" type="checkbox" className={`form-check-input ${validationErrors.agreeToTerms ? 'is-invalid' : ''}`} checked={formData.agreeToTerms} onChange={(e) => setField('agreeToTerms', e.target.checked)} />
                 <label className="form-check-label" htmlFor="agreeToTerms">I agree to the <Link to="/terms-of-service">Terms of Service</Link> and <Link to="/privacy-policy">Privacy Policy</Link>.</label>
                 {validationErrors.agreeToTerms && <div className="invalid-feedback">{validationErrors.agreeToTerms}</div>}
               </div>
               <button type="submit" className="btn btn-primary btn-lg butn-dark w-100 mt-4" disabled={isSubmitting}>{isSubmitting ? 'Creating your account…' : 'Create account and continue to secure payment'}</button>
-              <p className="text-center mt-3 mb-0">No charge is made until the next secure PayPal step.</p>
+              <p className="signup-supporting-copy text-center mt-3 mb-0">No charge is made until the next secure PayPal step.</p>
             </form>
-            <p className="text-center mt-4 mb-0">Already have an account? <Link to="/login"><strong>Login here</strong></Link></p>
+            <p className="signup-supporting-copy text-center mt-4 mb-0">Already have an account? <Link to="/login"><strong>Login here</strong></Link></p>
           </div>
         </div></div></div>
       </section>
