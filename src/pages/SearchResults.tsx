@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { AvailabilityResponse, Hotel, RateInfo } from "../types/search";
-import { getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
+import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
 import {
     SEARCH_SESSION_COOKIES,
@@ -189,7 +189,11 @@ const getHotelOpeningTimestamp = (hotel: Hotel): number | null => {
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const currentSearchKey = urlSearchParams.toString();
-    const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location");
+    const requestedHotelIdValue = Number(urlSearchParams.get("hotelId"));
+    const requestedHotelId = Number.isInteger(requestedHotelIdValue) && requestedHotelIdValue > 0
+        ? requestedHotelIdValue
+        : null;
+    const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location") || urlSearchParams.has("hotelId");
     const { hotels, loading, error, searchAdvanced, clearResults } = useSearch();
     const { isAuthenticated, hasActiveMembership } = useAuth();
     
@@ -390,7 +394,27 @@ const SearchResults: React.FC = () => {
         clearResults();
         setInspirationResults([]);
 
-        if (inspirationId) {
+        if (requestedHotelId) {
+            // A hotel chosen from autocomplete is already unambiguous. Fetching it by ID
+            // avoids a second broad supplier search and ensures availability is checked
+            // against the exact property the member selected.
+            setLoadingInspiration(true);
+            getHotelDetails(requestedHotelId)
+                .then((hotel) => {
+                    if (!cancelled) setInspirationResults([hotel]);
+                })
+                .catch(async () => {
+                    if (!cancelled && location) {
+                        await searchAdvanced({ query: location, limit: 20 });
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setLoadingInspiration(false);
+                        setCompletedSearchKey(currentSearchKey);
+                    }
+                });
+        } else if (inspirationId) {
             // Use the /hotels?inspiration_id endpoint for category cards,
             // falling back to text search if the ID doesn't exist in this environment
             setLoadingInspiration(true);
@@ -442,7 +466,7 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [urlSearchParams, currentSearchKey, searchAdvanced, clearResults]);
+    }, [urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults]);
 
     // Enrich every result in the background. Cards remain visible while these calls complete,
     // while the complete detail set gives the filter counts a reliable source of truth.
@@ -452,6 +476,16 @@ const SearchResults: React.FC = () => {
         setDetailedHotels([]);
 
         if (hotelIds.length === 0) {
+            setLoadingFilterOptions(false);
+            return;
+        }
+
+        if (
+            requestedHotelId &&
+            hotelIds.length === 1 &&
+            hotelIds[0] === requestedHotelId
+        ) {
+            setDetailedHotels(baseHotels);
             setLoadingFilterOptions(false);
             return;
         }
@@ -468,7 +502,7 @@ const SearchResults: React.FC = () => {
         return () => {
             if (detailsRequestRef.current === requestId) detailsRequestRef.current += 1;
         };
-    }, [baseHotelIdsKey, baseHotels]);
+    }, [baseHotelIdsKey, baseHotels, requestedHotelId]);
 
     useEffect(() => {
         setSelectedFacilities([]);
@@ -620,7 +654,7 @@ const SearchResults: React.FC = () => {
                         {/* Results */}
                         <div className="col-md-12">
                             <div className="results-header search-results-toolbar">
-                               <p>{isSearching ? "Searching for hotels…" : `${filteredHotels.length} results found`}</p>
+                               <p>{isSearching ? "Searching for hotels…" : `${filteredHotels.length} ${filteredHotels.length === 1 ? "result" : "results"} found`}</p>
                                {!isSearching && baseHotels.length > 0 && (
                                    <button
                                        type="button"
@@ -835,7 +869,6 @@ const SearchResults: React.FC = () => {
                                                             src={displayHotel.images?.[0]?.url || displayHotel.image}
                                                             alt={displayHotel.name}
                                                             priority={index < 3}
-                                                            style={{ minHeight: "262px" }}
                                                         />
                                                     </Link>
                                                     <div 

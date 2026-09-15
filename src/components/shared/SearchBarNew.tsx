@@ -232,8 +232,10 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         const urlGuests = urlSearchParams.get("guests");
         const urlRooms = urlSearchParams.get("rooms");
         const urlRoomSlots = urlSearchParams.get("roomSlots");
+        const urlHotelId = Number(urlSearchParams.get("hotelId"));
 
         if (urlLoc) setLocation(urlLoc);
+        setSelectedHotelId(Number.isInteger(urlHotelId) && urlHotelId > 0 ? urlHotelId : null);
         const ci = parseDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
         const co = parseDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
         const normalizedCheckOut = ensureMinimumCheckOutDate(ci, co);
@@ -273,7 +275,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const calendarHotelId = hotelId ?? selectedHotelId;
 
     useEffect(() => {
-        if (!hasActiveMembership || !calendarHotelId) {
+        if (!showCalendar || !hasActiveMembership || !calendarHotelId) {
             setCalendarRates({});
             setCalendarRatesLoading(false);
             return;
@@ -299,7 +301,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         return () => {
             cancelled = true;
         };
-    }, [calendarHotelId, hasActiveMembership]);
+    }, [calendarHotelId, hasActiveMembership, showCalendar]);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -566,6 +568,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
 
         const urlParams = new URLSearchParams();
         urlParams.set("location", trimmedLocation);
+        if (selectedHotelId) urlParams.set("hotelId", String(selectedHotelId));
         if (checkIn) urlParams.set("checkIn", toStorageStr(checkIn));
         if (normalizedCheckOut) urlParams.set("checkOut", toStorageStr(normalizedCheckOut));
         urlParams.set("roomSlots", JSON.stringify(roomSlots));

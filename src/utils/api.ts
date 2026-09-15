@@ -220,10 +220,10 @@ const makeApiRequest = async (url: string, options: RequestInit): Promise<Respon
       return response;
     }
     
-    // If using backend proxy and got non-OK response, throw error with details
+    // Preserve backend status codes so callers can handle validation responses
+    // (for example, retrying a calendar request in a supported currency).
     if (usingBackendProxy) {
-      const errorText = await response.text().catch(() => 'Unable to read error response');
-      throw new Error(`Backend proxy returned ${response.status}: ${errorText}`);
+      return response;
     }
     
     if (response.status === 0 || response.status === 403 || response.status === 404) {
@@ -365,6 +365,8 @@ const transformApiDataToHotels = (apiData: any[]): Hotel[] => {
  * Makes a search request to the API with authorization
  */
 const HOTEL_SEARCH_MEMORY_TTL_MS = 5 * 60 * 1000;
+const HOTEL_SEARCH_STORAGE_TTL_MS = 30 * 60 * 1000;
+const HOTEL_SEARCH_STORAGE_PREFIX = 'ventus:hotel-search:v2:';
 const HOTEL_SEARCH_MEMORY_MAX_ENTRIES = 50;
 const hotelSearchMemoryCache = new Map<string, { response: SearchResponse; expiresAt: number }>();
 const hotelSearchInflight = new Map<string, Promise<SearchResponse>>();
@@ -384,6 +386,26 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
     return cachedSearch.response;
   }
   if (cachedSearch) hotelSearchMemoryCache.delete(cacheKey);
+
+  if (typeof window !== 'undefined') {
+    try {
+      const storageKey = `${HOTEL_SEARCH_STORAGE_PREFIX}${encodeURIComponent(cacheKey)}`;
+      const stored = JSON.parse(window.localStorage.getItem(storageKey) || 'null') as {
+        response?: SearchResponse;
+        expiresAt?: number;
+      } | null;
+      if (stored?.response && stored.expiresAt && stored.expiresAt > Date.now()) {
+        hotelSearchMemoryCache.set(cacheKey, {
+          response: stored.response,
+          expiresAt: Math.min(stored.expiresAt, Date.now() + HOTEL_SEARCH_MEMORY_TTL_MS),
+        });
+        return stored.response;
+      }
+      if (stored) window.localStorage.removeItem(storageKey);
+    } catch {
+      // Continue with the network request when browser storage is unavailable.
+    }
+  }
 
   const inflightSearch = hotelSearchInflight.get(cacheKey);
   if (inflightSearch) return inflightSearch;
@@ -467,6 +489,19 @@ export const searchHotels = async (params: SearchParams): Promise<SearchResponse
       response: searchResponse,
       expiresAt: Date.now() + HOTEL_SEARCH_MEMORY_TTL_MS,
     });
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(
+          `${HOTEL_SEARCH_STORAGE_PREFIX}${encodeURIComponent(cacheKey)}`,
+          JSON.stringify({
+            response: searchResponse,
+            expiresAt: Date.now() + HOTEL_SEARCH_STORAGE_TTL_MS,
+          })
+        );
+      } catch {
+        // The in-memory cache remains available if local storage is full/disabled.
+      }
+    }
     return searchResponse;
   })()
     .catch((error) => {
@@ -1072,12 +1107,27 @@ export const submitBookingForm = async (bookingDetails: BookingDetails): Promise
 /**
  * Check hotel availability
  */
+const HOTEL_AVAILABILITY_MEMORY_TTL_MS = 2 * 60 * 1000;
+const hotelAvailabilityMemoryCache = new Map<string, { results: AvailabilityResponse[]; expiresAt: number }>();
+const hotelAvailabilityInflight = new Map<string, Promise<AvailabilityResponse[]>>();
+
 export const checkHotelAvailability = async (params: AvailabilityParams): Promise<AvailabilityResponse[]> => {
+  const cacheKey = JSON.stringify({
+    ...params,
+    currency: params.currency.trim().toUpperCase(),
+  });
+  const cached = hotelAvailabilityMemoryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.results;
+  if (cached) hotelAvailabilityMemoryCache.delete(cacheKey);
+
+  const inflight = hotelAvailabilityInflight.get(cacheKey);
+  if (inflight) return inflight;
+
   const url = `${API_BASE_URL}/hotels/availability`;
   //
   // console.log('Checking hotel availability with params:', params);
   //
-  try {
+  const request = (async () => {
     // Log the actual API URL (without proxy) for clarity
     const actualApiUrl = `${getActualApiBaseUrl()}/hotels/availability`;
     // console.log('Availability API URL:', actualApiUrl);
@@ -1112,7 +1162,15 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
       // If it's a single object, wrap it in an array
       return [data];
     }
-  } catch (error) {
+  })()
+    .then((results) => {
+      hotelAvailabilityMemoryCache.set(cacheKey, {
+        results,
+        expiresAt: Date.now() + HOTEL_AVAILABILITY_MEMORY_TTL_MS,
+      });
+      return results;
+    })
+    .catch((error) => {
     console.error('checkHotelAvailability error:', error);
     const err = error instanceof Error ? error : new Error(String(error));
     const isNetworkError = err.message === 'Failed to fetch' ||
@@ -1128,7 +1186,11 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
       );
     }
     throw error;
-  }
+    })
+    .finally(() => hotelAvailabilityInflight.delete(cacheKey));
+
+  hotelAvailabilityInflight.set(cacheKey, request);
+  return request;
 };
 
 const HOTEL_CALENDAR_MEMORY_TTL_MS = 10 * 60 * 1000;
@@ -1150,17 +1212,27 @@ export const getHotelCalendarRates = async (
   if (inflight) return inflight;
 
   const request = (async () => {
-    const searchParams = new URLSearchParams({ currency: normalizedCurrency });
-    const response = await makeApiRequest(
-      `${API_BASE_URL}/hotels/${hotelId}/calendar?${searchParams.toString()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${API_TOKEN}`,
-        },
-      }
-    );
+    const fetchCalendar = (currencyCode: string) => {
+      const searchParams = new URLSearchParams({ currency: currencyCode });
+      return makeApiRequest(
+        `${API_BASE_URL}/hotels/${hotelId}/calendar?${searchParams.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${API_TOKEN}`,
+          },
+        }
+      );
+    };
+
+    let response = await fetchCalendar(normalizedCurrency);
+    // The supplier's availability endpoint supports more currencies than its
+    // calendar endpoint. Fall back to its GBP calendar instead of leaving the
+    // date picker blank for visitors whose local currency is rejected.
+    if (!response.ok && normalizedCurrency !== 'GBP' && (response.status === 400 || response.status === 422)) {
+      response = await fetchCalendar('GBP');
+    }
 
     if (!response.ok) {
       throw new Error(`Unable to load the hotel rate calendar (${response.status})`);
