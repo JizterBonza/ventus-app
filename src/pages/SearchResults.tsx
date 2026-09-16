@@ -241,6 +241,7 @@ const SearchResults: React.FC = () => {
     });
     const [detailedHotels, setDetailedHotels] = useState<Hotel[]>([]);
     const [loadingInspiration, setLoadingInspiration] = useState(false);
+    const [loadingMoreHotels, setLoadingMoreHotels] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
     const [availabilityTarget, setAvailabilityTarget] = useState<{ location_id?: number; inspiration_id?: number } | null>(null);
     const [collectionHasFullDetails, setCollectionHasFullDetails] = useState(false);
@@ -433,11 +434,37 @@ const SearchResults: React.FC = () => {
         setInspirationResults([]);
         setAvailabilityTarget(null);
         setCollectionHasFullDetails(false);
+        setLoadingMoreHotels(false);
+
+        const showFirstPage = (
+            target: { location_id?: number; inspiration_id?: number },
+            firstHotels: Hotel[],
+        ) => {
+            if (cancelled || firstHotels.length === 0) return;
+            setInspirationResults(firstHotels);
+            setAvailabilityTarget(target);
+            setCollectionHasFullDetails(true);
+            setLoadingInspiration(false);
+            setLoadingMoreHotels(true);
+            setCompletedSearchKey(currentSearchKey);
+        };
 
         const loadFullCollection = async (
             target: { location_id?: number; inspiration_id?: number },
             catalogueRequest: Promise<Hotel[]>,
         ) => {
+            const visibleCatalogueRequest = catalogueRequest.then((catalogue) => {
+                // Do not wait for the slower member-availability request to show every
+                // catalogue hotel. Extra availability-only properties can join later.
+                if (!cancelled && catalogue.length > 0) {
+                    setInspirationResults(catalogue);
+                    setAvailabilityTarget(target);
+                    setCollectionHasFullDetails(true);
+                    setLoadingInspiration(false);
+                    setCompletedSearchKey(currentSearchKey);
+                }
+                return catalogue;
+            });
             const availabilityRequest = hasActiveMembership
                 ? getVisitorCurrency().then((currency) => checkHotelAvailability({
                     ...target,
@@ -446,7 +473,7 @@ const SearchResults: React.FC = () => {
                 }))
                 : Promise.resolve<AvailabilityResponse[]>([]);
             const [catalogueResult, availabilityResult] = await Promise.allSettled([
-                catalogueRequest,
+                visibleCatalogueRequest,
                 availabilityRequest,
             ]);
             const catalogue = catalogueResult.status === "fulfilled" ? catalogueResult.value : [];
@@ -476,6 +503,7 @@ const SearchResults: React.FC = () => {
                 setInspirationResults(hotels);
                 setAvailabilityTarget(target);
                 setCollectionHasFullDetails(catalogue.length > 0);
+                setLoadingMoreHotels(false);
             }
         };
 
@@ -495,9 +523,10 @@ const SearchResults: React.FC = () => {
             // falling back to text search if the ID doesn't exist in this environment
             const numericInspirationId = Number(inspirationId);
             try {
+                const target = { inspiration_id: numericInspirationId };
                 await loadFullCollection(
-                    { inspiration_id: numericInspirationId },
-                    searchHotelsByInspiration(numericInspirationId),
+                    target,
+                    searchHotelsByInspiration(numericInspirationId, 10, (firstHotels) => showFirstPage(target, firstHotels)),
                 );
             } catch {
                 if (!cancelled && title) await searchAdvanced({ query: title, limit: 100 });
@@ -515,9 +544,10 @@ const SearchResults: React.FC = () => {
                     locationId = exactMatch?.id || matches[0]?.id || null;
                 }
                 if (locationId) {
+                    const target = { location_id: locationId };
                     await loadFullCollection(
-                        { location_id: locationId },
-                        searchHotelsByLocation(locationId),
+                        target,
+                        searchHotelsByLocation(locationId, 10, (firstHotels) => showFirstPage(target, firstHotels)),
                     );
                 } else {
                     await searchAdvanced({ query: location, limit: 100 });
@@ -532,6 +562,7 @@ const SearchResults: React.FC = () => {
         void runSearch().finally(() => {
             if (!cancelled) {
                 setLoadingInspiration(false);
+                setLoadingMoreHotels(false);
                 setCompletedSearchKey(currentSearchKey);
             }
         });
@@ -775,7 +806,7 @@ const SearchResults: React.FC = () => {
                         {/* Results */}
                         <div className="col-md-12">
                             <div className="results-header search-results-toolbar">
-                               <p>{isSearching ? "Searching for hotels…" : `${filteredHotels.length} ${filteredHotels.length === 1 ? "result" : "results"} found`}</p>
+                               <p>{isSearching ? "Searching for hotels…" : loadingMoreHotels ? `${filteredHotels.length} shown · loading more hotels…` : `${filteredHotels.length} ${filteredHotels.length === 1 ? "result" : "results"} found`}</p>
                                {!isSearching && baseHotels.length > 0 && (
                                    <button
                                        type="button"

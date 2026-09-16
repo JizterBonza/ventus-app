@@ -1,4 +1,42 @@
-import { checkHotelAvailability, getHotelCalendarRates } from './api';
+import { checkHotelAvailability, getHotelCalendarRates, searchHotelsByLocation } from './api';
+
+describe('searchHotelsByLocation progressive results', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('shows the first page before the remaining pages finish, including to concurrent callers', async () => {
+    let resolveSecondPage!: (response: Response) => void;
+    const secondPage = new Promise<Response>((resolve) => { resolveSecondPage = resolve; });
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation((input) =>
+      String(input).includes('page=2')
+        ? secondPage
+        : Promise.resolve(new Response(JSON.stringify({
+          content: [{ id: 987658, name: 'First hotel' }],
+          page: { total_pages: 2 },
+        }), { status: 200 }))
+    );
+    const firstPage = jest.fn();
+    const concurrentFirstPage = jest.fn();
+
+    const request = searchHotelsByLocation(987657, 10, firstPage);
+    const concurrentRequest = searchHotelsByLocation(987657, 10, concurrentFirstPage);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(firstPage).toHaveBeenCalledWith([expect.objectContaining({ id: 987658, name: 'First hotel' })]);
+    expect(concurrentFirstPage).toHaveBeenCalledWith([expect.objectContaining({ id: 987658 })]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    resolveSecondPage(new Response(JSON.stringify({
+      content: [{ id: 987659, name: 'Second hotel' }],
+      page: { total_pages: 2 },
+    }), { status: 200 }));
+    const [hotels, concurrentHotels] = await Promise.all([request, concurrentRequest]);
+    expect(hotels.map((hotel) => hotel.id)).toEqual([987658, 987659]);
+    expect(concurrentHotels).toEqual(hotels);
+  });
+});
 
 describe('getHotelCalendarRates', () => {
   afterEach(() => {

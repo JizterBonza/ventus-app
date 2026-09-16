@@ -882,7 +882,12 @@ export const searchPredictions = async (
 const COLLECTION_RESULTS_CACHE_TTL_MS = 30 * 60 * 1000;
 const COLLECTION_RESULTS_STORAGE_PREFIX = 'ventus:hotel-collection:v3:';
 const collectionResultsMemoryCache = new Map<string, { hotels: Hotel[]; expiresAt: number }>();
-const collectionResultsInflight = new Map<string, Promise<Hotel[]>>();
+type CollectionRequest = {
+  promise: Promise<Hotel[]>;
+  firstPage?: Hotel[];
+  firstPageListeners: Set<(hotels: Hotel[]) => void>;
+};
+const collectionResultsInflight = new Map<string, CollectionRequest>();
 
 const getCollectionResultsCacheKey = (target: 'location' | 'inspiration', id: number, perPage: number) =>
   `${target}:${id}:${perPage}`;
@@ -926,15 +931,29 @@ const searchHotelCollection = async (
   target: 'location' | 'inspiration',
   id: number,
   perPage = 10,
+  onFirstPage?: (hotels: Hotel[]) => void,
 ): Promise<Hotel[]> => {
   const cacheKey = getCollectionResultsCacheKey(target, id, perPage);
   const cachedResults = readCachedCollectionResults(cacheKey);
-  if (cachedResults) return cachedResults;
+  if (cachedResults) {
+    if (onFirstPage && cachedResults.length > 0) onFirstPage(cachedResults);
+    return cachedResults;
+  }
 
   const inflightRequest = collectionResultsInflight.get(cacheKey);
-  if (inflightRequest) return inflightRequest;
+  if (inflightRequest) {
+    if (onFirstPage) {
+      if (inflightRequest.firstPage) onFirstPage(inflightRequest.firstPage);
+      else inflightRequest.firstPageListeners.add(onFirstPage);
+    }
+    return inflightRequest.promise;
+  }
 
   const targetParam = target === 'location' ? 'location_id' : 'inspiration_id';
+  const requestState: CollectionRequest = {
+    promise: Promise.resolve([]),
+    firstPageListeners: new Set(onFirstPage ? [onFirstPage] : []),
+  };
   const request = (async () => {
     try {
       const fetchPage = async (page: number) => {
@@ -945,6 +964,12 @@ const searchHotelCollection = async (
       };
 
       const firstPage = await fetchPage(1);
+      const firstHotels = (firstPage?.data || firstPage?.content || []).map(mapApiItemToHotel);
+      requestState.firstPage = firstHotels;
+      if (firstHotels.length > 0) {
+        requestState.firstPageListeners.forEach((listener) => listener(firstHotels));
+      }
+      requestState.firstPageListeners.clear();
       const totalPages = Math.max(1, Number(firstPage?.page?.total_pages) || 1);
       const pages: any[] = [firstPage];
       const remainingPages = Array.from({ length: totalPages - 1 }, (_, index) => index + 2);
@@ -964,15 +989,16 @@ const searchHotelCollection = async (
     }
   })().finally(() => collectionResultsInflight.delete(cacheKey));
 
-  collectionResultsInflight.set(cacheKey, request);
+  requestState.promise = request;
+  collectionResultsInflight.set(cacheKey, requestState);
   return request;
 };
 
-export const searchHotelsByLocation = (locationId: number, perPage = 10): Promise<Hotel[]> =>
-  searchHotelCollection('location', locationId, perPage);
+export const searchHotelsByLocation = (locationId: number, perPage = 10, onFirstPage?: (hotels: Hotel[]) => void): Promise<Hotel[]> =>
+  searchHotelCollection('location', locationId, perPage, onFirstPage);
 
-export const searchHotelsByInspiration = (inspirationId: number, perPage = 10): Promise<Hotel[]> =>
-  searchHotelCollection('inspiration', inspirationId, perPage);
+export const searchHotelsByInspiration = (inspirationId: number, perPage = 10, onFirstPage?: (hotels: Hotel[]) => void): Promise<Hotel[]> =>
+  searchHotelCollection('inspiration', inspirationId, perPage, onFirstPage);
 
 export const prefetchInspirationHotels = async (inspirationId: number, perPage: number = 10): Promise<void> => {
   try {
