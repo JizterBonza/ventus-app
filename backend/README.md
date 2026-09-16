@@ -10,10 +10,11 @@ Backend API for the Ventus Hotel Booking App with PostgreSQL database.
 - Password hashing with bcrypt
 - CORS enabled
 - RESTful API endpoints
+- Mailgun password-reset and booking emails (see `../BOOKING_EMAIL_SETUP.md`)
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - PostgreSQL database
 
 ## Local Development Setup
@@ -26,7 +27,7 @@ Backend API for the Ventus Hotel Booking App with PostgreSQL database.
 
 2. **Configure environment variables:**
    ```bash
-   cp .env.example .env
+   cp ENV_example.txt .env
    ```
    
    Edit `.env` and set your database URL and JWT secret:

@@ -1,177 +1,62 @@
-# Booking Email Setup Guide
+# Ventus Mailgun email setup
 
-This guide explains how to set up booking-request email delivery to the configured Ventus team address.
+## Current implementation
 
-## Current Implementation
+The backend supports Mailgun for password-reset messages, booking-request notifications to the Ventus team, and separate booking acknowledgements to guests. Mailgun is preferred when its API key, sending domain and sender are configured. Existing Resend and EmailJS configurations remain available when Mailgun is not configured; delivery errors do not trigger a second provider and risk duplicate messages.
 
-The booking system includes multiple fallback methods for sending emails:
+Booking requests are saved to PostgreSQL before notifications are attempted. A notification failure is logged without undoing the saved request. Notifications currently run in the server process, without a durable retry queue. Password-reset requests report a delivery error if the provider rejects the message. Mailgun acceptance means queued, not confirmed inbox delivery.
 
-1. **EmailJS** (Primary method)
-2. **Form Service** (Secondary method)
-3. **Mailto Link** (Fallback method)
+Mailgun credentials are used only by `backend/mailgun.js`. No Mailgun key belongs in a `REACT_APP_*` variable or browser code. Tracking is disabled for these transactional emails, including password-reset links.
 
-## Setup Instructions
+## Mailgun account setup
 
-### Option 1: EmailJS Setup (Recommended)
+The approved setup uses the existing **Vinadamo / Foundation 50k** account with a dedicated Ventus domain and domain-scoped sending key. It does not require a plan change or a subaccount.
 
-1. **Create an EmailJS account:**
-   - Go to [https://www.emailjs.com/](https://www.emailjs.com/)
-   - Sign up for a free account
+### Live setup status — 16 September 2026
 
-2. **Create an email service:**
-   - In the EmailJS dashboard, go to "Email Services"
-   - Click "Add New Service"
-   - Choose your email provider (Gmail, Outlook, etc.)
-   - Follow the setup instructions for your email provider
+- Signed in successfully to Vinadamo (`info@vinadamo.com`). The account activation banner has cleared.
+- Created **mg.ventustravel.co.uk** in the **EU** region, using shared IPs and a **2048-bit DKIM** key.
+- Created a domain sending key described as **Ventus backend — mg.ventustravel.co.uk**. The key is scoped to this domain, rather than the whole Vinadamo account.
+- Both SPF (`mg.ventustravel.co.uk`) and the 2048-bit DKIM record (`email._domainkey.mg.ventustravel.co.uk`) are saved in Squarespace and resolve publicly. Mailgun reports SPF **Verified** and DKIM **Active**.
+- Render CLI access is available for `ventus-backend` (`srv-d49d499r0fns738gjhtg`). Its source is `JizterBonza/ventus-app`, branch `master`, root directory `backend`.
+- Saved and verified `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAILGUN_REGION`, `MAILGUN_FROM_EMAIL`, and `BOOKING_NOTIFICATION_EMAIL` on the Render backend. The user explicitly approved saving the key to this service; it was transferred directly through the browser and was not written to a local file. Deployment uses the backend integration in this repository via Render’s `master` branch. A live Mailgun EU API test using this saved key returned HTTP 200 in test mode, with no email delivered.
 
-3. **Create an email template:**
-   - Go to "Email Templates"
-   - Click "Create New Template"
-   - Use this template content:
+[Mailgun domain settings](https://app.eu.mailgun.com/mg/sending/mg.ventustravel.co.uk/settings?tab=dns) contain the live verification status. See `MAILGUN_DNS_SETUP.md` for the exact DNS records. Preserve the root domain's Google mail MX records.
 
-   ```
-   Subject: New Hotel Booking Request - {{hotel_name}}
-   
-   Dear Hotel Management,
-   
-   You have received a new booking request:
-   
-   Booking ID: {{booking_id}}
-   Hotel: {{hotel_name}}
-   Guest Name: {{guest_name}}
-   Guest Email: {{guest_email}}
-   Guest Phone: {{guest_phone}}
-   Check-in Date: {{check_in_date}}
-   Check-out Date: {{check_out_date}}
-   Number of Guests: {{number_of_guests}}
-   Number of Rooms: {{number_of_rooms}}
-   Room Type: {{room_type}}
-   Special Requests: {{special_requests}}
-   Total Price: {{total_price}}
-   
-   Submitted at: {{submitted_at}}
-   
-   Please contact the guest to confirm the booking.
-   
-   Best regards,
-   Ventus Hotel Booking System
-   ```
+## Backend configuration
 
-4. **Update the configuration:**
-   - Open `src/utils/emailService.ts`
-   - Replace the placeholder values:
-     ```typescript
-     const EMAILJS_SERVICE_ID = 'your_service_id_here';
-     const EMAILJS_TEMPLATE_ID = 'your_template_id_here';
-     const EMAILJS_PUBLIC_KEY = 'your_public_key_here';
-     ```
+On the `ventus-backend` Render service, configure:
 
-### Option 2: Form Service Setup (Alternative)
+| Variable | Value |
+| --- | --- |
+| `MAILGUN_API_KEY` | Sending key scoped to `mg.ventustravel.co.uk` |
+| `MAILGUN_DOMAIN` | `mg.ventustravel.co.uk` (verified) |
+| `MAILGUN_REGION` | `EU` |
+| `MAILGUN_FROM_EMAIL` | Sender on that domain, e.g. `Ventus Travel <no-reply@mg.ventustravel.co.uk>` |
+| `PASSWORD_RESET_REPLY_TO` | `daniella@ventustravel.co.uk` |
+| `BOOKING_NOTIFICATION_EMAIL` | `daniella@ventustravel.co.uk` |
+| `PUBLIC_APP_URL` | `https://destinations.ventustravel.co.uk` |
 
-1. **Create a Formspree account:**
-   - Go to [https://formspree.io/](https://formspree.io/)
-   - Sign up for a free account
+`PASSWORD_RESET_FROM_EMAIL` and `BOOKING_FROM_EMAIL` override the default sender for their respective messages. Review any existing overrides before switching providers. Use the actual verified sender/domain, not an unverified example. The API defaults to the US region if `MAILGUN_REGION` is omitted.
 
-2. **Create a new form:**
-   - Create a new form in Formspree
-   - Set the email to the approved Ventus booking inbox
-   - Copy the form endpoint URL
+For local configuration, copy `backend/ENV_example.txt` to `backend/.env`, which is ignored by Git. Run the backend with Node.js 18 or newer. The existing server already requires the built-in Fetch API; Mailgun also uses its built-in FormData implementation.
 
-3. **Update the form service:**
-   - Open `src/utils/emailService.ts`
-   - Find the `sendBookingEmailViaFormService` function
-   - Replace the comment with actual form submission:
-     ```typescript
-     const response = await fetch('https://formspree.io/f/YOUR_FORM_ID', {
-       method: 'POST',
-       body: formData,
-       headers: {
-         'Accept': 'application/json'
-       }
-     });
-     ```
+The backend code and saved environment configuration must be deployed together when activating the integration. The frontend does not need a Mailgun key or a rebuild for this provider change. Contact and Buy Outs form delivery are not connected by this integration.
 
-### Option 3: Mailto Fallback (No Setup Required)
+## Verification
 
-The system includes a mailto fallback that opens the user's default email client with pre-filled booking details. This works without any additional setup.
+Run the isolated email tests:
 
-## Testing the Booking System
+```sh
+cd backend
+npm test
+```
 
-1. **Start the development server:**
-   ```bash
-   npm start
-   ```
+All eight isolated email tests pass. They mock provider requests and send no real emails. They cover password-reset content and tracking, US/EU routing, separate booking recipients, error handling, invalid configuration, and the existing provider paths.
 
-2. **Navigate to a hotel:**
-   - Go to the search page
-   - Click on a hotel
-   - Click "Book Now"
+After production activation, request a password reset for an approved test account, then submit an approved test booking through the normal member flow. Check Mailgun's accepted/delivered events and the recipient inboxes. Confirm that the reset link works and that the guest acknowledgement says the booking is a request awaiting confirmation.
 
-3. **Fill out the booking form:**
-   - Enter guest details
-   - Select dates and room preferences
-   - Click "Send Booking Request"
+## References
 
-4. **Check the email:**
-   - The booking details should be sent to the configured Ventus booking inbox
-   - Check the console for any error messages
-
-## Email Content
-
-The booking email will include:
-
-- **Booking ID**: Unique identifier for the booking
-- **Hotel Information**: Name and details
-- **Guest Information**: Name, email, phone
-- **Stay Details**: Check-in/out dates, number of guests/rooms
-- **Room Preferences**: Room type and special requests
-- **Pricing**: Total price (if provided)
-- **Timestamp**: When the booking was submitted
-
-## Troubleshooting
-
-### Common Issues:
-
-1. **EmailJS not working:**
-   - Check that the service ID, template ID, and public key are correct
-   - Verify the email service is properly configured
-   - Check the browser console for error messages
-
-2. **Form service not working:**
-   - Verify the form endpoint URL is correct
-   - Check that the form is set to accept submissions
-   - Ensure CORS is properly configured
-
-3. **Mailto not working:**
-   - Check that the user has a default email client configured
-   - Verify the browser allows mailto links
-
-### Debug Mode:
-
-Enable debug logging by checking the browser console. All email sending attempts are logged with detailed information.
-
-## Security Considerations
-
-- Never expose API keys in client-side code in production
-- Use environment variables for sensitive configuration
-- Implement rate limiting for booking requests
-- Validate all form inputs on both client and server side
-
-## Production Deployment
-
-For production deployment:
-
-1. Set up proper email service configuration
-2. Use environment variables for sensitive data
-3. Implement proper error handling and logging
-4. Add email confirmation for guests
-5. Set up automated responses
-
-## Support
-
-If you encounter issues with the email setup, check:
-
-1. Browser console for error messages
-2. EmailJS/Formspree dashboard for service status
-3. Network tab for failed requests
-4. Email spam folder for test emails
+- [Mailgun test mode](https://documentation.mailgun.com/docs/mailgun/user-manual/sending-messages/test-mode)
+- [Sending messages over HTTP](https://documentation.mailgun.com/docs/mailgun/user-manual/sending-messages/send-http)
