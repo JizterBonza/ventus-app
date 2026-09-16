@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
@@ -46,6 +46,23 @@ interface SimilarHotel {
     image: string;
 }
 
+const getLiveHotelBenefits = (result: AvailabilityResponse | null) => {
+    if (!result) return null;
+    const benefits = new Set<string>();
+    const footnotes = new Set<string>();
+    for (const room of result.room_types || []) {
+        for (const rate of room.rates || []) {
+            for (const value of [...(rate.benefits || []), ...(rate.additional_benefits || [])]) {
+                if (typeof value === "string" && value.trim()) benefits.add(value.trim());
+            }
+            for (const value of rate.benefits_footnotes || []) {
+                if (typeof value === "string" && value.trim()) footnotes.add(value.trim());
+            }
+        }
+    }
+    return { benefits: Array.from(benefits), footnotes: Array.from(footnotes) };
+};
+
 declare const $: any;
 
 const HotelDetail: React.FC = () => {
@@ -74,10 +91,13 @@ const HotelDetail: React.FC = () => {
         initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     } | null>(null);
     const [selectedAvailabilityRateIndex, setSelectedAvailabilityRateIndex] = useState<string | undefined>(undefined);
+    const [availabilityRefreshNonce, setAvailabilityRefreshNonce] = useState(0);
+    const [availabilityStatus, setAvailabilityStatus] = useState<"checking" | "ready" | "error">("checking");
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     /** "Starting from" price from availability API (today/tomorrow, visitor currency). Independent of Check Availability. */
     const [startingFromPrice, setStartingFromPrice] = useState<{ rate: number; currency: string } | null>(null);
     const [startingFromPriceLoading, setStartingFromPriceLoading] = useState(false);
+    const liveHotelBenefits = useMemo(() => getLiveHotelBenefits(availabilityResult), [availabilityResult]);
 
     // Mock rooms data (since API might not provide room details)
     const mockRooms: Room[] = [
@@ -445,6 +465,7 @@ const HotelDetail: React.FC = () => {
     const handleAvailabilityResult = (result: any) => {
         // console.log('Availability result received:', result);
         setAvailabilityResult(result);
+        setAvailabilityStatus("ready");
         setSelectedAvailabilityRateIndex(result?.selectedRateIndex || undefined);
         //
         // Extract and store form data if available
@@ -456,6 +477,22 @@ const HotelDetail: React.FC = () => {
         if (!result.session_id) {
             // console.warn('Availability check returned no session_id. Booking may fail.');
         }
+    };
+
+    const handleAvailabilityStart = () => {
+        setAvailabilityResult(null);
+        setSelectedAvailabilityRateIndex(undefined);
+        setAvailabilityStatus("checking");
+    };
+
+    const handleAvailabilityError = () => {
+        setAvailabilityStatus("error");
+    };
+
+    const refreshBookingAvailability = () => {
+        handleAvailabilityStart();
+        setAvailabilityRefreshNonce((nonce) => nonce + 1);
+        document.getElementById("check-availability")?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
     const handleAvailabilityRateSelected = () => {
@@ -792,23 +829,33 @@ const HotelDetail: React.FC = () => {
                         {/* Sidebar - Show benefits if logged in, membership if logged out */}
                     <div className="hotel-content_sidebar">
                         {hasActiveMembership ? (
-                            // Show benefits if logged in and benefits exist
-                            hotel.benefits && hotel.benefits.length > 0 ? (
+                            <>
                                 <div className="hotel-benefits">
                                     <div className="hotel-benefits_heading">
                                         <h3>Your Benefits</h3>
                                         <img src="/assets/img/ventus-logo.png" alt="Ventus Travel" />
                                     </div>
                                     <div className="hotel-benefits_cont">
-                                        <ul>
-                                            {hotel.benefits.map((benefit, index) => (
-                                                <li key={index}>{benefit}</li>
-                                            ))}
-                                        </ul>
-                                    
-                                        {hotel.benefits_footnotes && hotel.benefits_footnotes.length > 0 && (
+                                        {availabilityStatus === "checking" ? (
+                                            <p role="status">Checking live benefits and hotel credit for your dates…</p>
+                                        ) : availabilityStatus === "error" ? (
+                                            <p>Live benefits could not be confirmed. Check availability again below.</p>
+                                        ) : (
+                                            <ul>
+                                                {(liveHotelBenefits?.benefits.length
+                                                    ? liveHotelBenefits.benefits
+                                                    : hotel.benefits || []).map((benefit, index) => (
+                                                    <li key={index}>{benefit}</li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                        {availabilityStatus === "ready" && (liveHotelBenefits?.footnotes.length
+                                            ? liveHotelBenefits.footnotes
+                                            : hotel.benefits_footnotes || []).length > 0 && (
                                             <div className="benefits-footnotes">
-                                                {hotel.benefits_footnotes.map((footnote, index) => (
+                                                {(liveHotelBenefits?.footnotes.length
+                                                    ? liveHotelBenefits.footnotes
+                                                    : hotel.benefits_footnotes || []).map((footnote, index) => (
                                                     <p key={index} className="footnote-text">{footnote}</p>
                                                 ))}
                                             </div>
@@ -816,7 +863,7 @@ const HotelDetail: React.FC = () => {
                                         <a href="#check-availability" className="btn btn-primary">Book Now</a>
                                     </div>
                                 </div>
-                            ) : null
+                            </>
                         ) : (
                             // Show membership section if logged out
                             <div className="section-membership">
@@ -846,6 +893,9 @@ const HotelDetail: React.FC = () => {
                     <CheckAvailability
                         hotelId={hotel.id}
                         hotelName={hotel.name}
+                        refreshNonce={availabilityRefreshNonce}
+                        onAvailabilityStart={handleAvailabilityStart}
+                        onAvailabilityError={handleAvailabilityError}
                         onAvailabilityResult={handleAvailabilityResult}
                         onRateSelected={handleAvailabilityRateSelected}
                     />
@@ -860,6 +910,7 @@ const HotelDetail: React.FC = () => {
                             hotelName={hotel.name}
                             onBookingSuccess={handleBookingSuccess}
                             onBookingError={handleBookingError}
+                            onRefreshAvailability={refreshBookingAvailability}
                             sessionId={availabilityResult.session_id?.trim() || undefined}
                             startDate={availabilityFormData?.start_date || ""}
                             endDate={availabilityFormData?.end_date || ""}

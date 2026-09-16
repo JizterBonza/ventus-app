@@ -190,6 +190,7 @@ export interface AvailabilityResponse {
   hotel_name: string;
   is_available: boolean;
   session_id: string | null;
+  expiry_date?: string | null;
   default_currency: string | null;
   opened_at: string;
   is_under_refurbishment: boolean;

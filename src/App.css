@@ -2204,6 +2204,11 @@
   margin-top: 12px;
 }
 
+.booking-refresh-rate {
+  display: inline-block;
+  margin-top: 12px;
+}
+
 .booking-terms-confirmation {
   align-items: flex-start;
   display: flex;

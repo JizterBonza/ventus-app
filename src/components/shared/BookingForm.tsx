@@ -10,6 +10,7 @@ interface BookingFormProps {
     hotelName: string;
     onBookingSuccess?: (response: BookingResponse) => void;
     onBookingError?: (error: string) => void;
+    onRefreshAvailability?: () => void;
     className?: string;
     sessionId?: string;
     rateIndex?: string;
@@ -55,6 +56,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     hotelName,
     onBookingSuccess,
     onBookingError,
+    onRefreshAvailability,
     className = "",
     sessionId = "",
     rateIndex = "",
@@ -102,31 +104,59 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const [eta, setEta] = useState("");
     const [cardStored, setCardStored] = useState(false);
     const [cardMessage, setCardMessage] = useState("");
+    const [sessionError, setSessionError] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
     const [message, setMessage] = useState("");
     const submittingRef = useRef(false);
+    const cardFrameRef = useRef<HTMLIFrameElement>(null);
 
     useEffect(() => {
         setCardStored(false);
         setCardMessage("");
+        setSessionError(false);
         setTermsAccepted(false);
         setStatus("idle");
         setMessage("");
     }, [sessionId, rateIndex]);
 
     useEffect(() => {
+        const expiresAt = availabilityResult?.expiry_date
+            ? Date.parse(availabilityResult.expiry_date)
+            : NaN;
+        if (!Number.isFinite(expiresAt)) return;
+        const expire = () => {
+            setCardStored(false);
+            setSessionError(true);
+            setCardMessage("This live rate has expired. Refresh availability to continue safely.");
+        };
+        const remainingMs = expiresAt - Date.now() - 30_000;
+        if (remainingMs <= 0) {
+            expire();
+            return;
+        }
+        const timeout = window.setTimeout(expire, remainingMs);
+        return () => window.clearTimeout(timeout);
+    }, [availabilityResult?.expiry_date, sessionId]);
+
+    useEffect(() => {
         const handleCardMessage = (event: MessageEvent) => {
-            if (event.origin !== CARD_WIDGET_ORIGIN || !event.data || typeof event.data !== "object") return;
+            if (event.origin !== CARD_WIDGET_ORIGIN ||
+                event.source !== cardFrameRef.current?.contentWindow ||
+                !event.data || typeof event.data !== "object") return;
             if (event.data.success === true) {
                 setCardStored(true);
+                setSessionError(false);
                 setCardMessage("Card details secured. You can now confirm the booking.");
                 return;
             }
             if (event.data.errorMessage) {
                 setCardStored(false);
                 setCardMessage(String(event.data.errorMessage));
+                if (/session/i.test(`${event.data.errorKey || ""} ${event.data.errorMessage}`)) {
+                    setSessionError(true);
+                }
             }
         };
         window.addEventListener("message", handleCardMessage);
@@ -185,6 +215,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
             const errorMessage = error instanceof Error ? error.message : "Unable to confirm this booking.";
             setStatus("error");
             setMessage(errorMessage);
+            if (/session|rate.*expir/i.test(errorMessage)) {
+                setCardStored(false);
+                setSessionError(true);
+            }
             onBookingError?.(errorMessage);
         } finally {
             submittingRef.current = false;
@@ -268,17 +302,27 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     <div className="booking-secure-card">
                         <h3>Secure card details</h3>
                         <p>Your card details are entered directly into Little Emperors’ secure form. Ventus never receives or stores them.</p>
-                        <iframe
-                            key={sessionId}
-                            title="Secure card details"
-                            src={`${CARD_WIDGET_ORIGIN}/widgets/credit-card?session_id=${encodeURIComponent(sessionId)}`}
-                            className="booking-card-widget"
-                            allow="payment"
-                        />
+                        {sessionId ? (
+                            <iframe
+                                ref={cardFrameRef}
+                                key={sessionId}
+                                title="Secure card details"
+                                src={`${CARD_WIDGET_ORIGIN}/widgets/credit-card?session_id=${encodeURIComponent(sessionId)}`}
+                                className="booking-card-widget"
+                                allow="payment"
+                            />
+                        ) : (
+                            <p className="booking-card-error">No valid booking session was returned for this rate.</p>
+                        )}
                         {cardMessage && (
                             <p className={cardStored ? "booking-card-success" : "booking-card-error"} role="status">
                                 {cardMessage}
                             </p>
+                        )}
+                        {(!sessionId || sessionError) && onRefreshAvailability && (
+                            <button type="button" className="btn btn-outline-primary booking-refresh-rate" onClick={onRefreshAvailability}>
+                                Refresh availability and select a room again
+                            </button>
                         )}
                     </div>
 
@@ -289,7 +333,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
                     <div className="d-grid submit-section">
                         {status === "error" && <div className="alert alert-danger" role="alert">{message}</div>}
-                        <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || !cardStored || !termsAccepted}>
+                        <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || !sessionId || sessionError || !cardStored || !termsAccepted}>
                             {isSubmitting ? "Confirming booking…" : amount !== null ? `Confirm booking — ${currency} ${amount.toLocaleString()}` : "Confirm booking"}
                         </button>
                         <small>Only click confirm once. The hotel booking will be submitted immediately.</small>

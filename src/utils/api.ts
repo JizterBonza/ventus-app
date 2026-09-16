@@ -372,7 +372,7 @@ const transformApiDataToHotels = (apiData: any[]): Hotel[] => apiData
  */
 const HOTEL_SEARCH_MEMORY_TTL_MS = 5 * 60 * 1000;
 const HOTEL_SEARCH_STORAGE_TTL_MS = 30 * 60 * 1000;
-const HOTEL_SEARCH_STORAGE_PREFIX = 'ventus:hotel-search:v2:';
+const HOTEL_SEARCH_STORAGE_PREFIX = 'ventus:hotel-search:v3:';
 const HOTEL_SEARCH_MEMORY_MAX_ENTRIES = 50;
 const hotelSearchMemoryCache = new Map<string, { response: SearchResponse; expiresAt: number }>();
 const hotelSearchInflight = new Map<string, Promise<SearchResponse>>();
@@ -880,7 +880,7 @@ export const searchPredictions = async (
 
 /** Fetch complete destination/inspiration collections from the supplier's paginated hotel endpoint. */
 const COLLECTION_RESULTS_CACHE_TTL_MS = 30 * 60 * 1000;
-const COLLECTION_RESULTS_STORAGE_PREFIX = 'ventus:hotel-collection:v2:';
+const COLLECTION_RESULTS_STORAGE_PREFIX = 'ventus:hotel-collection:v3:';
 const collectionResultsMemoryCache = new Map<string, { hotels: Hotel[]; expiresAt: number }>();
 const collectionResultsInflight = new Map<string, Promise<Hotel[]>>();
 
@@ -1150,15 +1150,18 @@ const hotelAvailabilityMemoryCache = new Map<string, { results: AvailabilityResp
 const hotelAvailabilityInflight = new Map<string, Promise<AvailabilityResponse[]>>();
 
 export const checkHotelAvailability = async (params: AvailabilityParams): Promise<AvailabilityResponse[]> => {
+  // Exact-hotel responses contain a short-lived booking session_id. Never reuse one
+  // from the browser cache when the guest opens the card widget or checks again.
+  const containsBookingSession = params.hotel_id != null;
   const cacheKey = JSON.stringify({
     ...params,
     currency: params.currency.trim().toUpperCase(),
   });
-  const cached = hotelAvailabilityMemoryCache.get(cacheKey);
+  const cached = containsBookingSession ? null : hotelAvailabilityMemoryCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.results;
   if (cached) hotelAvailabilityMemoryCache.delete(cacheKey);
 
-  const inflight = hotelAvailabilityInflight.get(cacheKey);
+  const inflight = containsBookingSession ? null : hotelAvailabilityInflight.get(cacheKey);
   if (inflight) return inflight;
 
   const url = `${API_BASE_URL}/hotels/availability`;
@@ -1202,10 +1205,12 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
     }
   })()
     .then((results) => {
-      hotelAvailabilityMemoryCache.set(cacheKey, {
-        results,
-        expiresAt: Date.now() + HOTEL_AVAILABILITY_MEMORY_TTL_MS,
-      });
+      if (!containsBookingSession) {
+        hotelAvailabilityMemoryCache.set(cacheKey, {
+          results,
+          expiresAt: Date.now() + HOTEL_AVAILABILITY_MEMORY_TTL_MS,
+        });
+      }
       return results;
     })
     .catch((error) => {
@@ -1225,9 +1230,11 @@ export const checkHotelAvailability = async (params: AvailabilityParams): Promis
     }
     throw error;
     })
-    .finally(() => hotelAvailabilityInflight.delete(cacheKey));
+    .finally(() => {
+      if (!containsBookingSession) hotelAvailabilityInflight.delete(cacheKey);
+    });
 
-  hotelAvailabilityInflight.set(cacheKey, request);
+  if (!containsBookingSession) hotelAvailabilityInflight.set(cacheKey, request);
   return request;
 };
 

@@ -249,7 +249,7 @@ const SearchResults: React.FC = () => {
     const detailsRequestRef = useRef(0);
     /** Starting-from price per hotel id (search dates, visitor currency). Only when authenticated. */
     const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
-    const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(false);
+    const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(true);
     /** Availability per hotel id for the search dates/rooms; false = confirmed not available. */
     const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
     /** Exact, date-specific member benefits returned with the live room rates. */
@@ -970,8 +970,9 @@ const SearchResults: React.FC = () => {
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
                                         const exactMemberBenefits = availabilityMemberBenefits[hotel.id];
+                                        const liveBenefitsPending = hasActiveMembership && loadingStartingFromPrices && !exactMemberBenefits;
                                         const memberBenefits = hasActiveMembership
-                                            ? exactMemberBenefits?.benefits || Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
+                                            ? liveBenefitsPending ? [] : exactMemberBenefits?.benefits || Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
                                             : [];
                                         const benefitFootnotes = hasActiveMembership
                                             ? exactMemberBenefits?.footnotes || Array.from(new Set((displayHotel.benefits_footnotes || []).filter((footnote) => footnote.trim())))
@@ -1052,6 +1053,12 @@ const SearchResults: React.FC = () => {
                                                                         ? `${displayHotel.description.substring(0, 450)}...`
                                                                         : displayHotel.description}
                                                                 </p>
+                                                            )}
+                                                            {liveBenefitsPending && (
+                                                                <section className="search-result-benefits" aria-label={`${displayHotel.name} member benefits`}>
+                                                                    <h5>Ventus Member Benefits</h5>
+                                                                    <p role="status">Checking live benefits and hotel credit…</p>
+                                                                </section>
                                                             )}
                                                             {memberBenefits.length > 0 && (
                                                                 <section

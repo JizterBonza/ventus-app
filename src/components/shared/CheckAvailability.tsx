@@ -61,6 +61,9 @@ interface CheckAvailabilityProps {
     hotelId: number;
     hotelName: string;
     className?: string;
+    refreshNonce?: number;
+    onAvailabilityStart?: () => void;
+    onAvailabilityError?: () => void;
     onAvailabilityResult?: (result: AvailabilityResultWithFormData) => void;
     onRateSelected?: (rateIndex: string) => void;
 }
@@ -76,6 +79,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     hotelId,
     hotelName,
     className = "",
+    refreshNonce = 0,
+    onAvailabilityStart,
+    onAvailabilityError,
     onAvailabilityResult,
     onRateSelected,
 }) => {
@@ -97,6 +103,10 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     const [searchHydrated, setSearchHydrated] = useState(false);
 
     const fetchSeqRef = useRef(0);
+    const onAvailabilityStartRef = useRef(onAvailabilityStart);
+    onAvailabilityStartRef.current = onAvailabilityStart;
+    const onAvailabilityErrorRef = useRef(onAvailabilityError);
+    onAvailabilityErrorRef.current = onAvailabilityError;
     const onAvailabilityResultRef = useRef(onAvailabilityResult);
     onAvailabilityResultRef.current = onAvailabilityResult;
 
@@ -299,6 +309,8 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         const validationError = getValidationError();
         if (validationError) {
             setError(validationError);
+            onAvailabilityStartRef.current?.();
+            onAvailabilityErrorRef.current?.();
             setAvailabilityResult(null);
             setSelectedRateIndex("");
             setIsChecking(false);
@@ -306,6 +318,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         }
 
         const seq = ++fetchSeqRef.current;
+        onAvailabilityStartRef.current?.();
         setIsChecking(true);
         setError(null);
         setAvailabilityResult(null);
@@ -338,6 +351,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                     emitAvailabilityResult(result, "");
                 } else {
                     setError("No availability data returned");
+                    onAvailabilityErrorRef.current?.();
                 }
             } catch (err) {
                 if (cancelled || seq !== fetchSeqRef.current) {
@@ -345,6 +359,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                 }
                 const errorMessage = err instanceof Error ? err.message : "Failed to check availability";
                 setError(errorMessage);
+                onAvailabilityErrorRef.current?.();
                 console.error("Error checking availability:", err);
             } finally {
                 if (!cancelled && seq === fetchSeqRef.current) {
@@ -366,6 +381,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         searchRoomSlots,
         urlSearchParams,
         recheckNonce,
+        refreshNonce,
         hasActiveMembership,
     ]);
 
