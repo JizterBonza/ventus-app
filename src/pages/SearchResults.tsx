@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
-import { AvailabilityResponse, Hotel, RateInfo } from "../types/search";
+import { AvailabilityResponse, Hotel } from "../types/search";
 import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, searchHotelsByLocation, searchPredictions, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
+import { getLiveNightlyPrice } from "../utils/livePricing";
 import {
     SEARCH_SESSION_COOKIES,
     getCookie,
@@ -250,6 +251,7 @@ const SearchResults: React.FC = () => {
     const detailsRequestRef = useRef(0);
     /** Starting-from price per hotel id (search dates, visitor currency). Only when authenticated. */
     const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
+    const priceSearchKeyRef = useRef("");
     const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(true);
     /** Availability per hotel id for the search dates/rooms; false = confirmed not available. */
     const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
@@ -323,7 +325,7 @@ const SearchResults: React.FC = () => {
             filtered = filtered.filter((hotel) => matchesSelectedFilters(hotel, selectedFamily, FAMILY_FILTERS));
         }
 
-        const getSortPrice = (hotel: Hotel) => startingFromPrices[hotel.id]?.rate ?? hotel.price;
+        const getSortPrice = (hotel: Hotel) => startingFromPrices[hotel.id]?.rate;
         const sortByPrice = (direction: "ascending" | "descending") => [...filtered].sort((a, b) => {
             const aPrice = getSortPrice(a);
             const bPrice = getSortPrice(b);
@@ -685,7 +687,13 @@ const SearchResults: React.FC = () => {
         }
         let cancelled = false;
         setLoadingStartingFromPrices(true);
-        setAvailabilityMemberBenefits({});
+        const priceSearchKey = `${currentSearchKey}|${searchDatesAndRoomsKey}`;
+        if (priceSearchKeyRef.current !== priceSearchKey) {
+            priceSearchKeyRef.current = priceSearchKey;
+            setStartingFromPrices({});
+            setHotelAvailability({});
+            setAvailabilityMemberBenefits({});
+        }
         const { start_date, end_date, rooms } = searchDatesAndRooms;
 
         (async () => {
@@ -753,22 +761,8 @@ const SearchResults: React.FC = () => {
                     nextAvailability[hotel.id] = !!first?.is_available;
                     const exactBenefits = first ? getAvailabilityMemberBenefits(first) : null;
                     if (exactBenefits) nextBenefits[hotel.id] = exactBenefits;
-                    if (!first?.is_available || first.lowest_rate == null) return;
-                    const lr = first.lowest_rate;
-                    const rateValue =
-                        typeof lr === "number"
-                            ? lr
-                            : (lr as RateInfo).rate_in_requested_currency ??
-                              (lr as RateInfo).rate ??
-                              (lr as RateInfo).total_to_book_in_requested_currency ??
-                              (lr as RateInfo).total_to_book;
-                    const currencyCode =
-                        typeof lr === "object" && lr !== null
-                            ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? first.default_currency ?? currency
-                            : first.default_currency ?? currency;
-                    if (typeof rateValue === "number") {
-                        nextPrices[hotel.id] = { rate: rateValue, currency: currencyCode || "USD" };
-                    }
+                    const livePrice = getLiveNightlyPrice(first, currency);
+                    if (livePrice) nextPrices[hotel.id] = livePrice;
                 });
                 if (!cancelled) {
                     setStartingFromPrices((prev) => ({ ...prev, ...nextPrices }));
@@ -790,7 +784,7 @@ const SearchResults: React.FC = () => {
         };
         // Stable scalar keys deliberately prevent a price update from retriggering the same search.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasActiveMembership, visibleHotelIdsKey, searchDatesAndRoomsKey, availabilityTarget?.location_id, availabilityTarget?.inspiration_id, baseHotels]);
+    }, [hasActiveMembership, visibleHotelIdsKey, searchDatesAndRoomsKey, currentSearchKey, availabilityTarget?.location_id, availabilityTarget?.inspiration_id, baseHotels]);
 
     return (
         <div className="search-page">
@@ -1055,27 +1049,26 @@ const SearchResults: React.FC = () => {
                                                                 if (isLoading) {
                                                                     return (
                                                                         <p className="hotel-price">
-                                                                            Starting from{" "}
+                                                                            Rate for your dates{" "}
                                                                             <span className="text-muted" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
                                                                                 <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                                                                                Loading...
+                                                                                Checking…
                                                                             </span>
                                                                         </p>
                                                                     );
                                                                 }
-                                                                const rateValue = priceInfo != null ? priceInfo.rate : (displayHotel.price ?? null);
-                                                                const currency = priceInfo?.currency ?? "USD";
-                                                                const symbol = currency === "USD" ? "$" : `${currency} `;
-                                                                if (rateValue != null) {
+                                                                if (priceInfo) {
                                                                     return (
                                                                         <p className="hotel-price">
-                                                                            Starting from {symbol}{rateValue.toLocaleString()}/night
+                                                                            From {priceInfo.currency} {priceInfo.rate.toLocaleString()}/night for your dates
                                                                         </p>
                                                                     );
                                                                 }
                                                                 return (
                                                                     <p className="hotel-price">
-                                                                        Starting from /night
+                                                                        {hotelAvailability[hotel.id] === false
+                                                                            ? "No rooms available for these dates"
+                                                                            : "Rate unavailable — view hotel to check"}
                                                                     </p>
                                                                 );
                                                             })()}
@@ -1097,6 +1090,9 @@ const SearchResults: React.FC = () => {
                                                                     aria-label={`${displayHotel.name} member benefits`}
                                                                 >
                                                                     <h5>Ventus Member Benefits</h5>
+                                                                    {!exactMemberBenefits && (
+                                                                        <p>Indicative hotel benefits; confirm the selected rate before booking.</p>
+                                                                    )}
                                                                     <ul>
                                                                         {memberBenefits.map((benefit) => (
                                                                             <li key={benefit}>{benefit}</li>

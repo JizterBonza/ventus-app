@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
+import { getNightlyPrice, getStayTotal } from "../../utils/livePricing";
 import { useAuth } from "../../contexts/AuthContext";
 import {
     SEARCH_SESSION_COOKIES,
@@ -51,6 +52,7 @@ interface AvailabilityResultWithFormData extends AvailabilityResponse {
         start_date: string;
         end_date: string;
         adults: number;
+        currency: string;
         /** When set (from header search per-room guests), pre-fills the booking form. */
         initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     };
@@ -293,6 +295,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                 start_date: formData.start_date,
                 end_date: formData.end_date,
                 adults: formData.adults,
+                currency: formData.currency,
                 ...(initialRooms ? { initialRooms } : {}),
             },
             selectedRateIndex: chosenRateIndex || undefined,
@@ -439,17 +442,12 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     const getRateValueAndCurrency = (
         rate: Rate | Record<string, any>,
         fallbackCurrency: string
-    ): { value: number | null; currency: string } => {
-        const value =
-            rate?.rate_in_requested_currency ??
-            rate?.rate ??
-            rate?.total_to_book_in_requested_currency ??
-            rate?.total_to_book;
-        const currency =
-            rate?.requested_currency_code ??
-            rate?.currency_code ??
-            fallbackCurrency;
-        return { value: typeof value === "number" ? value : null, currency };
+    ): { value: number | null; currency: string | null; isStayTotal: boolean } => {
+        const nightly = getNightlyPrice(rate, fallbackCurrency, formData.currency);
+        if (nightly) return { value: nightly.rate, currency: nightly.currency, isStayTotal: false };
+        const total = getStayTotal(rate, fallbackCurrency, formData.currency);
+        if (total) return { value: total.rate, currency: total.currency, isStayTotal: true };
+        return { value: null, currency: null, isStayTotal: false };
     };
 
     const handleSelectRate = (rateIndexValue: string) => {
@@ -642,7 +640,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                         <small className="room-type-features-label">Rates</small>
                                                         <div className="room-type-rates-list">
                                                             {roomRates.map((rate, rateIndex) => {
-                                                                const { value, currency } = getRateValueAndCurrency(
+                                                                const { value, currency, isStayTotal } = getRateValueAndCurrency(
                                                                     rate as Rate,
                                                                     roomType.currency ?? availabilityResult.default_currency ?? formData.currency
                                                                 );
@@ -671,7 +669,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                                         <span className="room-type-rate-title">{rateTitle}</span>
                                                                         {hasActiveMembership ? (
                                                                             <span className="room-type-rate-value">
-                                                                                {value !== null ? `${currency} ${value.toLocaleString()}` : "Price not available"}
+                                                                                {value !== null && currency
+                                                                                    ? `${isStayTotal ? "Stay total: " : ""}${currency} ${value.toLocaleString()}`
+                                                                                    : "Rate unavailable — check with hotel"}
                                                                             </span>
                                                                         ) : (
                                                                             <span className="room-type-rate-value">Login to view price</span>

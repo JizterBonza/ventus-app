@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch, checkHotelAvailability } from "../utils/api";
-import { getVisitorCurrency } from "../utils/currency";
-import { Hotel, HotelImage, AvailabilityResponse, RateInfo } from "../types/search";
+import { getHotelDetails, searchHotelsByQuery, getHotelDetailsBatch } from "../utils/api";
+import { Hotel, HotelImage, AvailabilityResponse } from "../types/search";
 import Breadcrumb from "../components/shared/Breadcrumb";
 import BookingForm from "../components/shared/BookingForm";
 import Header from "../components/layout/Header";
@@ -10,7 +9,7 @@ import Footer from "../components/layout/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import SearchBarNew from "../components/shared/SearchBarNew";
 import { isFavourite, toggleFavourite } from "../utils/favouritesService";
-import { getDefaultSearchDateStrings } from "../utils/searchSession";
+import { getLiveNightlyPrice } from "../utils/livePricing";
 
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
@@ -47,11 +46,17 @@ interface SimilarHotel {
 }
 
 const getLiveHotelBenefits = (result: AvailabilityResponse | null) => {
-    if (!result) return null;
+    if (!result?.is_available) return null;
     const benefits = new Set<string>();
     const footnotes = new Set<string>();
-    for (const room of result.room_types || []) {
-        for (const rate of room.rates || []) {
+    for (const value of Array.isArray(result.hotel_info?.benefits) ? result.hotel_info.benefits : []) {
+        if (typeof value === "string" && value.trim()) benefits.add(value.trim());
+    }
+    for (const value of Array.isArray(result.hotel_info?.benefits_footnotes) ? result.hotel_info.benefits_footnotes : []) {
+        if (typeof value === "string" && value.trim()) footnotes.add(value.trim());
+    }
+    for (const room of Array.isArray(result.room_types) ? result.room_types : []) {
+        for (const rate of Array.isArray(room.rates) ? room.rates : []) {
             for (const value of [...(rate.benefits || []), ...(rate.additional_benefits || [])]) {
                 if (typeof value === "string" && value.trim()) benefits.add(value.trim());
             }
@@ -88,16 +93,18 @@ const HotelDetail: React.FC = () => {
         start_date: string;
         end_date: string;
         adults: number;
+        currency: string;
         initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     } | null>(null);
     const [selectedAvailabilityRateIndex, setSelectedAvailabilityRateIndex] = useState<string | undefined>(undefined);
     const [availabilityRefreshNonce, setAvailabilityRefreshNonce] = useState(0);
     const [availabilityStatus, setAvailabilityStatus] = useState<"checking" | "ready" | "error">("checking");
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
-    /** "Starting from" price from availability API (today/tomorrow, visitor currency). Independent of Check Availability. */
-    const [startingFromPrice, setStartingFromPrice] = useState<{ rate: number; currency: string } | null>(null);
-    const [startingFromPriceLoading, setStartingFromPriceLoading] = useState(false);
     const liveHotelBenefits = useMemo(() => getLiveHotelBenefits(availabilityResult), [availabilityResult]);
+    const liveNightlyPrice = useMemo(
+        () => getLiveNightlyPrice(availabilityResult, availabilityFormData?.currency),
+        [availabilityResult, availabilityFormData?.currency],
+    );
 
     // Mock rooms data (since API might not provide room details)
     const mockRooms: Room[] = [
@@ -257,59 +264,6 @@ const HotelDetail: React.FC = () => {
 
         fetchHotelDetails();
     }, [id]);
-
-    // Fetch "Starting from" price via availability API (today/tomorrow, visitor currency). Does not affect Check Availability.
-    useEffect(() => {
-        if (!hotel || !hasActiveMembership) {
-            setStartingFromPrice(null);
-            setStartingFromPriceLoading(false);
-            return;
-        }
-        let cancelled = false;
-        setStartingFromPriceLoading(true);
-        const controller = new AbortController();
-        (async () => {
-            try {
-                const { start_date, end_date } = getDefaultSearchDateStrings();
-                const currency = await getVisitorCurrency();
-                if (cancelled) return;
-                const results = await checkHotelAvailability({
-                    hotel_id: hotel.id,
-                    start_date,
-                    end_date,
-                    currency,
-                    rooms: [{ adults: 1, children: [] }],
-                });
-                if (cancelled || !results?.length) return;
-                const first = results[0];
-                if (!first?.is_available || first.lowest_rate == null) return;
-                const lr = first.lowest_rate;
-                const rateValue =
-                    typeof lr === "number"
-                        ? lr
-                        : (lr as RateInfo).rate_in_requested_currency ??
-                          (lr as RateInfo).rate ??
-                          (lr as RateInfo).total_to_book_in_requested_currency ??
-                          (lr as RateInfo).total_to_book;
-                const currencyCode =
-                    typeof lr === "object" && lr !== null
-                        ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? first.default_currency ?? currency
-                        : first.default_currency ?? currency;
-                if (typeof rateValue === "number" && !cancelled) {
-                    setStartingFromPrice({ rate: rateValue, currency: currencyCode || "USD" });
-                }
-            } catch {
-                // Fail silently; "Starting from" will fall back to hotel.price or availability result
-                if (!cancelled) setStartingFromPrice(null);
-            } finally {
-                if (!cancelled) setStartingFromPriceLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-            controller.abort();
-        };
-    }, [hotel?.id, hasActiveMembership]);
 
     const [showGallery, setShowGallery] = useState(false);
 
@@ -744,14 +698,14 @@ const HotelDetail: React.FC = () => {
                                 </div>
                                   )}
                                 <div className="hotel-details">
-                                <div> <strong>Rating</strong>
+                                {typeof hotel.rating === "number" && Number.isFinite(hotel.rating) && hotel.rating > 0 && <div> <strong>Rating</strong>
                                         <div className="hotel-rating">
                                            
-                                            {renderStars(hotel.rating || 0)}
-                                            <span className="rating-text">{hotel.rating || "N/A"}/5</span>
+                                            {renderStars(hotel.rating)}
+                                            <span className="rating-text">{hotel.rating}/5</span>
                                             {hotel.reviewCount && <span className="review-count">({hotel.reviewCount} reviews)</span>}
                                         </div>
-                                        </div>
+                                        </div>}
                                     {/* Hotel Groups/Brands 
                                     {hotel.hotel_groups && hotel.hotel_groups.length > 0 && (
                                         <div className="hotel-groups mb-2">
@@ -761,57 +715,38 @@ const HotelDetail: React.FC = () => {
                                         </div>
                                     )}
                                     */}
-                                    <div><strong>Address</strong>  {hotel.address && <p className="hotel-address">{hotel.address}</p>}</div>
+                                    {typeof hotel.address === "string" && hotel.address.trim() && <div><strong>Address</strong><p className="hotel-address">{hotel.address}</p></div>}
                                    
-                                    <div><strong>Distance</strong>  {hotel.distance && <p className="hotel-distance">{hotel.distance}</p>}</div>
+                                    {typeof hotel.distance === "string" && hotel.distance.trim() && <div><strong>Distance</strong><p className="hotel-distance">{hotel.distance}</p></div>}
                                      
                                     {/* Amenities */}
-                                    <div>
-                                        <strong>Hotel Amenities</strong> {hotel.amenities.join(", ")}
-                                    </div>
+                                    {Array.isArray(hotel.amenities) && hotel.amenities.some((amenity) => typeof amenity === "string" && amenity.trim()) && <div>
+                                        <strong>Hotel Amenities</strong> {hotel.amenities.filter((amenity) => typeof amenity === "string" && amenity.trim()).join(", ")}
+                                    </div>}
                                     {hasActiveMembership && (() => {
-                                        if (startingFromPriceLoading && startingFromPrice == null && (availabilityResult?.lowest_rate == null || availabilityResult?.lowest_rate === undefined)) {
+                                        if (availabilityStatus === "checking") {
                                             return (
                                                 <div>
-                                                    <strong>Starting from</strong>{" "}
+                                                    <strong>Rate for your dates</strong>{" "}
                                                     <span className="text-muted" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
                                                         <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                                                        Loading...
+                                                        Checking…
                                                     </span>
                                                 </div>
                                             );
                                         }
-                                        // Prefer "Starting from" API (today/tomorrow, visitor currency), then Check Availability result, then hotel.price
-                                        let rateValue: number | null = null;
-                                        let currency = "USD";
-                                        if (startingFromPrice != null) {
-                                            rateValue = startingFromPrice.rate;
-                                            currency = startingFromPrice.currency;
-                                        } else if (availabilityResult?.lowest_rate != null && availabilityResult.lowest_rate !== undefined) {
-                                            const lr = availabilityResult.lowest_rate;
-                                            const fromLr =
-                                                typeof lr === "number"
-                                                    ? lr
-                                                    : (lr as RateInfo).rate_in_requested_currency ?? (lr as RateInfo).rate ?? (lr as RateInfo).total_to_book_in_requested_currency ?? (lr as RateInfo).total_to_book;
-                                            rateValue = fromLr != null ? fromLr : null;
-                                            currency =
-                                                typeof lr === "object"
-                                                    ? (lr as RateInfo).requested_currency_code ?? (lr as RateInfo).currency_code ?? "USD"
-                                                    : "USD";
-                                        } else {
-                                            rateValue = hotel.price ?? null;
-                                        }
-                                        const symbol = currency === "USD" ? "$" : `${currency} `;
-                                        if (rateValue != null && typeof rateValue === "number") {
+                                        if (liveNightlyPrice) {
                                             return (
                                                 <div>
-                                                    <strong>Starting from</strong> {symbol}{rateValue.toLocaleString()}/night
+                                                    <strong>From</strong> {liveNightlyPrice.currency} {liveNightlyPrice.rate.toLocaleString()}/night for your dates
                                                 </div>
                                             );
                                         }
                                         return (
                                             <div>
-                                                <strong>Starting from</strong> /night
+                                                <strong>Rate for your dates</strong> {availabilityResult?.is_available === false
+                                                    ? "No rooms available"
+                                                    : "Not available — check availability below"}
                                             </div>
                                         );
                                     })()}
@@ -841,13 +776,22 @@ const HotelDetail: React.FC = () => {
                                         ) : availabilityStatus === "error" ? (
                                             <p>Live benefits could not be confirmed. Check availability again below.</p>
                                         ) : (
-                                            <ul>
-                                                {(liveHotelBenefits?.benefits.length
-                                                    ? liveHotelBenefits.benefits
-                                                    : hotel.benefits || []).map((benefit, index) => (
-                                                    <li key={index}>{benefit}</li>
-                                                ))}
-                                            </ul>
+                                            <>
+                                                {!liveHotelBenefits?.benefits.length && (
+                                                    <p>{hotel.benefits?.length
+                                                        ? "Indicative hotel benefits; confirm the selected rate below."
+                                                        : "No benefits supplied for these dates. Check the selected rate below."}</p>
+                                                )}
+                                                {(liveHotelBenefits?.benefits.length || hotel.benefits?.length) ? (
+                                                    <ul>
+                                                        {(liveHotelBenefits?.benefits.length
+                                                            ? liveHotelBenefits.benefits
+                                                            : hotel.benefits || []).filter((benefit) => typeof benefit === "string" && benefit.trim()).map((benefit, index) => (
+                                                            <li key={index}>{benefit}</li>
+                                                        ))}
+                                                    </ul>
+                                                ) : null}
+                                            </>
                                         )}
                                         {availabilityStatus === "ready" && (liveHotelBenefits?.footnotes.length
                                             ? liveHotelBenefits.footnotes
@@ -914,6 +858,7 @@ const HotelDetail: React.FC = () => {
                             sessionId={availabilityResult.session_id?.trim() || undefined}
                             startDate={availabilityFormData?.start_date || ""}
                             endDate={availabilityFormData?.end_date || ""}
+                            requestedCurrency={availabilityFormData?.currency}
                             initialRooms={
                                 availabilityFormData
                                     ? availabilityFormData.initialRooms ?? [

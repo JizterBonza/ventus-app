@@ -4,6 +4,7 @@ import { AvailabilityResponse, BookingResponse, Rate, RoomType } from "../../typ
 import { submitBooking } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { ensureMinimumCheckOutDateString } from "../../utils/searchSession";
+import { getStayTotal } from "../../utils/livePricing";
 
 interface BookingFormProps {
     hotelId: number;
@@ -16,20 +17,12 @@ interface BookingFormProps {
     rateIndex?: string;
     startDate?: string;
     endDate?: string;
+    requestedCurrency?: string;
     initialRooms?: Array<{ adults: number; children: Array<{ age: number }> }>;
     availabilityResult?: AvailabilityResponse | null;
 }
 
 const CARD_WIDGET_ORIGIN = "https://api.littleemperors.com";
-
-const readRateAmount = (rate: Rate | undefined): number | null => {
-    if (!rate) return null;
-    const value = rate.total_to_book_in_requested_currency
-        ?? rate.total_to_book
-        ?? rate.rate_in_requested_currency
-        ?? rate.rate;
-    return typeof value === "number" && Number.isFinite(value) ? value : null;
-};
 
 const findSelectedRate = (
     availabilityResult: AvailabilityResponse | null,
@@ -62,6 +55,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     rateIndex = "",
     startDate = "",
     endDate = "",
+    requestedCurrency,
     initialRooms,
     availabilityResult = null,
 }) => {
@@ -74,12 +68,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
         () => findSelectedRate(availabilityResult, rateIndex),
         [availabilityResult, rateIndex],
     );
-    const amount = readRateAmount(selected.rate);
-    const currency = selected.rate?.requested_currency_code
-        || selected.rate?.currency_code
-        || selected.roomType?.currency
-        || availabilityResult?.default_currency
-        || "GBP";
+    const stayTotal = getStayTotal(
+        selected.rate,
+        selected.roomType?.currency || availabilityResult?.default_currency,
+        requestedCurrency,
+    );
+    const currency = stayTotal?.currency ?? null;
     const safeEndDate = ensureMinimumCheckOutDateString(startDate, endDate);
     const totalGuests = rooms.reduce(
         (total, room) => total + room.adults + (room.children?.length || 0),
@@ -181,6 +175,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
             setMessage("Please enter the lead guest's full name and email address.");
             return;
         }
+        if (!stayTotal) {
+            setStatus("error");
+            setMessage("The supplier has not confirmed a total for this stay. Refresh availability and select a rate again before booking.");
+            return;
+        }
         if (!cardStored) {
             setStatus("error");
             setMessage("Please submit your card details securely above before confirming.");
@@ -251,7 +250,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 <div><span>Guests</span><strong>{totalGuests} guest{totalGuests === 1 ? "" : "s"}, {rooms.length} room{rooms.length === 1 ? "" : "s"}</strong></div>
                 <div><span>Selected room</span><strong>{selected.roomType?.name || "Selected room"}</strong></div>
                 <div><span>Rate</span><strong>{selected.rate?.title || "Selected rate"}</strong></div>
-                {amount !== null && <div><span>Total</span><strong>{currency} {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>}
+                <div><span>Total</span><strong>{stayTotal
+                    ? `${currency} ${stayTotal.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : "Not provided by supplier"}</strong></div>
             </div>
 
             <div className="booking-rate-details">
@@ -302,7 +303,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     <div className="booking-secure-card">
                         <h3>Secure card details</h3>
                         <p>Your card details are entered directly into Little Emperors’ secure form. Ventus never receives or stores them.</p>
-                        {sessionId ? (
+                        {sessionId && stayTotal ? (
                             <iframe
                                 ref={cardFrameRef}
                                 key={sessionId}
@@ -312,14 +313,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
                                 allow="payment"
                             />
                         ) : (
-                            <p className="booking-card-error">No valid booking session was returned for this rate.</p>
+                            <p className="booking-card-error">{!stayTotal
+                                ? "The supplier has not confirmed the stay total. Refresh availability and select a rate again."
+                                : "No valid booking session was returned for this rate."}</p>
                         )}
                         {cardMessage && (
                             <p className={cardStored ? "booking-card-success" : "booking-card-error"} role="status">
                                 {cardMessage}
                             </p>
                         )}
-                        {(!sessionId || sessionError) && onRefreshAvailability && (
+                        {(!sessionId || sessionError || !stayTotal) && onRefreshAvailability && (
                             <button type="button" className="btn btn-outline-primary booking-refresh-rate" onClick={onRefreshAvailability}>
                                 Refresh availability and select a room again
                             </button>
@@ -333,8 +336,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
                     <div className="d-grid submit-section">
                         {status === "error" && <div className="alert alert-danger" role="alert">{message}</div>}
-                        <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || !sessionId || sessionError || !cardStored || !termsAccepted}>
-                            {isSubmitting ? "Confirming booking…" : amount !== null ? `Confirm booking — ${currency} ${amount.toLocaleString()}` : "Confirm booking"}
+                        <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting || !sessionId || sessionError || !cardStored || !termsAccepted || !stayTotal}>
+                            {isSubmitting ? "Confirming booking…" : stayTotal ? `Confirm booking — ${currency} ${stayTotal.rate.toLocaleString()}` : "Total unavailable"}
                         </button>
                         <small>Only click confirm once. The hotel booking will be submitted immediately.</small>
                     </div>
