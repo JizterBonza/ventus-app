@@ -287,7 +287,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 <form className="form booking-request-form" onSubmit={handleSubmit}>
                     <div className="form-column">
                         <label htmlFor="bookingGuestName" className="form-label">Lead guest full name *</label>
-                        <input id="bookingGuestName" className="form-control" value={guestName} onChange={(event) => setGuestName(event.target.value)} autoComplete="name" required />
+                        <input id="bookingGuestName" className="form-control" type="text" value={guestName} onChange={(event) => setGuestName(event.target.value)} autoComplete="name" required />
                         <label htmlFor="bookingGuestEmail" className="form-label">Email *</label>
                         <input id="bookingGuestEmail" className="form-control" type="email" value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} autoComplete="email" required />
                         <label htmlFor="bookingEta" className="form-label">Estimated arrival time</label>

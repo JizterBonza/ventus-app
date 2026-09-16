@@ -470,8 +470,8 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     if (!hasActiveMembership) {
         return (
             <div className={`global-form ${className}`}>
-                <div className="text-center">
-                    <h2>Availability</h2>
+                <div className="text-center availability-intro">
+                    <h2>Rooms &amp; rates</h2>
                     <p>{isAuthenticated ? "Complete your membership to view live prices, benefits and room availability." : "Log in to view live prices, benefits and room availability."}</p>
                     <a className="btn btn-primary" href={isAuthenticated ? "/subscription" : "/login"}>
                         {isAuthenticated ? "Complete membership" : "Log in"}
@@ -483,11 +483,10 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
     return (
         <div className={`global-form ${className}`}>
-            <div className="text-center">
-                <h2>Availability</h2>
-                <p className="text-muted mb-0">Hotel: {hotelName}</p>
-                <p className="text-muted small mb-0 mt-2">
-                    Using dates and guests from your search above.
+            <div className="text-center availability-intro">
+                <h2>Rooms &amp; rates</h2>
+                <p className="text-muted mb-0">
+                    {hotelName} · Using dates and guests from your search above.
                 </p>
             </div>
 
@@ -506,23 +505,16 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
 
             {availabilityResult && (
                 <div className="availability-results mt-4">
-                    <div className={`alert ${availabilityResult.is_available ? "alert-success" : "alert-warning"}`}>
-                        <h4>
-                            {availabilityResult.is_available ? (
-                                <><i className="fa fa-check-circle me-2"></i>Available</>
-                            ) : (
-                                <><i className="fa fa-exclamation-triangle me-2"></i>Not Available</>
-                            )}
-                        </h4>
-                        <p className="mb-0">
-                            <strong>Hotel:</strong> {availabilityResult.hotel_name}
-                        </p>
+                    <div className={`alert availability-status ${availabilityResult.is_available ? "alert-success" : "alert-warning"}`} role="status">
+                        {availabilityResult.is_available
+                            ? "Rooms available for your dates"
+                            : "No rooms available for these dates"}
                     </div>
 
                     {notAvailableRetryDates && (
                         <div className="card mt-3 availability-retry-dates-card">
                             <div className="card-body">
-                                <h5 className="card-title" style={{ color: "#fff" }}>Check availability again</h5>
+                                <h3 className="card-title" style={{ color: "#fff" }}>Check availability again</h3>
                                 <p className="text-muted small mb-3">
                                     Choose check-in and check-out, then click <strong>Check again</strong>. Your search bar dates update when you submit.
                                 </p>
@@ -595,7 +587,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                         availabilityResult.room_types.length > 0 && (
                         <div className="card mt-3 availability-room-types-card">
                             <div className="card-body">
-                                <h5 className="card-title">Available Room Types</h5>
+                                <h3 className="card-title">Available rooms</h3>
                                 <div className="room-types-list">
                                     {availabilityResult.room_types.map((roomType, index) => {
                                         const roomImage = getRoomTypeImage(roomType as Record<string, any>, index);
@@ -623,7 +615,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                     )}
                                                 </div>
                                                 {roomType.name && (
-                                                    <h6 className="room-type-name">{roomType.name}</h6>
+                                                    <h4 className="room-type-name">{roomType.name}</h4>
                                                 )}
                                                 <div className="room-type-meta">
                                                     {[roomType.room_size, roomType.bed_size, roomType.view_from_room]
