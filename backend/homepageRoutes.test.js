@@ -11,12 +11,29 @@ test('homepage edits require an authorized existing account and a current versio
   app.use(express.json());
   let version = 1;
   let content = defaults;
+  let codeHash = null;
+  let sentCode = null;
+  let verified = false;
   const images = new Map();
   const pool = {
     query: async (sql, params = []) => {
       if (sql.startsWith('SELECT email FROM users')) {
         return { rows: [{ email: params[0] === 1 ? 'daniella@example.test' : 'member@example.test' }] };
       }
+      if (sql.startsWith('SELECT verified_at FROM homepage_editor_verifications')) {
+        return { rows: verified && params[0] === 1 && params[1] === 'daniella@example.test' ? [{ verified_at: new Date() }] : [] };
+      }
+      if (sql.includes('INSERT INTO homepage_editor_verifications')) {
+        codeHash = params[2];
+        return { rows: [{ user_id: params[0] }] };
+      }
+      if (sql.includes('SET verified_at = NOW()')) {
+        if (params[2] !== codeHash) return { rows: [] };
+        verified = true;
+        codeHash = null;
+        return { rows: [{ user_id: params[0] }] };
+      }
+      if (sql.includes('SET attempts = attempts + 1')) return { rows: [] };
       if (sql.startsWith('SELECT content, version')) return { rows: [{ content, version, updated_at: new Date() }] };
       if (sql.startsWith('UPDATE homepage_content')) {
         if (params[2] !== version) return { rows: [] };
@@ -40,7 +57,7 @@ test('homepage edits require an authorized existing account and a current versio
     req.user = { id };
     next();
   };
-  registerHomepageRoutes(app, pool, authenticate);
+  registerHomepageRoutes(app, pool, authenticate, { sendEditorCode: async ({ code }) => { sentCode = code; } });
   const server = await new Promise((resolve) => {
     const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
   });
@@ -48,6 +65,16 @@ test('homepage edits require an authorized existing account and a current versio
   try {
     assert.equal((await fetch(url)).status, 401);
     assert.equal((await fetch(url, { headers: { Authorization: 'Bearer 2' } })).status, 403);
+    const unverified = await fetch(url, { headers: { Authorization: 'Bearer 1' } });
+    assert.equal(unverified.status, 403);
+    assert.equal((await unverified.json()).code, 'EDITOR_VERIFICATION_REQUIRED');
+    const requested = await fetch(`${url}/verification-code`, { method: 'POST', headers: { Authorization: 'Bearer 1' } });
+    assert.equal(requested.status, 200);
+    assert.match(sentCode, /^[A-F0-9]{12}$/);
+    const wrong = await fetch(`${url}/verify-email`, { method: 'POST', headers: { Authorization: 'Bearer 1', 'Content-Type': 'application/json' }, body: JSON.stringify({ code: '000000000000' }) });
+    assert.equal(wrong.status, 400);
+    const verifiedResponse = await fetch(`${url}/verify-email`, { method: 'POST', headers: { Authorization: 'Bearer 1', 'Content-Type': 'application/json' }, body: JSON.stringify({ code: sentCode }) });
+    assert.equal(verifiedResponse.status, 200);
     const loaded = await (await fetch(url, { headers: { Authorization: 'Bearer 1' } })).json();
     assert.equal(loaded.version, 1);
     const edit = { content: { ...loaded.content, cards: loaded.content.cards.map((card) => card.id === '7' ? { ...card, title: 'Rediscover London' } : card) }, version: 1 };

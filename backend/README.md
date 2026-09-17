@@ -71,7 +71,10 @@ Backend API for the Ventus Hotel Booking App with PostgreSQL database.
 The browser editor is at `/admin/homepage` on the frontend. Editors sign in with
 their existing Ventus account; set `HOMEPAGE_EDITOR_EMAILS` on the backend to a
 comma-separated list of verified account email addresses. An empty value denies
-all editing. Content and uploaded images are stored in PostgreSQL, so a Render
+all editing. Each editor must also enter a one-time code sent to their account
+email before their first edit; this is required because normal Ventus sign-up
+does not verify email ownership. Mailgun or Resend delivery must be configured.
+Content and uploaded images are stored in PostgreSQL, so a Render
 redeploy does not discard edits. Changes become public on save, subject to the
 public endpoint's short cache lifetime. Do not store editor passwords in the
 repository or Render environment settings.

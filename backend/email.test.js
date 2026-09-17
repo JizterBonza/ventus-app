@@ -1,6 +1,6 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { getPasswordResetEmailProvider, sendPasswordResetEmail, sendBookingRequestNotification } = require('./email');
+const { getPasswordResetEmailProvider, sendPasswordResetEmail, sendHomepageEditorCode, sendBookingRequestNotification } = require('./email');
 
 const originalEnvironment = { ...process.env };
 const originalFetch = global.fetch;
@@ -69,6 +69,15 @@ test('EU region uses the EU Mailgun endpoint', async () => {
   process.env.MAILGUN_REGION = 'eu';
   await sendPasswordResetEmail(reset);
   assert.equal(requests[0].url, 'https://api.eu.mailgun.net/v3/mg.example.com/messages');
+});
+
+test('homepage editor verification is delivered only to the account email', async () => {
+  await sendHomepageEditorCode({ to: 'editor@example.com', code: 'A1B2C3D4E5F6' });
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0].body.getAll('to'), ['editor@example.com']);
+  assert.match(requests[0].body.get('text'), /A1B2C3D4E5F6/);
+  assert.match(requests[0].body.get('subject'), /Verify your Ventus homepage editor access/);
+  assert.equal(requests[0].body.get('o:tracking'), 'no');
 });
 
 test('booking notifications send separate team and guest emails with correct reply addresses', async () => {

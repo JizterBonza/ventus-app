@@ -26,4 +26,10 @@
 .homepage-editor-fields label { display: block; font-weight: 600; }
 .homepage-editor-fields input { display: block; width: 100%; min-height: 42px; border: 1px solid #bbb; padding: 8px 10px; font-weight: 400; margin-top: 5px; }
 .homepage-editor-bottom { margin-top: 24px; }
+.homepage-editor-verification { max-width: 560px; border: 1px solid #d8d8d8; padding: 28px; background: #fff; }
+.homepage-editor-verification p { margin: 12px 0 24px; }
+.homepage-editor-verification form { display: grid; gap: 10px; margin-top: 22px; }
+.homepage-editor-verification input { width: 100%; min-height: 44px; border: 1px solid #aaa; padding: 8px 10px; letter-spacing: .12em; }
+.homepage-editor-verification button { background: #242424; color: #fff; border: 1px solid #242424; padding: 10px 18px; justify-self: start; }
+.homepage-editor-verification button:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-width: 760px) { .homepage-editor-heading, .homepage-editor-section-heading, .homepage-editor-item-top { align-items: flex-start; flex-direction: column; } .homepage-editor-item-grid { grid-template-columns: 1fr; } }

@@ -134,6 +134,32 @@ const sendPasswordResetEmail = async (details) => {
   throw new Error('Password reset email delivery is not configured');
 };
 
+const sendHomepageEditorCode = async ({ to, code }) => {
+  const from = process.env.MAILGUN_FROM_EMAIL || process.env.PASSWORD_RESET_FROM_EMAIL;
+  const text = [
+    'Your Ventus homepage editor verification code is:',
+    '',
+    code,
+    '',
+    'Enter this code on the homepage editor page. It expires in 20 minutes and can only be used once.',
+    'If you did not request this, you can safely ignore this email.'
+  ].join('\n');
+  if (isMailgunConfigured() && from) {
+    return sendMailgunEmail({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text });
+  }
+  if (process.env.RESEND_API_KEY && from) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      signal: AbortSignal.timeout(10000),
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text })
+    });
+    if (!response.ok) throw new Error(`Homepage editor email delivery failed (HTTP ${response.status})`);
+    return;
+  }
+  throw new Error('Homepage editor email delivery is not configured');
+};
+
 const sendBookingRequestNotification = async (booking) => {
   const notificationEmail = process.env.BOOKING_NOTIFICATION_EMAIL || 'daniella@ventustravel.co.uk';
   const summary = [
@@ -228,4 +254,4 @@ const sendBookingRequestNotification = async (booking) => {
   return false;
 };
 
-module.exports = { getPasswordResetEmailProvider, sendPasswordResetEmail, sendBookingRequestNotification };
+module.exports = { getPasswordResetEmailProvider, sendPasswordResetEmail, sendHomepageEditorCode, sendBookingRequestNotification };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { HomepageContent, HomepageSlide, defaultHomepageContent, fetchHomepageForEditor, saveHomepageContent, uploadHomepageImage } from '../utils/homepageContent';
+import { HomepageContent, HomepageSlide, HomepageEditorVerificationRequired, defaultHomepageContent, fetchHomepageForEditor, requestHomepageEditorCode, saveHomepageContent, uploadHomepageImage, verifyHomepageEditorCode } from '../utils/homepageContent';
 import { InterestCategory } from '../types/interests';
 import './HomepageEditor.css';
 
@@ -16,6 +16,10 @@ const HomepageEditor: React.FC = () => {
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -26,11 +30,45 @@ const HomepageEditor: React.FC = () => {
       setLoading(false);
     }).catch((reason) => {
       if (!active) return;
-      setError(reason instanceof Error ? reason.message : 'Unable to load the editor');
+      if (reason instanceof HomepageEditorVerificationRequired) setVerificationRequired(true);
+      else setError(reason instanceof Error ? reason.message : 'Unable to load the editor');
       setLoading(false);
     });
     return () => { active = false; };
   }, []);
+
+  const sendVerificationCode = async () => {
+    setSendingCode(true);
+    setError('');
+    setNotice('');
+    try {
+      await requestHomepageEditorCode();
+      setNotice('A verification code has been sent to your Ventus account email.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to send verification code');
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const verifyEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setVerifyingCode(true);
+    setError('');
+    try {
+      await verifyHomepageEditorCode(verificationCode);
+      const loaded = await fetchHomepageForEditor();
+      setContent(loaded.content);
+      setVersion(loaded.version);
+      setVerificationRequired(false);
+      setVerificationCode('');
+      setNotice('Email verified. You can now edit the homepage.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to verify your email');
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
 
   const updateItem = (section: Section, index: number, field: string, value: string) => {
     setContent((current) => ({
@@ -154,7 +192,20 @@ const HomepageEditor: React.FC = () => {
           <div><p className="homepage-editor-eyebrow">VENTUS CONTENT</p><h1>Homepage editor</h1><p>Edit the featured slider and inspiration cards. Changes publish when you save.</p></div>
           <Link to="/" target="_blank" rel="noopener noreferrer">Preview homepage ↗</Link>
         </div>
-        {loading ? <p role="status">Loading homepage content…</p> : version === null ? (
+        {loading ? <p role="status">Loading homepage content…</p> : verificationRequired ? (
+          <div className="homepage-editor-verification">
+            <h2>Verify your account email</h2>
+            <p>Before editing the homepage, confirm that you own the email address on your Ventus account. We’ll send a one-time code there.</p>
+            {error && <div className="alert alert-danger" role="alert">{error}</div>}
+            {notice && <div className="alert alert-success" role="status">{notice}</div>}
+            <button type="button" onClick={() => void sendVerificationCode()} disabled={sendingCode}>{sendingCode ? 'Sending…' : 'Send verification code'}</button>
+            <form onSubmit={(event) => void verifyEmail(event)}>
+              <label htmlFor="homepage-editor-code">12-character code from your email</label>
+              <input id="homepage-editor-code" type="text" inputMode="text" autoComplete="one-time-code" maxLength={12} value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.toUpperCase())} />
+              <button type="submit" disabled={verifyingCode || verificationCode.trim().length !== 12}>{verifyingCode ? 'Verifying…' : 'Verify and open editor'}</button>
+            </form>
+          </div>
+        ) : version === null ? (
           <div className="alert alert-danger" role="alert">{error || 'You do not have access to this editor.'}</div>
         ) : <>
           {error && <div className="alert alert-danger" role="alert">{error}</div>}

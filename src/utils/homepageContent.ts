@@ -22,6 +22,10 @@ const backendBase = process.env.REACT_APP_AUTH_API_URL
     : '/api';
 const cacheKey = 'ventus:homepage-content:v1';
 
+export class HomepageEditorVerificationRequired extends Error {
+  constructor() { super('Verify your account email to edit the homepage'); }
+}
+
 export const defaultHomepageContent: HomepageContent = defaults;
 
 const isHomepageContent = (value: any): value is HomepageContent =>
@@ -45,6 +49,9 @@ const cacheHomepageContent = (content: HomepageContent) => {
 
 const readJson = async (response: Response) => {
   const data = await response.json().catch(() => null);
+  if (response.status === 403 && data?.code === 'EDITOR_VERIFICATION_REQUIRED') {
+    throw new HomepageEditorVerificationRequired();
+  }
   if (!response.ok) throw new Error(data?.error || `Homepage request failed (${response.status})`);
   return data;
 };
@@ -79,6 +86,22 @@ export const saveHomepageContent = async (content: HomepageContent, version: num
   const data = await readJson(response);
   cacheHomepageContent(data.content);
   return { content: data.content as HomepageContent, version: data.version as number };
+};
+
+export const requestHomepageEditorCode = async (): Promise<void> => {
+  const response = await fetch(`${backendBase}/homepage/admin/verification-code`, {
+    method: 'POST', headers: editorHeaders(),
+  });
+  await readJson(response);
+};
+
+export const verifyHomepageEditorCode = async (code: string): Promise<void> => {
+  const response = await fetch(`${backendBase}/homepage/admin/verify-email`, {
+    method: 'POST',
+    headers: { ...editorHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  await readJson(response);
 };
 
 export const uploadHomepageImage = async (file: File): Promise<string> => {
