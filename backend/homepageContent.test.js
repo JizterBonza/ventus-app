@@ -1,12 +1,35 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { defaults, normalizeHomepageContent, allowedImageType } = require('./homepageContent');
+const { defaults, normalizeHomepageContent, allowedImageType, migrateLegacyThemeLinks } = require('./homepageContent');
 
 test('homepage defaults contain valid slider and cards', () => {
   assert.equal(defaults.slider.length, 6);
   assert.equal(defaults.cards.length, 12);
   assert.equal(defaults.cards.find((card) => card.id === '7').href, '/search-results?location=London');
   assert.equal(defaults.cards.find((card) => card.id === '8').href, '/search-results?location=Paris');
+  assert.equal(defaults.cards.find((card) => card.id === '1').href, '/search-results?collection=summer-sun');
+  assert.equal(defaults.cards.find((card) => card.id === '2').href, '/search-results?collection=european-city-breaks');
+  assert.equal(defaults.cards.find((card) => card.id === '9').href, '/search-results?collection=hotels-with-villas');
+  assert.equal(defaults.cards.find((card) => card.id === '11').href, '/search-results?collection=city-spa-breaks');
+});
+
+test('legacy themed links migrate without overwriting editor changes or city cards', () => {
+  const original = structuredClone(defaults);
+  original.cards.find((card) => card.id === '1').href = '/search-results?location=Amalfi+Coast';
+  original.cards.find((card) => card.id === '1').query = 'Amalfi Coast';
+  original.cards.find((card) => card.id === '2').href = '/search-results?location=Paris';
+  original.cards.find((card) => card.id === '9').href = '/search-results?location=Maldives';
+  original.cards.find((card) => card.id === '11').href = '/search-results?location=London';
+  original.cards.find((card) => card.id === '9').title = 'Editor’s villa picks';
+  const migrated = migrateLegacyThemeLinks(original);
+  assert.equal(migrated.cards.find((card) => card.id === '1').href, '/search-results?collection=summer-sun');
+  assert.equal(migrated.cards.find((card) => card.id === '1').query, undefined);
+  assert.equal(migrated.cards.find((card) => card.id === '2').href, '/search-results?collection=european-city-breaks');
+  assert.equal(migrated.cards.find((card) => card.id === '9').href, '/search-results?location=Maldives');
+  assert.equal(migrated.cards.find((card) => card.id === '11').href, '/search-results?collection=city-spa-breaks');
+  assert.equal(migrated.cards.find((card) => card.id === '7').href, '/search-results?location=London');
+  assert.equal(migrated.cards.find((card) => card.id === '8').href, '/search-results?location=Paris');
+  assert.equal(migrateLegacyThemeLinks(migrated), null);
 });
 
 test('homepage editor rejects unsafe links and duplicate IDs', () => {

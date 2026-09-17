@@ -225,6 +225,15 @@
     gap: 24px;
 }
 
+.editorial-results-title {
+    margin: 0 0 24px;
+    color: #242424;
+    font-family: Lato, Arial, sans-serif;
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 400;
+    line-height: 1.2;
+}
+
 .search-filter-trigger {
     min-width: 126px;
     padding: 12px 18px;

@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const { defaults, normalizeHomepageContent, allowedImageType } = require('./homepageContent');
+const { defaults, normalizeHomepageContent, allowedImageType, migrateLegacyThemeLinks } = require('./homepageContent');
 const { sendHomepageEditorCode } = require('./email');
 
 const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode = sendHomepageEditorCode } = {}) => {
@@ -41,6 +41,16 @@ const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode =
       'INSERT INTO homepage_content (id, content) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING',
       [JSON.stringify(defaults)]
     );
+    const stored = await pool.query('SELECT content, version FROM homepage_content WHERE id = 1');
+    const current = stored.rows[0];
+    const migrated = migrateLegacyThemeLinks(current?.content);
+    if (migrated) {
+      await pool.query(
+        `UPDATE homepage_content SET content = $1::jsonb, version = version + 1, updated_at = NOW()
+         WHERE id = 1 AND version = $2`,
+        [JSON.stringify(migrated), current.version]
+      );
+    }
   };
 
   const requireAllowlistedEditor = async (req, res, next) => {

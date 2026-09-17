@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
 import { getHotelDetailsBatch, prefetchInspirationHotels } from "../utils/api";
+import { prefetchEditorialCollectionHotels } from "../utils/editorialCollections";
 import { HomepageContent, fetchHomepageContent, readCachedHomepageContent } from "../utils/homepageContent";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -885,6 +886,8 @@ const Home: React.FC = () => {
                             const handleInterestPrefetch = () => {
                                 const match = destination?.match(/[?&]inspirationId=(\d+)/);
                                 if (match) void prefetchInspirationHotels(Number(match[1]), 20);
+                                const collectionMatch = destination?.match(/[?&]collection=([a-z0-9-]+)/);
+                                if (collectionMatch) prefetchEditorialCollectionHotels(collectionMatch[1]);
                             };
 
                             return (

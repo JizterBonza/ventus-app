@@ -20,7 +20,8 @@ const backendBase = process.env.REACT_APP_AUTH_API_URL
   : process.env.NODE_ENV === 'production'
     ? 'https://ventus-backend.onrender.com/api'
     : '/api';
-const cacheKey = 'ventus:homepage-content:v1';
+// Ignore pre-fix browser caches that still point themed cards at single cities.
+const cacheKey = 'ventus:homepage-content:v2';
 
 export class HomepageEditorVerificationRequired extends Error {
   constructor() { super('Verify your account email to edit the homepage'); }

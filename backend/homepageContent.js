@@ -1,5 +1,28 @@
 const defaults = require('../src/data/homepageContent.json');
 
+// Only migrate the four known placeholder links. Never replace a link or other
+// field that an editor has already changed in the CMS.
+const legacyThemeLinks = {
+  '1': { title: 'Summer Sun', href: '/search-results?location=Amalfi+Coast' },
+  '2': { title: 'European City Breaks', href: '/search-results?location=Paris' },
+  '9': { title: 'Hotels with Villas', href: '/search-results?location=Maldives' },
+  '11': { title: 'City Spa Breaks', href: '/search-results?location=London' },
+};
+
+const migrateLegacyThemeLinks = (content) => {
+  if (!content || !Array.isArray(content.cards)) return null;
+  let changed = false;
+  const cards = content.cards.map((card) => {
+    const legacy = legacyThemeLinks[card.id];
+    const replacement = defaults.cards.find((item) => item.id === card.id);
+    if (!legacy || !replacement || card.title !== legacy.title || card.href !== legacy.href) return card;
+    changed = true;
+    const { query, ...withoutOldPlaceQuery } = card;
+    return { ...withoutOldPlaceQuery, href: replacement.href, location: replacement.location };
+  });
+  return changed ? { ...content, cards } : null;
+};
+
 const allowedUrl = (value) => {
   if (typeof value !== 'string' || value.length === 0 || value.length > 2048 || value.trim() !== value) return false;
   if (/[\\\u0000-\u001f]/.test(value)) return false;
@@ -79,4 +102,4 @@ const allowedImageType = (bytes) => {
   return null;
 };
 
-module.exports = { defaults: normalizeHomepageContent(defaults), normalizeHomepageContent, allowedImageType };
+module.exports = { defaults: normalizeHomepageContent(defaults), normalizeHomepageContent, allowedImageType, migrateLegacyThemeLinks };

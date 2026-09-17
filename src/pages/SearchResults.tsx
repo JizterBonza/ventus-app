@@ -5,6 +5,8 @@ import { AvailabilityResponse, Hotel } from "../types/search";
 import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, searchHotelsByLocation, searchPredictions, checkHotelAvailability } from "../utils/api";
 import { getVisitorCurrency } from "../utils/currency";
 import { getLiveNightlyPrice } from "../utils/livePricing";
+import { getEditorialCollection } from "../data/editorialCollections";
+import { loadEditorialCollectionHotels } from "../utils/editorialCollections";
 import {
     SEARCH_SESSION_COOKIES,
     getCookie,
@@ -226,11 +228,12 @@ const getHotelOpeningTimestamp = (hotel: Hotel): number | null => {
 const SearchResults: React.FC = () => {
     const [urlSearchParams] = useSearchParams();
     const currentSearchKey = urlSearchParams.toString();
+    const activeEditorialCollection = getEditorialCollection(urlSearchParams.get("collection"));
     const requestedHotelIdValue = Number(urlSearchParams.get("hotelId"));
     const requestedHotelId = Number.isInteger(requestedHotelIdValue) && requestedHotelIdValue > 0
         ? requestedHotelIdValue
         : null;
-    const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location") || urlSearchParams.has("hotelId");
+    const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location") || urlSearchParams.has("hotelId") || urlSearchParams.has("collection");
     const { hotels, loading, error, searchAdvanced, clearResults } = useSearch();
     const { isAuthenticated, hasActiveMembership } = useAuth();
     
@@ -244,6 +247,7 @@ const SearchResults: React.FC = () => {
     const [loadingInspiration, setLoadingInspiration] = useState(false);
     const [loadingMoreHotels, setLoadingMoreHotels] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
+    const [collectionError, setCollectionError] = useState<string | null>(null);
     const [availabilityTarget, setAvailabilityTarget] = useState<{ location_id?: number; inspiration_id?: number } | null>(null);
     const [collectionHasFullDetails, setCollectionHasFullDetails] = useState(false);
     const [completedSearchKey, setCompletedSearchKey] = useState<string | null>(null);
@@ -421,19 +425,22 @@ const SearchResults: React.FC = () => {
         let cancelled = false;
         const inspirationId = urlSearchParams.get("inspirationId");
         const location = urlSearchParams.get("location");
+        const collectionSlug = urlSearchParams.get("collection");
+        const collection = getEditorialCollection(collectionSlug);
         const title = urlSearchParams.get("title");
         const priceRange = urlSearchParams.get("priceRange") || "all";
         const rating = urlSearchParams.get("rating") || "all";
         const sortBy = urlSearchParams.get("sortBy") || "recommended";
 
         setSearchParams({
-            location: title || location || "",
+            location: title || collection?.title || location || "",
             priceRange,
             rating,
             sortBy,
         });
         clearResults();
         setInspirationResults([]);
+        setCollectionError(null);
         setAvailabilityTarget(null);
         setCollectionHasFullDetails(false);
         setLoadingMoreHotels(false);
@@ -510,7 +517,17 @@ const SearchResults: React.FC = () => {
         };
 
         const runSearch = async () => {
-        if (requestedHotelId) {
+        if (collectionSlug) {
+            try {
+                const collectionHotels = await loadEditorialCollectionHotels(collectionSlug);
+                if (!cancelled) {
+                    setInspirationResults(collectionHotels);
+                    setCollectionHasFullDetails(true);
+                }
+            } catch (loadError) {
+                if (!cancelled) setCollectionError(loadError instanceof Error ? loadError.message : 'This collection could not be loaded. Please try again.');
+            }
+        } else if (requestedHotelId) {
             // A hotel chosen from autocomplete is already unambiguous. Fetching it by ID
             // avoids a second broad supplier search and ensures availability is checked
             // against the exact property the member selected.
@@ -560,7 +577,7 @@ const SearchResults: React.FC = () => {
         }
         };
 
-        setLoadingInspiration(Boolean(requestedHotelId || inspirationId || location));
+        setLoadingInspiration(Boolean(collectionSlug || requestedHotelId || inspirationId || location));
         void runSearch().finally(() => {
             if (!cancelled) {
                 setLoadingInspiration(false);
@@ -796,6 +813,7 @@ const SearchResults: React.FC = () => {
             {/* Filters and Results */}
             <section className={`results-section ${filteredHotels.length > 0 ? "has-results" : ""} ${!isSearching && visibleHotels.length < filteredHotels.length ? "has-more-results" : ""}`}>
                 <div className="container">
+                    {activeEditorialCollection && <h1 className="editorial-results-title">{activeEditorialCollection.title}</h1>}
                     <div className="row">
                         {/* Results */}
                         <div className="col-md-12">
@@ -975,9 +993,9 @@ const SearchResults: React.FC = () => {
                                 </>
                             )}
 
-                            {error && (
+                            {(error || collectionError) && (
                                 <div className="alert alert-danger" role="alert">
-                                    <strong>Error:</strong> {error}
+                                    <strong>Error:</strong> {error || collectionError}
                                 </div>
                             )}
 
@@ -1152,7 +1170,7 @@ const SearchResults: React.FC = () => {
                                 </div>
                             )}
 
-                            {!isSearching && filteredHotels.length === 0 && (
+                            {!isSearching && filteredHotels.length === 0 && !collectionError && (
                                 <div className="text-center">
                                     <h4>No hotels found</h4>
                                     <p>Try adjusting your search criteria</p>
