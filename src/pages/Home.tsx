@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
 import { getHotelDetailsBatch, prefetchInspirationHotels } from "../utils/api";
-import { interestCategories } from "../utils/interestCategories";
+import { HomepageContent, fetchHomepageContent, readCachedHomepageContent } from "../utils/homepageContent";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SearchBarNew from "../components/shared/SearchBarNew";
@@ -31,30 +31,11 @@ function getHomeHeroSliderLayout(containerWidth: number) {
     return { gap: 30, slideRatio: 0.7, trackMarginRatio: 0.16, firstSlideWidthMul: 1.1 };
 }
 
-const createFeaturedHotel = (id: number, name: string, location: string, imageUrl: string): Hotel => ({
-    id,
-    name,
-    location,
-    description: "",
-    amenities: [],
-    images: [{ url: imageUrl, thumbnail_url: imageUrl, description: name }],
-    videos: [],
-    links: { self: { href: `/v2/hotels/${id}`, method: "GET" } },
-    image: imageUrl,
-});
-
-const FEATURED_HOTELS: Hotel[] = [
-    createFeaturedHotel(11063, "Passalacqua", "Lake Como, Italy", "/assets/img/featured/passalacqua.webp"),
-    createFeaturedHotel(9679, "La Residencia, A Belmond Hotel", "Mallorca, Spain", "/assets/img/featured/la-residencia.webp"),
-    createFeaturedHotel(10218, "The Maybourne Riviera", "Roquebrune-Cap-Martin, France", "/assets/img/featured/maybourne-riviera.webp"),
-    createFeaturedHotel(9665, "Airelles Saint-Tropez, Château de la Messardière", "Saint Tropez, France", "/assets/img/featured/airelles-saint-tropez.webp"),
-    createFeaturedHotel(12370, "Treville Positano", "Positano, Italy", "/assets/img/featured/villa-treville-positano.webp"),
-    createFeaturedHotel(8161, "Badrutt's Palace Hotel", "St Moritz, Switzerland", "/assets/img/featured/badrutts-palace.webp"),
-];
-
 const Home: React.FC = () => {
     const navigate = useNavigate();
     const { hotels, loading, error, clearError, searchByQuery } = useSearch();
+    const [homepageContent, setHomepageContent] = useState<HomepageContent>(readCachedHomepageContent);
+    const interestCategories = homepageContent.cards;
     const [searchParams, setSearchParams] = useState({
         location: "",
         priceRange: "all",
@@ -68,10 +49,20 @@ const Home: React.FC = () => {
     const [sliderReady, setSliderReady] = useState(false);
     const sliderInitializedRef = useRef(false);
     const sliderContainerRef = useRef<HTMLDivElement>(null);
-    const sliderHotels = FEATURED_HOTELS;
+    const sliderHotels = homepageContent.slider;
     const loadingSliderHotels = false;
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        void fetchHomepageContent().then((content) => {
+            if (!cancelled) setHomepageContent((current) =>
+                JSON.stringify(current) === JSON.stringify(content) ? current : content
+            );
+        }).catch((error) => console.warn('Using cached homepage content:', error));
+        return () => { cancelled = true; };
+    }, []);
 
     // Warm inspiration searches quietly after the homepage settles. Requests are
     // sequential to avoid competing with visible images and are shared with a
@@ -79,7 +70,10 @@ const Home: React.FC = () => {
     useEffect(() => {
         let cancelled = false;
         const inspirationIds = interestCategories
-            .map((interest) => interest.inspirationId)
+            .map((interest) => {
+                const match = interest.href?.match(/[?&]inspirationId=(\d+)/);
+                return match ? Number(match[1]) : undefined;
+            })
             .filter((id): id is number => typeof id === "number");
         const timer = window.setTimeout(() => {
             void (async () => {
@@ -94,7 +88,7 @@ const Home: React.FC = () => {
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, []);
+    }, [interestCategories]);
 
     // Interest categories filter state
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -213,7 +207,7 @@ const Home: React.FC = () => {
         }
 
         setFilteredInterests(filtered);
-    }, [selectedCategories, selectedLocation]);
+    }, [interestCategories, selectedCategories, selectedLocation]);
 
 
     // Cleanup slider before React updates DOM - use useLayoutEffect for synchronous cleanup
@@ -540,15 +534,17 @@ const Home: React.FC = () => {
                             </div>
                         </div>
                     ) : sliderHotels.length > 0 ? (
-                        sliderHotels.map((hotel, index) => {
-                            const imageUrl = hotel.images && hotel.images.length > 0
-                                ? hotel.images[0].url 
-                                : hotel.image;
-                            
+                        sliderHotels.map((slide, index) => {
                             return (
-                                <Link
-                                    key={hotel.id || index}
-                                    to={`/hotel/${hotel.id}`}
+                                <a
+                                    key={slide.id || index}
+                                    href={slide.href}
+                                    onClick={(event) => {
+                                        if (slide.href.startsWith('/')) {
+                                            event.preventDefault();
+                                            navigate(slide.href);
+                                        }
+                                    }}
                                     className="hotel-header-gallery-item"
                                     style={{ 
                                         width: "100%", 
@@ -560,17 +556,17 @@ const Home: React.FC = () => {
                                     }}
                                 >
                                     <ProgressiveImage
-                                        src={imageUrl}
-                                        alt={hotel.name || `Hotel ${index + 1}`}
+                                        src={slide.image}
+                                        alt={slide.title || `Hotel ${index + 1}`}
                                         priority={index === 0}
                                     />
                                     <div className="slider-overlay">
                                         <div className="slider-content">
-                                            <h2>{hotel.name || "Luxury Hotel"}</h2>
-                                            <p>{hotel.location || "Premium Destination"}</p>
+                                            <h2>{slide.title || "Luxury Hotel"}</h2>
+                                            <p>{slide.subtitle || "Premium Destination"}</p>
                                         </div>
                                     </div>
-                                </Link>
+                                </a>
                             );
                         })
                     ) : (
@@ -871,22 +867,24 @@ const Home: React.FC = () => {
                                 searchPath = `/search-results?${urlParams.toString()}`;
                             }
 
+                            const destination = interest.href || interest.externalUrl || searchPath;
+                            const externalDestination = Boolean(destination?.startsWith('https://'));
+
                             const handleInterestClick = () => {
-                                if (interest.externalUrl) {
-                                    window.location.assign(interest.externalUrl);
+                                if (externalDestination && destination) {
+                                    window.location.assign(destination);
                                     return;
                                 }
 
-                                if (searchPath) {
-                                    navigate(searchPath);
+                                if (destination) {
+                                    navigate(destination);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }
                             };
 
                             const handleInterestPrefetch = () => {
-                                if (interest.inspirationId) {
-                                    void prefetchInspirationHotels(interest.inspirationId, 20);
-                                }
+                                const match = destination?.match(/[?&]inspirationId=(\d+)/);
+                                if (match) void prefetchInspirationHotels(Number(match[1]), 20);
                             };
 
                             return (
@@ -926,14 +924,14 @@ const Home: React.FC = () => {
                                                 {interest.title}
                                             </h4>
                                             <div className="card-description">{interest.description}</div>
-                                            {interest.externalUrl ? (
-                                                <a href={interest.externalUrl}>
+                                            {externalDestination && destination ? (
+                                                <a href={destination}>
                                                     {interest.ctaLabel || "Find Out More"} <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
                                                         <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
                                                     </svg>
                                                 </a>
-                                            ) : searchPath ? (
-                                                <Link to={searchPath} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                                            ) : destination ? (
+                                                <Link to={destination} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                                                     {interest.ctaLabel || "View Hotels"} <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
                                                         <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" strokeWidth="0.778659"/>
                                                     </svg>

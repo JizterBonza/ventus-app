@@ -24,6 +24,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookieSettings from "./pages/CookieSettings";
 import Subscription from "./pages/Subscription";
+import HomepageEditor from "./pages/HomepageEditor";
 import "./App.css";
 
 console.log("App component is loading");
@@ -92,6 +93,7 @@ function App() {
                         
                         {/* Subscription */}
                         <Route path="/subscription" element={<Subscription />} />
+                        <Route path="/admin/homepage" element={<ProtectedRoute><HomepageEditor /></ProtectedRoute>} />
                         
                         {/* Legal Pages */}
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

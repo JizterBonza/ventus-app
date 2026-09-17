@@ -3,6 +3,7 @@ export interface InterestCategory {
     title: string;
     description: string;
     image: string;
+    href?: string;
     categories: string[];
     location: string;
     query?: string;

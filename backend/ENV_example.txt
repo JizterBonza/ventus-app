@@ -68,6 +68,12 @@ PAYPAL_ENVIRONMENT=sandbox
 # Example: {"WELCOME100":{"discountPercent":100,"description":"Complimentary membership"}}
 MEMBERSHIP_COUPONS_JSON={}
 
+# Homepage editor access (existing Ventus account emails, comma-separated).
+# The editor is at /admin/homepage and uses the normal login; no separate
+# password or credentials are stored in this setting. Leave blank to disable
+# editing until the account email has been verified.
+HOMEPAGE_EDITOR_EMAILS=
+
 # Booking requests are always persisted. Configure this address to also receive notifications.
 BOOKING_NOTIFICATION_EMAIL=daniella@ventustravel.co.uk
 # Optional; defaults to MAILGUN_FROM_EMAIL, then PASSWORD_RESET_FROM_EMAIL.

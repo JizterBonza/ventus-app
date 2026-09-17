@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 require('dotenv').config();
 const { getPasswordResetEmailProvider, sendPasswordResetEmail, sendBookingRequestNotification } = require('./email');
+const { registerHomepageRoutes } = require('./homepageRoutes');
 
 const app = express();
 
@@ -341,6 +342,8 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+const { ensureHomepageSchema } = registerHomepageRoutes(app, pool, authenticateToken);
 
 // ============= AUTH ROUTES =============
 
@@ -1620,6 +1623,13 @@ const startServer = async () => {
   } catch (error) {
     console.error('Membership schema initialization failed:', error);
     throw error;
+  }
+
+  try {
+    await ensureHomepageSchema();
+    console.log('✓ Homepage CMS schema ready');
+  } catch (error) {
+    console.error('Homepage CMS schema initialization failed:', error);
   }
 
   app.listen(PORT, HOST, () => {

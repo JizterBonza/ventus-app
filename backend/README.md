@@ -62,6 +62,20 @@ Backend API for the Ventus Hotel Booking App with PostgreSQL database.
 - `GET /api/auth/user` - Get current user (requires auth)
 - `POST /api/auth/logout` - Logout user (requires auth)
 
+### Homepage content
+- `GET /api/homepage` - Public featured slider and inspiration cards
+- `GET /api/homepage/admin` - Current content and version (editor only)
+- `PUT /api/homepage/admin` - Publish validated content (editor only)
+- `POST /api/homepage/admin/images` - Upload a JPEG, PNG, or WebP up to 4 MB (editor only)
+
+The browser editor is at `/admin/homepage` on the frontend. Editors sign in with
+their existing Ventus account; set `HOMEPAGE_EDITOR_EMAILS` on the backend to a
+comma-separated list of verified account email addresses. An empty value denies
+all editing. Content and uploaded images are stored in PostgreSQL, so a Render
+redeploy does not discard edits. Changes become public on save, subject to the
+public endpoint's short cache lifetime. Do not store editor passwords in the
+repository or Render environment settings.
+
 ## Database Schema
 
 ### Users Table
@@ -90,4 +104,3 @@ See `POSTGRES_RENDER_SETUP.md` for complete deployment instructions.
 - Always use HTTPS in production
 - Change JWT_SECRET in production
 - Never commit .env file
-
