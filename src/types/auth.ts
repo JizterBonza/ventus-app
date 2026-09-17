@@ -47,6 +47,9 @@ export interface SignupData {
 
 export interface AuthResponse {
   success: boolean;
+  code?: string;
+  requiresEmailVerification?: boolean;
+  verificationEmailSent?: boolean;
   user?: User;
   token?: string;
   message?: string;
@@ -59,7 +62,7 @@ export interface AuthContextType {
   hasActiveMembership: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<AuthResponse>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   clearError: () => void;

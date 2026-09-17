@@ -100,6 +100,58 @@
     text-underline-offset: 3px;
 }
 
+.account-email-page .account-email-card,
+.password-reset-page .account-email-card {
+    border: 1px solid #d8ded5;
+    box-shadow: none;
+}
+
+.account-email-eyebrow {
+    display: block;
+    margin-bottom: 12px;
+    color: #927b55;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+
+.account-email-card h2 {
+    margin-bottom: 14px;
+    font-family: 'Libre Caslon Display', Georgia, serif;
+    font-weight: 400;
+}
+
+.account-email-card > p,
+.account-email-card form,
+.account-email-card .account-email-label {
+    font-family: Lato, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.account-email-card .account-email-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #242424;
+}
+
+.account-email-card .form-control {
+    min-height: 48px;
+    border: 1px solid #cbd2c8;
+    border-radius: 0;
+    font-family: Lato, Arial, sans-serif;
+    font-size: 15px;
+}
+
+.account-email-card .account-email-action {
+    margin-top: 14px;
+    font-family: Lato, Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
 .results-section.has-more-results {
     padding-bottom: 0;
 }

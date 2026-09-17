@@ -42,8 +42,8 @@ const ResetPassword: React.FC = () => {
     event.preventDefault();
     setError('');
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (password.length < 8 || password.length > 128) {
+      setError('Use a password between 8 and 128 characters.');
       return;
     }
     if (password !== confirmPassword) {
@@ -56,7 +56,7 @@ const ResetPassword: React.FC = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      setSuccessMessage(result.message || 'Your password has been reset. You can now log in.');
+      setSuccessMessage(result.message || 'Your new password is ready. You can now log in to Ventus.');
       setIsTokenValid(false);
     } else {
       setError(result.error || 'Unable to reset the password. Please request a new link.');
@@ -69,8 +69,10 @@ const ResetPassword: React.FC = () => {
         <div className="container">
           <div className="row">
             <div className="col-md-12 col-lg-6">
-              <div className="auth-card">
+              <div className="auth-card account-email-card">
+                <span className="account-email-eyebrow">Your account</span>
                 <h2>Choose a new password</h2>
+                <p>Set a new password and you’ll be ready to explore again.</p>
 
                 {isValidating && <div className="alert alert-info" role="status">Checking your reset link...</div>}
                 {error && <div className="alert alert-danger" role="alert">{error}</div>}
@@ -81,14 +83,14 @@ const ResetPassword: React.FC = () => {
                 {isTokenValid && !successMessage && (
                   <form onSubmit={handleSubmit}>
                     <div className="form-group mb-3">
-                      <label htmlFor="newPassword" className="visually-hidden">New password</label>
+                      <label htmlFor="newPassword" className="account-email-label">New password</label>
                       <input
                         type="password"
                         className="form-control"
                         id="newPassword"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
-                        placeholder="New Password *"
+                        placeholder="At least 8 characters"
                         autoComplete="new-password"
                         maxLength={128}
                         disabled={isSubmitting}
@@ -96,22 +98,22 @@ const ResetPassword: React.FC = () => {
                       />
                     </div>
                     <div className="form-group mb-3">
-                      <label htmlFor="confirmPassword" className="visually-hidden">Confirm new password</label>
+                      <label htmlFor="confirmPassword" className="account-email-label">Confirm new password</label>
                       <input
                         type="password"
                         className="form-control"
                         id="confirmPassword"
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
-                        placeholder="Confirm New Password *"
+                        placeholder="Enter your new password again"
                         autoComplete="new-password"
                         maxLength={128}
                         disabled={isSubmitting}
                         required
                       />
                     </div>
-                    <button type="submit" className="btn btn-primary btn-lg butn-dark" disabled={isSubmitting}>
-                      {isSubmitting ? 'Saving...' : 'Reset password'}
+                    <button type="submit" className="btn btn-primary btn-lg butn-dark account-email-action" disabled={isSubmitting}>
+                      {isSubmitting ? 'Saving…' : 'Save new password'}
                     </button>
                   </form>
                 )}

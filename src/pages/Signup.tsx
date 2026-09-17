@@ -71,7 +71,13 @@ const Signup: React.FC = () => {
       setSubmitMessage(response.error || 'Unable to create your account.');
       return;
     }
-    window.location.assign('/subscription');
+    if (response.requiresEmailVerification) {
+      navigate('/verify-email', {
+        state: { email: formData.email.trim().toLowerCase(), emailSent: response.verificationEmailSent }
+      });
+    } else {
+      window.location.assign('/subscription');
+    }
   };
 
   const fieldClass = (field: string) => `form-control ${validationErrors[field] ? 'is-invalid' : ''}`;
@@ -109,8 +115,8 @@ const Signup: React.FC = () => {
                 <label className="form-check-label" htmlFor="agreeToTerms">I agree to the <Link to="/terms-of-service">Terms of Service</Link> and <Link to="/privacy-policy">Privacy Policy</Link>.</label>
                 {validationErrors.agreeToTerms && <div className="invalid-feedback">{validationErrors.agreeToTerms}</div>}
               </div>
-              <button type="submit" className="btn btn-primary btn-lg butn-dark w-100 mt-4" disabled={isSubmitting}>{isSubmitting ? 'Creating your account…' : 'Create account and continue to secure payment'}</button>
-              <p className="signup-supporting-copy text-center mt-3 mb-0">No charge is made until the next secure PayPal step.</p>
+              <button type="submit" className="btn btn-primary btn-lg butn-dark w-100 mt-4" disabled={isSubmitting}>{isSubmitting ? 'Creating your account…' : 'Create account and confirm email'}</button>
+              <p className="signup-supporting-copy text-center mt-3 mb-0">Confirm your email before continuing to secure payment. No charge is made at this step.</p>
             </form>
             <p className="signup-supporting-copy text-center mt-4 mb-0">Already have an account? <Link to="/login"><strong>Login here</strong></Link></p>
           </div>

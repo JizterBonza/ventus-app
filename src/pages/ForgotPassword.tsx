@@ -27,7 +27,7 @@ const ForgotPassword: React.FC = () => {
 
     if (result.success) {
       setSuccessMessage(
-        result.message || 'If an account exists for that email, a reset link has been sent.'
+        result.message || 'If this address is linked to a Ventus account, a secure reset link is on its way.'
       );
     } else {
       setError(result.error || 'Unable to send the reset email. Please try again.');
@@ -40,9 +40,10 @@ const ForgotPassword: React.FC = () => {
         <div className="container">
           <div className="row">
             <div className="col-md-12 col-lg-6">
-              <div className="auth-card">
-                <h2>Reset your password</h2>
-                <p>Enter the email address linked to your account and we will send you a secure reset link.</p>
+              <div className="auth-card account-email-card">
+                <span className="account-email-eyebrow">Your account</span>
+                <h2>A fresh start</h2>
+                <p>Forgotten your password? Enter the email address linked to your Ventus account and we’ll send you a secure link.</p>
 
                 {error && <div className="alert alert-danger" role="alert">{error}</div>}
                 {successMessage && (
@@ -52,29 +53,28 @@ const ForgotPassword: React.FC = () => {
                 {!successMessage && (
                   <form onSubmit={handleSubmit}>
                     <div className="form-group mb-3">
-                      <label htmlFor="resetEmail" className="visually-hidden">Email address</label>
+                      <label htmlFor="resetEmail" className="account-email-label">Email address</label>
                       <input
                         type="email"
                         className="form-control"
                         id="resetEmail"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        placeholder="Your Email Address *"
+                        placeholder="Email address"
                         autoComplete="email"
                         disabled={isSubmitting}
                         required
                       />
                     </div>
-                    <button type="submit" className="btn btn-primary btn-lg butn-dark" disabled={isSubmitting}>
-                      {isSubmitting ? 'Sending...' : 'Send reset link'}
+                    <button type="submit" className="btn btn-primary btn-lg butn-dark account-email-action" disabled={isSubmitting}>
+                      {isSubmitting ? 'Sending…' : 'Send secure link'}
                     </button>
                   </form>
                 )}
 
                 <p className="password-reset-support">
-                  Not receiving the email? Contact{' '}
-                  <a href="mailto:daniella@ventustravel.co.uk">daniella@ventustravel.co.uk</a>
-                  {' '}so your account can be checked manually.
+                  Not seeing the email? Check your spam folder or{' '}
+                  <a href="mailto:daniella@ventustravel.co.uk">get in touch with our team</a>.
                 </p>
 
                 <p className="password-reset-back">

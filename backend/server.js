@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 require('dotenv').config();
-const { getPasswordResetEmailProvider, sendPasswordResetEmail, sendBookingRequestNotification } = require('./email');
+const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendBookingRequestNotification } = require('./email');
 const { registerHomepageRoutes } = require('./homepageRoutes');
 
 const app = express();
@@ -114,9 +114,11 @@ const PAYPAL_API_BASE = PAYPAL_ENVIRONMENT === 'sandbox'
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const PASSWORD_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const PASSWORD_RESET_REQUEST_LIMIT = 5;
+const EMAIL_VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || 'https://destinations.ventustravel.co.uk').replace(/\/$/, '');
 const passwordResetAttempts = new Map();
 let passwordResetSchemaReady = false;
+let emailVerificationSchemaReady = false;
 let subscriptionSchemaReady = false;
 
 const assertProductionConfiguration = () => {
@@ -297,6 +299,66 @@ const ensurePasswordResetSchema = async () => {
   passwordResetSchemaReady = true;
 };
 
+const ensureEmailVerificationSchema = async () => {
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      id BIGSERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash CHAR(64) UNIQUE NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id ON email_verification_tokens(user_id)');
+  // Existing account holders retain access. Only accounts created after this
+  // one-time migration require an email verification link.
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const migration = await client.query(`
+      INSERT INTO app_migrations (name) VALUES ('grandfather-existing-email-verification-v1')
+      ON CONFLICT (name) DO NOTHING RETURNING name
+    `);
+    if (migration.rows.length) {
+      await client.query('UPDATE users SET email_verified_at = NOW() WHERE email_verified_at IS NULL');
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+  emailVerificationSchemaReady = true;
+};
+
+const sendNewVerificationLink = async (user) => {
+  const token = crypto.randomBytes(32).toString('base64url');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const verifyUrl = new URL('/verify-email', PUBLIC_APP_URL);
+  verifyUrl.hash = new URLSearchParams({ token }).toString();
+  await pool.query(
+    'INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+    [user.id, tokenHash, new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_TTL_MS)]
+  );
+  try {
+    await sendVerificationEmail({ to: user.email, firstName: user.first_name, verifyUrl: verifyUrl.toString() });
+  } catch (error) {
+    await pool.query('DELETE FROM email_verification_tokens WHERE token_hash = $1', [tokenHash]);
+    throw error;
+  }
+  try {
+    await pool.query(
+      'UPDATE email_verification_tokens SET used_at = NOW() WHERE user_id = $1 AND token_hash <> $2 AND used_at IS NULL',
+      [user.id, tokenHash]
+    );
+  } catch (error) {
+    console.error('Could not retire previous verification links:', error.message);
+  }
+};
+
 const passwordResetRequestIsLimited = (req, email) => {
   const now = Date.now();
   const address = req.ip || req.socket.remoteAddress || 'unknown';
@@ -375,6 +437,9 @@ app.get('/api/health', async (req, res) => {
 // Signup - Create new user
 app.post('/api/auth/signup', async (req, res) => {
   try {
+    if (!emailVerificationSchemaReady || !getAccountEmailProvider()) {
+      return res.status(503).json({ success: false, error: 'Account email verification is temporarily unavailable. Please try again shortly.' });
+    }
     const { email, password, firstName, lastName, phone, cityOfResidence, agreeToTerms } = req.body;
     const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
@@ -432,21 +497,21 @@ app.post('/api/auth/signup', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
+    let verificationEmailSent = true;
+    try {
+      await sendNewVerificationLink(user);
+    } catch (emailError) {
+      verificationEmailSent = false;
+      console.error('Signup verification email error:', emailError.message);
+    }
 
-    const serializedUser = await serializeUser(user);
-
-    // Return user data (without password)
     res.status(201).json({
       success: true,
-      message: 'Account created successfully',
-      user: serializedUser,
-      token
+      requiresEmailVerification: true,
+      verificationEmailSent,
+      message: verificationEmailSent
+        ? 'Account created. Check your inbox to confirm your email before logging in.'
+        : 'Account created, but we could not send the verification email. Please request a new link.'
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -496,6 +561,14 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
+    if (emailVerificationSchemaReady && !user.email_verified_at) {
+      return res.status(403).json({
+        success: false,
+        code: 'EMAIL_VERIFICATION_REQUIRED',
+        error: 'Please confirm your email address before logging in.'
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email },
@@ -521,10 +594,81 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.post('/api/auth/resend-verification', async (req, res) => {
+  const genericMessage = 'If this address has an unverified account, we will send a new confirmation link.';
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!emailVerificationSchemaReady || !getAccountEmailProvider()) {
+      return res.status(503).json({ success: false, error: 'Email verification is temporarily unavailable.' });
+    }
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Enter a valid email address.' });
+    }
+    if (passwordResetRequestIsLimited(req, email)) {
+      return res.status(429).json({ success: false, error: 'Too many requests. Please wait 15 minutes and try again.' });
+    }
+    const result = await pool.query('SELECT id, email, first_name FROM users WHERE email = $1 AND email_verified_at IS NULL', [email]);
+    if (result.rows.length) {
+      const recent = await pool.query(
+        "SELECT id FROM email_verification_tokens WHERE user_id = $1 AND created_at > NOW() - INTERVAL '60 seconds' LIMIT 1",
+        [result.rows[0].id]
+      );
+      if (!recent.rows.length) {
+        try {
+          await sendNewVerificationLink(result.rows[0]);
+        } catch (emailError) {
+          console.error('Resend verification email error:', emailError.message);
+          return res.status(502).json({ success: false, error: 'We could not send the email. Please try again shortly.' });
+        }
+      }
+    }
+    res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ success: false, error: 'Unable to process the request.' });
+  }
+});
+
+app.post('/api/auth/verify-email', async (req, res) => {
+  let client;
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!emailVerificationSchemaReady) {
+      return res.status(503).json({ success: false, error: 'Email verification is temporarily unavailable.' });
+    }
+    const token = typeof req.body.token === 'string' ? req.body.token : '';
+    if (!token || token.length > 200) {
+      return res.status(400).json({ success: false, error: 'Confirmation link is missing or invalid.' });
+    }
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const result = await client.query(
+      'SELECT id, user_id FROM email_verification_tokens WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW() FOR UPDATE',
+      [tokenHash]
+    );
+    if (!result.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, error: 'This confirmation link is invalid or has expired.' });
+    }
+    await client.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()), updated_at = NOW() WHERE id = $1', [result.rows[0].user_id]);
+    await client.query('UPDATE email_verification_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [result.rows[0].user_id]);
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Email confirmed. You can now log in and continue your membership.' });
+  } catch (error) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    console.error('Verify email error:', error);
+    res.status(500).json({ success: false, error: 'Unable to confirm your email.' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // Request a one-time password reset link. The response does not reveal whether
 // an account exists for the supplied email address.
 app.post('/api/auth/forgot-password', async (req, res) => {
-  const genericMessage = 'If an account exists for that email, a reset link has been sent.';
+  const genericMessage = 'If this address is linked to a Ventus account, a secure reset link is on its way.';
 
   try {
     res.set('Cache-Control', 'no-store');
@@ -665,7 +809,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     const resetToken = tokenResult.rows[0];
     await client.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1, email_verified_at = COALESCE(email_verified_at, NOW()), updated_at = NOW() WHERE id = $2',
       [passwordHash, resetToken.user_id]
     );
     await client.query(
@@ -674,7 +818,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     );
     await client.query('COMMIT');
 
-    res.json({ success: true, message: 'Your password has been reset. You can now log in.' });
+    res.json({ success: true, message: 'Your new password is ready. You can now log in to Ventus.' });
   } catch (error) {
     if (client) await client.query('ROLLBACK').catch(() => {});
     console.error('Reset password error:', error);
@@ -1623,6 +1767,13 @@ const startServer = async () => {
   } catch (error) {
     console.error('Membership schema initialization failed:', error);
     throw error;
+  }
+
+  try {
+    await ensureEmailVerificationSchema();
+    console.log('✓ Email verification schema ready');
+  } catch (error) {
+    console.error('Email verification schema initialization failed:', error);
   }
 
   try {

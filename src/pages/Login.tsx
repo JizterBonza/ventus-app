@@ -78,10 +78,13 @@ const Login: React.FC = () => {
     }
 
     try {
-      await login({
+      const result = await login({
         email: formData.email,
         password: formData.password
       });
+      if (result.code === 'EMAIL_VERIFICATION_REQUIRED') {
+        navigate('/verify-email', { state: { email: formData.email.trim().toLowerCase() } });
+      }
       // Navigation will be handled by useEffect when isAuthenticated becomes true
     } catch (err) {
       console.error('Login error:', err);

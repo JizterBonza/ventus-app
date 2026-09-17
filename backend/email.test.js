@@ -1,6 +1,6 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { getPasswordResetEmailProvider, sendPasswordResetEmail, sendHomepageEditorCode, sendBookingRequestNotification } = require('./email');
+const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification } = require('./email');
 
 const originalEnvironment = { ...process.env };
 const originalFetch = global.fetch;
@@ -59,10 +59,26 @@ test('password reset uses Mailgun with its private key, escaped HTML and trackin
   assert.equal(request.body.get('h:Reply-To'), 'team@example.com');
   assert.match(request.body.get('html'), /&lt;Member &amp; guest&gt;/);
   assert.match(request.body.get('html'), /token=test-token&amp;next=home/);
+  assert.match(request.body.get('html'), /VENTUS/);
+  assert.match(request.body.get('html'), /A fresh start/);
   assert.ok(request.body.get('text').includes(reset.resetUrl));
   for (const option of ['o:tracking', 'o:tracking-clicks', 'o:tracking-opens']) {
     assert.equal(request.body.get(option), 'no');
   }
+});
+
+test('email verification uses branded one-use link without exposing it in the subject', async () => {
+  assert.equal(getAccountEmailProvider(), 'mailgun');
+  const verifyUrl = 'https://destinations.example.com/verify-email#token=one-use-token';
+  await sendVerificationEmail({ to: 'new@example.com', firstName: '<New member>', verifyUrl });
+  const request = requests[0].body;
+  assert.deepEqual(request.getAll('to'), ['new@example.com']);
+  assert.match(request.get('html'), /&lt;New member&gt;/);
+  assert.match(request.get('html'), /Your journey begins here/);
+  assert.match(request.get('html'), /one-use-token/);
+  assert.ok(request.get('text').includes(verifyUrl));
+  assert.ok(!request.get('subject').includes('one-use-token'));
+  assert.equal(request.get('o:tracking'), 'no');
 });
 
 test('EU region uses the EU Mailgun endpoint', async () => {
@@ -119,7 +135,9 @@ test('invalid Mailgun region or domain is rejected before sending credentials', 
 test('unconfigured email reports unavailable without sending', async () => {
   delete process.env.MAILGUN_API_KEY;
   assert.equal(getPasswordResetEmailProvider(), null);
+  assert.equal(getAccountEmailProvider(), null);
   await assert.rejects(sendPasswordResetEmail(reset), /not configured/);
+  await assert.rejects(sendVerificationEmail({ to: 'test@example.com', verifyUrl: 'https://example.com' }), /not configured/);
   assert.equal(await sendBookingRequestNotification(booking), false);
   assert.equal(requests.length, 0);
 });

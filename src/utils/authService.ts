@@ -71,16 +71,19 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
     // Check if response is ok before parsing JSON
     if (!response.ok) {
       let errorMessage = 'Login failed';
+      let errorCode: string | undefined;
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
+        errorCode = errorData.code;
       } catch (parseError) {
         // If response is not JSON, use status text
         errorMessage = response.statusText || `Server error (${response.status})`;
       }
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
+        code: errorCode
       };
     }
 
@@ -238,6 +241,8 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
       success: true,
       user: result.user,
       token: result.token,
+      requiresEmailVerification: result.requiresEmailVerification,
+      verificationEmailSent: result.verificationEmailSent,
       message: result.message || 'Signup successful'
     };
   } catch (error) {
@@ -440,6 +445,34 @@ export const requestPasswordReset = async (email: string): Promise<AuthResponse>
   } catch (error) {
     console.error('Request password reset error:', error);
     return { success: false, error: 'Unable to connect to the password reset service' };
+  }
+};
+
+export const resendVerificationEmail = async (email: string): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/resend-verification`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok
+      ? { success: true, message: data.message }
+      : { success: false, error: data.error || 'Unable to send a new confirmation link.' };
+  } catch {
+    return { success: false, error: 'Unable to connect to the email service. Please try again.' };
+  }
+};
+
+export const verifyEmail = async (token: string): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/verify-email`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token })
+    });
+    const data = await response.json().catch(() => ({}));
+    return response.ok
+      ? { success: true, message: data.message }
+      : { success: false, error: data.error || 'This confirmation link is invalid or has expired.' };
+  } catch {
+    return { success: false, error: 'Unable to confirm your email. Please try again.' };
   }
 };
 

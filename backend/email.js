@@ -7,6 +7,39 @@ const escapeHtml = (value) => String(value)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
+const brandedEmail = ({ eyebrow, title, greeting, body, actionLabel, actionUrl, code, footnote }) => `
+  <div style="margin:0;padding:36px 16px;background:#e8eee5;font-family:Arial,sans-serif;color:#242424">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #d7ddcf">
+      <div style="padding:28px 36px;border-bottom:1px solid #e3e5df;letter-spacing:0.18em;font-family:Georgia,serif;font-size:19px">VENTUS <span style="font-size:12px;letter-spacing:0.22em">TRAVEL</span></div>
+      <div style="padding:38px 36px 30px">
+        <p style="margin:0 0 12px;color:#927b55;font-size:11px;letter-spacing:0.2em;text-transform:uppercase">${eyebrow}</p>
+        <h1 style="margin:0 0 24px;font-family:Georgia,serif;font-weight:400;font-size:30px;line-height:1.25">${title}</h1>
+        <p style="margin:0 0 16px;line-height:1.65">${greeting}</p>
+        <p style="margin:0 0 28px;line-height:1.65">${body}</p>
+        ${actionLabel && actionUrl ? `<a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:14px 24px;background:#242424;color:#ffffff;text-decoration:none;font-size:13px;letter-spacing:0.08em;text-transform:uppercase">${actionLabel}</a>` : ''}
+        ${code ? `<p style="display:inline-block;margin:0;padding:14px 20px;background:#e8eee5;font-size:22px;letter-spacing:0.14em">${escapeHtml(code)}</p>` : ''}
+        <p style="margin:30px 0 0;color:#626862;font-size:13px;line-height:1.6">${footnote}</p>
+      </div>
+      <div style="padding:20px 36px;border-top:1px solid #e3e5df;color:#626862;font-size:12px">Ventus Travel · Thoughtful journeys, exceptionally considered.</div>
+    </div>
+  </div>`;
+
+const getAccountEmailProvider = () => {
+  if (isMailgunConfigured() && (process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL)) return 'mailgun';
+  if (process.env.RESEND_API_KEY && (process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL)) return 'resend';
+  return null;
+};
+
+const sendAccountEmail = async (payload, provider) => {
+  if (provider === 'mailgun') return sendMailgunEmail(payload);
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST', signal: AbortSignal.timeout(10000),
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error(`Account email delivery failed (HTTP ${response.status})`);
+};
+
 const getPasswordResetEmailProvider = () => {
   if (isMailgunConfigured() && (process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL)) {
     return 'mailgun';
@@ -31,35 +64,28 @@ const sendPasswordResetEmailViaHttp = async ({ to, firstName, resetUrl }, provid
   const from = process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL;
 
   const safeName = escapeHtml(firstName || 'there');
-  const safeResetUrl = escapeHtml(resetUrl);
   const payload = {
     from,
     to: [to],
     ...(process.env.PASSWORD_RESET_REPLY_TO && {
       reply_to: process.env.PASSWORD_RESET_REPLY_TO
     }),
-    subject: 'Reset your Ventus Travel password',
+    subject: 'A fresh start for your Ventus account',
     text: [
       `Hi ${firstName || 'there'},`,
       '',
-      'We received a request to reset your Ventus Travel password.',
+      'A request was made to choose a new password for your Ventus account.',
       `Reset your password: ${resetUrl}`,
       '',
       'This link expires in one hour and can only be used once.',
       'If you did not request this, you can safely ignore this email.'
     ].join('\n'),
-    html: `
-      <div style="font-family:Arial,sans-serif;color:#1f1f1f;line-height:1.6;max-width:600px;margin:0 auto">
-        <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:400">Reset your password</h1>
-        <p>Hi ${safeName},</p>
-        <p>We received a request to reset your Ventus Travel password.</p>
-        <p style="margin:28px 0">
-          <a href="${safeResetUrl}" style="display:inline-block;background:#1f1f1f;color:#fff;text-decoration:none;padding:13px 22px">Reset password</a>
-        </p>
-        <p>This link expires in one hour and can only be used once.</p>
-        <p>If you did not request this, you can safely ignore this email.</p>
-      </div>
-    `
+    html: brandedEmail({
+      eyebrow: 'Your account', title: 'A fresh start', greeting: `Hello ${safeName},`,
+      body: 'A request was made to choose a new password for your Ventus account. Use the secure link below to continue.',
+      actionLabel: 'Reset password', actionUrl: resetUrl,
+      footnote: 'This link is valid for one hour and can be used once. If you did not request this, simply ignore this email.'
+    })
   };
 
   if (provider === 'mailgun') return sendMailgunEmail(payload);
@@ -75,9 +101,33 @@ const sendPasswordResetEmailViaHttp = async ({ to, firstName, resetUrl }, provid
   });
 
   if (!response.ok) {
-    const providerMessage = await response.text();
-    throw new Error(`Password reset email provider returned ${response.status}: ${providerMessage.slice(0, 300)}`);
+    throw new Error(`Password reset email delivery failed (HTTP ${response.status})`);
   }
+};
+
+const sendVerificationEmail = async ({ to, firstName, verifyUrl }) => {
+  const provider = getAccountEmailProvider();
+  if (!provider) throw new Error('Account email delivery is not configured');
+  return sendAccountEmail({
+    from: process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL,
+    to: [to],
+    ...(process.env.PASSWORD_RESET_REPLY_TO && { reply_to: process.env.PASSWORD_RESET_REPLY_TO }),
+    subject: 'Confirm your email · Ventus Travel',
+    text: [
+      `Hello ${firstName || 'there'},`, '',
+      'Welcome to Ventus Travel. Please confirm your email address to continue your membership.',
+      `Confirm your email: ${verifyUrl}`, '',
+      'This link is valid for 24 hours and can be used once.',
+      'If you did not create an account, you can safely ignore this email.', '', 'Ventus Travel'
+    ].join('\n'),
+    html: brandedEmail({
+      eyebrow: 'Welcome to Ventus', title: 'Your journey begins here',
+      greeting: `Hello ${escapeHtml(firstName || 'there')},`,
+      body: 'Please confirm your email address to continue your Ventus membership.',
+      actionLabel: 'Confirm email', actionUrl: verifyUrl,
+      footnote: 'This link is valid for 24 hours and can be used once. If you did not create an account, simply ignore this email.'
+    })
+  }, provider);
 };
 
 const sendPasswordResetEmailViaEmailJS = async ({ to, firstName, resetUrl }) => {
@@ -144,15 +194,20 @@ const sendHomepageEditorCode = async ({ to, code }) => {
     'Enter this code on the homepage editor page. It expires in 20 minutes and can only be used once.',
     'If you did not request this, you can safely ignore this email.'
   ].join('\n');
+  const html = brandedEmail({
+    eyebrow: 'Homepage editor', title: 'Confirm it’s you', greeting: 'Hello,',
+    body: 'Use this one-time code to access the Ventus homepage editor.', code,
+    footnote: 'The code is valid for 20 minutes and can be used once. If you did not request access, simply ignore this email.'
+  });
   if (isMailgunConfigured() && from) {
-    return sendMailgunEmail({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text });
+    return sendMailgunEmail({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text, html });
   }
   if (process.env.RESEND_API_KEY && from) {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       signal: AbortSignal.timeout(10000),
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text })
+      body: JSON.stringify({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text, html })
     });
     if (!response.ok) throw new Error(`Homepage editor email delivery failed (HTTP ${response.status})`);
     return;
@@ -254,4 +309,4 @@ const sendBookingRequestNotification = async (booking) => {
   return false;
 };
 
-module.exports = { getPasswordResetEmailProvider, sendPasswordResetEmail, sendHomepageEditorCode, sendBookingRequestNotification };
+module.exports = { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification };

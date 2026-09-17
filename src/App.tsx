@@ -17,6 +17,7 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import Signup from "./pages/Signup";
 import Favourites from "./pages/Favourites";
 import Settings from "./pages/Settings";
@@ -74,6 +75,7 @@ function App() {
                         <Route path="/login" element={<Login />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
+                        <Route path="/verify-email" element={<VerifyEmail />} />
                         <Route path="/signup" element={<Signup />} />
                         
                         {/* Favourites Route */}
