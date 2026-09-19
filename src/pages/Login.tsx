@@ -18,14 +18,19 @@ const Login: React.FC = () => {
 
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const stateFrom = (location.state as any)?.from;
+  const stateNext = stateFrom?.pathname
+    ? `${stateFrom.pathname}${stateFrom.search || ''}${stateFrom.hash || ''}`
+    : '';
+  const queryNext = new URLSearchParams(location.search).get('next') || '';
+  const requestedNext = [stateNext, queryNext].find((value) => value.startsWith('/') && !value.startsWith('//')) || '/';
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = (location.state as any)?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      navigate(requestedNext, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate, requestedNext]);
 
   // Clear errors on unmount
   useEffect(() => {
@@ -186,7 +191,7 @@ const Login: React.FC = () => {
                 </form>
 
                 <p className="password-reset-link">
-                  Can't remember your password? <Link to="/forgot-password">Reset here</Link>
+                  Can't remember your password? <Link to={requestedNext === '/' ? '/forgot-password' : `/forgot-password?next=${encodeURIComponent(requestedNext)}`}>Reset here</Link>
                 </p>
 
                 {/* Social Login (Optional)

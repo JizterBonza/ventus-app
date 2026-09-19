@@ -1,4 +1,4 @@
-import { signupUser } from './authService';
+import { requestPasswordReset, signupUser } from './authService';
 
 describe('signupUser', () => {
   afterEach(() => {
@@ -35,6 +35,26 @@ describe('signupUser', () => {
       phone: '+61481189028',
       cityOfResidence: 'Paddington',
       agreeToTerms: true,
+    });
+  });
+});
+
+describe('requestPasswordReset', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('preserves an approved internal return path through the reset request', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ success: true, message: 'Sent' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await requestPasswordReset('daniella@ventustravel.co.uk', '/admin/homepage');
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      email: 'daniella@ventustravel.co.uk',
+      next: '/admin/homepage',
     });
   });
 });

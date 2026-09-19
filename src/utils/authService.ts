@@ -431,12 +431,12 @@ export const updateUserPassword = async (currentPassword: string, newPassword: s
  * Request a one-time password reset email. The backend deliberately returns
  * the same success message whether or not the address belongs to an account.
  */
-export const requestPasswordReset = async (email: string): Promise<AuthResponse> => {
+export const requestPasswordReset = async (email: string, next?: string): Promise<AuthResponse> => {
   try {
     const response = await fetch(`${AUTH_API_URL}/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email, ...(next ? { next } : {}) })
     });
     const data = await response.json().catch(() => ({}));
     return response.ok

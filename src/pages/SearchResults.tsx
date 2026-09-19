@@ -1145,7 +1145,7 @@ const SearchResults: React.FC = () => {
                                                                 <Link 
                                                                 className="text-link"
                                                                     to={isAuthenticated ? "/subscription" : "/login"} >
-                                                                    {isAuthenticated ? "Complete membership to view benefits" : "Login to view benefits"}{" "}
+                                                                    {isAuthenticated ? "Complete membership to view rates and benefits" : "Log in to view rates and benefits"}{" "}
                                                                   
                                                                 </Link>
                                                             )}

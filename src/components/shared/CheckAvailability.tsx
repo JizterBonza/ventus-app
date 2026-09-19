@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 import { getNightlyPrice, getStayTotal } from "../../utils/livePricing";
+import { getRoomTypeImages } from "../../utils/roomImages";
 import { useAuth } from "../../contexts/AuthContext";
 import {
     SEARCH_SESSION_COOKIES,
@@ -76,6 +77,54 @@ function normalizeRateIndex(value: unknown): string | null {
     if (typeof value === "string" && value.trim() !== "") return value.trim();
     return null;
 }
+
+const RoomTypeImageGallery: React.FC<{ images: string[]; roomName: string }> = ({ images, roomName }) => {
+    const [imageIndex, setImageIndex] = useState(0);
+    const imagesKey = images.join('|');
+
+    useEffect(() => setImageIndex(0), [imagesKey]);
+
+    if (images.length === 0) {
+        return <span className="room-type-image-placeholder" role="img" aria-label={`${roomName} image unavailable`} />;
+    }
+
+    const showPrevious = () => setImageIndex((current) => (current - 1 + images.length) % images.length);
+    const showNext = () => setImageIndex((current) => (current + 1) % images.length);
+
+    return (
+        <div className="room-type-gallery">
+            <img
+                src={images[imageIndex]}
+                alt={`${roomName} — ${imageIndex + 1} of ${images.length}`}
+                className="room-type-image"
+                loading="lazy"
+                decoding="async"
+            />
+            {images.length > 1 && (
+                <>
+                    <button type="button" className="room-type-gallery-arrow room-type-gallery-arrow--previous" onClick={showPrevious} aria-label={`Previous ${roomName} photo`}>
+                        <span aria-hidden="true">‹</span>
+                    </button>
+                    <button type="button" className="room-type-gallery-arrow room-type-gallery-arrow--next" onClick={showNext} aria-label={`Next ${roomName} photo`}>
+                        <span aria-hidden="true">›</span>
+                    </button>
+                    <div className="room-type-gallery-dots" aria-label={`Photo ${imageIndex + 1} of ${images.length}`}>
+                        {images.map((_, index) => (
+                            <button
+                                type="button"
+                                key={index}
+                                className={index === imageIndex ? 'is-active' : ''}
+                                onClick={() => setImageIndex(index)}
+                                aria-label={`Show ${roomName} photo ${index + 1}`}
+                                aria-current={index === imageIndex ? 'true' : undefined}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
 
 const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     hotelId,
@@ -388,35 +437,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         hasActiveMembership,
     ]);
 
-    const getRoomTypeImage = (roomType: Record<string, any>, index: number): string => {
-        const directKeys = ["image", "image_url", "photo", "photo_url", "thumbnail_url"];
-        for (const key of directKeys) {
-            const value = roomType[key];
-            if (typeof value === "string" && value.trim() !== "") {
-                return value;
-            }
-        }
-
-        const collectionKeys = ["images", "photos", "gallery"];
-        for (const key of collectionKeys) {
-            const value = roomType[key];
-            if (Array.isArray(value) && value.length > 0) {
-                const first = value[0];
-                if (typeof first === "string" && first.trim() !== "") {
-                    return first;
-                }
-                if (first && typeof first === "object") {
-                    const objectUrl = first.url ?? first.image_url ?? first.thumbnail_url ?? first.photo_url;
-                    if (typeof objectUrl === "string" && objectUrl.trim() !== "") {
-                        return objectUrl;
-                    }
-                }
-            }
-        }
-
-        return "";
-    };
-
     const getRoomTypeFeatures = (roomType: Record<string, any>): string[] => {
         const featureSet = new Set<string>();
         const addFeature = (value: unknown) => {
@@ -588,7 +608,8 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                 <h3 className="card-title">Available rooms</h3>
                                 <div className="room-types-list">
                                     {availabilityResult.room_types.map((roomType, index) => {
-                                        const roomImage = getRoomTypeImage(roomType as Record<string, any>, index);
+                                        const roomImages = getRoomTypeImages(roomType as Record<string, unknown>);
+                                        const roomName = roomType.name || `Room type ${index + 1}`;
                                         const roomFeatures = getRoomTypeFeatures(roomType as Record<string, any>).slice(0, 3);
                                         const roomRates =
                                             Array.isArray(roomType.rates) && roomType.rates.length > 0
@@ -599,18 +620,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                         return (
                                             <div key={index} className="room-type-item">
                                                 <div className="room-type-image-wrap">
-                                                    {roomImage ? (
-                                                        <img
-                                                            src={roomImage}
-                                                            alt={roomType.name || `Room Type ${index + 1}`}
-                                                            className="room-type-image"
-                                                            loading="lazy"
-                                                            decoding="async"
-                                                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                                                        />
-                                                    ) : (
-                                                        <span className="room-type-image-placeholder" role="img" aria-label={`${roomType.name || `Room type ${index + 1}`} image unavailable`} />
-                                                    )}
+                                                    <RoomTypeImageGallery images={roomImages} roomName={roomName} />
                                                 </div>
                                                 {roomType.name && (
                                                     <h4 className="room-type-name">{roomType.name}</h4>

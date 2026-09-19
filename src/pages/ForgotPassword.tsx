@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import BannerCTA from '../components/shared/BannerCTA';
 import { requestPasswordReset } from '../utils/authService';
 
 const ForgotPassword: React.FC = () => {
+  const location = useLocation();
+  const requestedNext = new URLSearchParams(location.search).get('next') || '';
+  const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '';
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +25,7 @@ const ForgotPassword: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const result = await requestPasswordReset(normalizedEmail);
+    const result = await requestPasswordReset(normalizedEmail, next || undefined);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -78,7 +81,7 @@ const ForgotPassword: React.FC = () => {
                 </p>
 
                 <p className="password-reset-back">
-                  <Link to="/login" className="password-reset-back-link">Back to login</Link>
+                  <Link to={next ? `/login?next=${encodeURIComponent(next)}` : '/login'} className="password-reset-back-link">Back to login</Link>
                 </p>
               </div>
             </div>

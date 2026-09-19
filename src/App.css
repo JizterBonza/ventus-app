@@ -1776,6 +1776,7 @@
 .availability-results .room-type-image-wrap {
     grid-column: 1;
     grid-row: 1 / span 8;
+    position: relative;
     height: 100%;
     min-height: 220px;
     margin: 0;
@@ -1785,6 +1786,72 @@
 .availability-results .room-type-image {
     height: 100%;
     min-height: 220px;
+}
+
+.availability-results .room-type-gallery {
+    position: relative;
+    height: 100%;
+    min-height: 220px;
+    background: #f0f0ed;
+    overflow: hidden;
+}
+
+.availability-results .room-type-gallery-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: #242424;
+    font: 300 32px/36px Arial, sans-serif;
+    transform: translateY(-50%);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+}
+
+.availability-results .room-type-gallery-arrow:hover,
+.availability-results .room-type-gallery-arrow:focus-visible {
+    background: #242424;
+    color: #fff;
+}
+
+.availability-results .room-type-gallery-arrow--previous {
+    left: 12px;
+}
+
+.availability-results .room-type-gallery-arrow--next {
+    right: 12px;
+}
+
+.availability-results .room-type-gallery-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    z-index: 2;
+    display: flex;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 20px;
+    background: rgba(20, 20, 20, 0.42);
+    transform: translateX(-50%);
+}
+
+.availability-results .room-type-gallery-dots button {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+}
+
+.availability-results .room-type-gallery-dots button.is-active {
+    background: #fff;
 }
 
 .availability-results .room-type-name,

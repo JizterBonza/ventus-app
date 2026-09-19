@@ -10,6 +10,10 @@ const ResetPassword: React.FC = () => {
     () => new URLSearchParams(location.hash.replace(/^#/, '')).get('token') || '',
     [location.hash]
   );
+  const requestedNext = new URLSearchParams(location.search).get('next') || '';
+  const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '';
+  const loginPath = next ? `/login?next=${encodeURIComponent(next)}` : '/login';
+  const forgotPasswordPath = next ? `/forgot-password?next=${encodeURIComponent(next)}` : '/forgot-password';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isValidating, setIsValidating] = useState(true);
@@ -119,10 +123,10 @@ const ResetPassword: React.FC = () => {
                 )}
 
                 {!isValidating && !isTokenValid && !successMessage && (
-                  <p className="password-reset-back"><Link to="/forgot-password" className="password-reset-back-link">Request a new reset link</Link></p>
+                  <p className="password-reset-back"><Link to={forgotPasswordPath} className="password-reset-back-link">Request a new reset link</Link></p>
                 )}
                 {successMessage && (
-                  <p className="password-reset-back"><Link to="/login" className="password-reset-back-link">Continue to login</Link></p>
+                  <p className="password-reset-back"><Link to={loginPath} className="password-reset-back-link">Continue to login</Link></p>
                 )}
               </div>
             </div>

@@ -718,6 +718,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     );
 
     const resetUrl = new URL('/reset-password', PUBLIC_APP_URL);
+    const requestedNext = typeof req.body.next === 'string' ? req.body.next.trim() : '';
+    if (requestedNext.startsWith('/') && !requestedNext.startsWith('//') && requestedNext.length <= 512) {
+      resetUrl.searchParams.set('next', requestedNext);
+    }
     resetUrl.hash = new URLSearchParams({ token: rawToken }).toString();
 
     try {
