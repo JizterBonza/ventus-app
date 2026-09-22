@@ -1355,7 +1355,10 @@ export interface BookingRequest {
 }
 
 export const submitBooking = async (bookingData: BookingRequest): Promise<BookingResponse> => {
-  const url = `${API_BASE_URL}/hotels/bookings`;
+  const backendBase = process.env.REACT_APP_AUTH_API_URL
+    ? process.env.REACT_APP_AUTH_API_URL.replace(/\/api\/auth\/?$/, '')
+    : process.env.NODE_ENV === 'development' ? '' : 'https://ventus-backend.onrender.com';
+  const url = `${backendBase}/v2/hotels/bookings`;
   if (!isAuthenticated()) {
     throw new Error('You must be logged in to make a booking. Please log in and try again.');
   }
@@ -1385,15 +1388,17 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
     })),
   };
 
-  const response = await makeApiRequest(url, {
+  // A booking must pass through Ventus once for ownership and email persistence.
+  // Never retry this mutation through a public CORS proxy.
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      Authorization: `Bearer ${API_TOKEN}`,
+      Authorization: `Bearer ${getAuthToken()}`,
     },
     body: JSON.stringify(requestBody),
-  });
+  }).catch(() => { throw new Error('The booking outcome could not be confirmed. Check My Bookings or contact Ventus before booking again.'); });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (data?.errors?.session_id || data?.errors?.rate_index) {
@@ -1404,6 +1409,7 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
       : null;
     throw new Error(
       (typeof firstError === 'string' && firstError) ||
+      data?.error ||
       data?.message ||
       'The hotel could not confirm this booking. Please try again.'
     );
@@ -1411,9 +1417,9 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
 
   return {
     success: true,
-    message: data.confirmation_number
+    message: ['booked', 'confirmed'].includes(data.state) && data.confirmation_number
       ? `Booking confirmed. Confirmation number: ${data.confirmation_number}`
-      : 'Booking confirmed successfully.',
+      : 'Your booking has been received and is awaiting supplier confirmation. Check My Bookings for updates.',
     bookingId: data.id != null ? String(data.id) : undefined,
     confirmationNumber: data.confirmation_number || undefined,
     state: data.state || undefined,

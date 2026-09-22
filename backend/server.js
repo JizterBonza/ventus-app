@@ -7,6 +7,9 @@ const { Pool } = require('pg');
 require('dotenv').config();
 const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendBookingRequestNotification } = require('./email');
 const { registerHomepageRoutes } = require('./homepageRoutes');
+const { stripeIsConfigured, ensureStripeMembershipSchema, createStripeMembershipHandlers } = require('./stripeMembership');
+const { registerReservationRoutes } = require('./reservationRoutes');
+const { isPublicHotelProxyRequest } = require('./reservationSupplier');
 
 const app = express();
 
@@ -49,6 +52,8 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
+// Stripe verifies the exact request bytes, before JSON parsing changes the body.
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // PostgreSQL connection pool
@@ -406,6 +411,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 const { ensureHomepageSchema } = registerHomepageRoutes(app, pool, authenticateToken);
+const reservationService = registerReservationRoutes(app, pool, authenticateToken, { getActiveSubscription });
 
 // ============= AUTH ROUTES =============
 
@@ -1090,6 +1096,7 @@ app.get('/api/subscriptions/config', (req, res) => {
       currency: MEMBERSHIP_CURRENCY,
       interval: 'yearly'
     },
+    stripe: { configured: stripeIsConfigured() },
     paypal: {
       configured: paypalIsConfigured(),
       clientId: process.env.PAYPAL_CLIENT_ID || null,
@@ -1097,6 +1104,11 @@ app.get('/api/subscriptions/config', (req, res) => {
     }
   });
 });
+
+const stripeMembership = createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSubscription, publicAppUrl: PUBLIC_APP_URL });
+app.post('/api/subscriptions/stripe/checkout', authenticateToken, stripeMembership.checkout);
+app.post('/api/subscriptions/stripe/confirm', authenticateToken, stripeMembership.confirm);
+app.post('/api/stripe/webhook', stripeMembership.webhook);
 
 app.post('/api/subscriptions/quote', (req, res) => {
   try {
@@ -1620,6 +1632,9 @@ app.post('/api/hotels/details-batch', async (req, res) => {
 });
 
 app.use('/v2', express.json(), async (req, res) => {
+  if (!isPublicHotelProxyRequest(req.method, new URL(req.originalUrl, 'http://proxy.local').pathname)) {
+    return res.status(404).json({ success: false, error: 'Use the authenticated Ventus reservation service to manage bookings.' });
+  }
   if (hotelRequestRequiresMembership(req)) {
     try {
       const user = getAuthenticatedUserFromRequest(req);
@@ -1767,6 +1782,8 @@ const startServer = async () => {
 
   try {
     await ensureSubscriptionSchema();
+    await ensureStripeMembershipSchema(pool);
+    await reservationService.ensureSchema();
     console.log('✓ Membership schema ready');
   } catch (error) {
     console.error('Membership schema initialization failed:', error);
@@ -1788,6 +1805,7 @@ const startServer = async () => {
   }
 
   app.listen(PORT, HOST, () => {
+    reservationService.start();
     console.log(`=== Backend Server Started ===`);
     console.log(`✓ Server running on http://${HOST}:${PORT}`);
     console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -1826,6 +1844,7 @@ void startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
+  reservationService.stop();
   console.log('SIGTERM received, closing server...');
   pool.end(() => {
     console.log('Database pool closed');

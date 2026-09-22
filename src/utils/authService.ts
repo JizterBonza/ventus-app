@@ -518,6 +518,7 @@ export interface MembershipCheckoutConfig {
     currency: 'GBP';
     interval: 'yearly';
   };
+  stripe?: { configured: boolean };
   paypal: {
     configured: boolean;
     clientId: string | null;
@@ -555,7 +556,27 @@ const membershipAuthHeaders = () => {
 export const getMembershipCheckoutConfig = async (): Promise<MembershipCheckoutConfig> => {
   const response = await fetch(`${SUBSCRIPTIONS_API_URL}/config`, { cache: 'no-store' });
   const data = await parseApiResponse<{ success: boolean } & MembershipCheckoutConfig>(response);
-  return { plan: data.plan, paypal: data.paypal };
+  return { plan: data.plan, stripe: data.stripe, paypal: data.paypal };
+};
+
+export const createStripeMembershipCheckout = async (couponCode?: string): Promise<string> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/stripe/checkout`, {
+    method: 'POST', headers: membershipAuthHeaders(),
+    body: JSON.stringify({ planId: 'travel-yearly', couponCode }),
+  });
+  const data = await parseApiResponse<{ url: string }>(response);
+  const url = new URL(data.url);
+  if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com') {
+    throw new Error('Secure card checkout returned an invalid address. Please contact Ventus.');
+  }
+  return url.href;
+};
+
+export const confirmStripeMembershipCheckout = async (sessionId: string): Promise<{ active: boolean; pending: boolean }> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/stripe/confirm`, {
+    method: 'POST', headers: membershipAuthHeaders(), body: JSON.stringify({ sessionId }),
+  });
+  return parseApiResponse(response);
 };
 
 export const getMembershipQuote = async (couponCode?: string): Promise<MembershipQuote> => {

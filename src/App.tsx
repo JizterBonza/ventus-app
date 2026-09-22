@@ -26,6 +26,8 @@ import TermsOfService from "./pages/TermsOfService";
 import CookieSettings from "./pages/CookieSettings";
 import Subscription from "./pages/Subscription";
 import HomepageEditor from "./pages/HomepageEditor";
+import MyBookings from "./pages/MyBookings";
+import ReservationAdmin from "./pages/ReservationAdmin";
 import "./App.css";
 
 console.log("App component is loading");
@@ -92,6 +94,8 @@ function App() {
                             } 
                         />
                         <Route path="/settings" element={<Settings />} />
+                        <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
+                        <Route path="/admin/reservations" element={<ProtectedRoute><ReservationAdmin /></ProtectedRoute>} />
                         
                         {/* Subscription */}
                         <Route path="/subscription" element={<Subscription />} />

@@ -1,6 +1,6 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification } = require('./email');
+const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail } = require('./email');
 
 const originalEnvironment = { ...process.env };
 const originalFetch = global.fetch;
@@ -159,4 +159,20 @@ test('existing EmailJS fallback remains available without Mailgun or Resend cred
   await sendPasswordResetEmail(reset);
   assert.equal(requests[0].url, 'https://api.emailjs.com/api/v1.0/email/send');
   assert.equal(JSON.parse(requests[0].body).template_params.reset_url, reset.resetUrl);
+});
+
+test('confirmed reservation email is branded, escaped and in addition to LE', async () => {
+  process.env.BOOKING_FROM_EMAIL = 'Ventus Travel <bookings@mg.example.com>';
+  await sendReservationEmail({ recipient: 'guest@example.test', kind: 'confirmed', booking: {
+    id: '123', hotel_name: '<Hotel>', check_in: '2027-12-01', check_out: '2027-12-04',
+    confirmation_number: 'CONF123', total_cost: '1200', currency: 'GBP',
+    rooms: [{ guest_name: '<Guest>', room_type: 'Suite', cancellation_policy: 'Free before deadline.', deposit_policy: 'Pay at hotel.' }],
+  } });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].body.get('from'), 'Ventus Travel <bookings@mg.example.com>');
+  assert.equal(requests[0].body.get('to'), 'guest@example.test');
+  assert.match(requests[0].body.get('html'), /&lt;Hotel&gt;/);
+  assert.match(requests[0].body.get('text'), /in addition to the confirmation from Little Emperors/);
+  assert.match(requests[0].body.get('html'), /my-bookings/);
+  assert.doesNotMatch(requests[0].body.get('text'), /No payment has been taken/);
 });

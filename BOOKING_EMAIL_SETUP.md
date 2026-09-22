@@ -2,6 +2,12 @@
 
 ## Current implementation
 
+Confirmed LE bookings now also queue a separate branded Ventus confirmation and
+cancellation email through the reservation service. LE's own guest email remains
+enabled. This is distinct from the booking-request acknowledgement described below.
+See [reservation setup](RESERVATIONS_SETUP.md) for durable retries, status updates,
+historical linking and deployment checks.
+
 The backend supports Mailgun for password-reset messages, booking-request notifications to the Ventus team, and separate booking acknowledgements to guests. Mailgun is preferred when its API key, sending domain and sender are configured. Existing Resend and EmailJS configurations remain available when Mailgun is not configured; delivery errors do not trigger a second provider and risk duplicate messages.
 
 Booking requests are saved to PostgreSQL before notifications are attempted. A notification failure is logged without undoing the saved request. Notifications currently run in the server process, without a durable retry queue. Password-reset requests report a delivery error if the provider rejects the message. Mailgun acceptance means queued, not confirmed inbox delivery.

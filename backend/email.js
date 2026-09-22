@@ -309,4 +309,33 @@ const sendBookingRequestNotification = async (booking) => {
   return false;
 };
 
-module.exports = { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification };
+const sendReservationEmail = async ({ recipient, kind, booking }) => {
+  const from = process.env.BOOKING_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL || process.env.PASSWORD_RESET_FROM_EMAIL;
+  const provider = isMailgunConfigured() && from ? 'mailgun' : process.env.RESEND_API_KEY && from ? 'resend' : null;
+  if (!provider) throw new Error('Reservation email delivery is not configured');
+  const isCancelled = kind === 'cancelled';
+  const title = isCancelled ? 'Your booking is cancelled' : 'Your stay is confirmed';
+  const manageUrl = `${(process.env.PUBLIC_APP_URL || 'https://destinations.ventustravel.co.uk').replace(/\/$/, '')}/my-bookings`;
+  const details = [
+    `Hotel: ${booking.hotel_name}`,
+    `Stay: ${booking.check_in} to ${booking.check_out}`,
+    `Confirmation: ${booking.confirmation_number || booking.id}`,
+    ...(!isCancelled && booking.total_cost ? [`Booking total: ${booking.currency} ${booking.total_cost}`] : []),
+    ...booking.rooms.map((room) => `Room: ${room.room_type}\nGuest: ${room.guest_name}\nCancellation policy: ${room.cancellation_policy || 'Contact Ventus for details.'}${room.deposit_policy ? `\nPayment terms: ${room.deposit_policy}` : ''}`),
+  ];
+  const note = isCancelled
+    ? 'The supplier has confirmed cancellation. Any charges or refunds remain subject to the reservation terms.'
+    : 'This Ventus confirmation is in addition to the confirmation from Little Emperors. Hotel payment and cancellation terms apply. Your booking is available to manage in the Ventus account used to make it.';
+  await sendAccountEmail({
+    from, to: [recipient], reply_to: process.env.BOOKING_NOTIFICATION_EMAIL || 'daniella@ventustravel.co.uk',
+    subject: `${isCancelled ? 'Booking cancelled' : 'Booking confirmed'} · Ventus Travel · ${booking.confirmation_number || booking.id}`,
+    text: `${title}\n\n${details.join('\n\n')}\n\n${note}\n\nManage your booking: ${manageUrl}\n\nVentus Travel`,
+    html: brandedEmail({ eyebrow: 'Your reservation', title,
+      greeting: `Hello ${escapeHtml(booking.rooms[0]?.guest_name || 'there')},`,
+      body: details.map((line) => escapeHtml(line).replace(/\n/g, '<br>')).join('<br><br>'),
+      actionLabel: 'Manage your booking', actionUrl: manageUrl, footnote: escapeHtml(note),
+    }),
+  }, provider);
+};
+
+module.exports = { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail };

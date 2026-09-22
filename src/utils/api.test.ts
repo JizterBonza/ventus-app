@@ -1,4 +1,4 @@
-import { checkHotelAvailability, getHotelCalendarRates, searchHotelsByLocation } from './api';
+import { checkHotelAvailability, getHotelCalendarRates, searchHotelsByLocation, submitBooking } from './api';
 
 describe('searchHotelsByLocation progressive results', () => {
   afterEach(() => {
@@ -35,6 +35,29 @@ describe('searchHotelsByLocation progressive results', () => {
     const [hotels, concurrentHotels] = await Promise.all([request, concurrentRequest]);
     expect(hotels.map((hotel) => hotel.id)).toEqual([987658, 987659]);
     expect(concurrentHotels).toEqual(hotels);
+  });
+});
+
+describe('reservation submission', () => {
+  const request = { hotelId: 42, startDate: '2027-12-01', endDate: '2027-12-04', sessionId: 'session', rateIndex: 'rate', guestName: 'Test Guest', guestEmail: 'guest@example.test', rooms: [{ adults: 2, children: [] }] };
+  beforeEach(() => {
+    window.localStorage.setItem('ventus_auth_token', 'member-token');
+    window.localStorage.setItem('ventus_auth_user', JSON.stringify({ id: '1' }));
+  });
+  afterEach(() => { jest.restoreAllMocks(); window.localStorage.clear(); });
+  it('keeps LE email enabled and submits through the authenticated Ventus backend', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 101, state: 'booked', confirmation_number: 'CONF101' }), { status: 200 }));
+    expect((await submitBooking(request)).message).toContain('Booking confirmed');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/v2/hotels/bookings');
+    expect(fetchMock.mock.calls[0][1]?.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer member-token' }));
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).rooms[0].send_email_to_guest).toBe(true);
+  });
+  it('does not retry an uncertain booking or claim that a pending booking is confirmed', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network timeout'));
+    await expect(submitBooking(request)).rejects.toThrow('before booking again');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 101, state: 'pending' }), { status: 200 }));
+    expect((await submitBooking(request)).message).toContain('awaiting supplier confirmation');
   });
 });
 

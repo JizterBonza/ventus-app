@@ -7,6 +7,8 @@ import {
   activateComplimentaryMembership,
   capturePayPalMembershipOrder,
   createPayPalMembershipOrder,
+  createStripeMembershipCheckout,
+  confirmStripeMembershipCheckout,
   getMembershipCheckoutConfig,
   getMembershipQuote,
   MembershipCheckoutConfig,
@@ -35,6 +37,9 @@ const Subscription: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'ready' | 'processing' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const paypalContainerRef = useRef<HTMLDivElement | null>(null);
+  const stripeSessionId = new URLSearchParams(location.search).get('stripe_session_id');
+  const checkoutCancelled = new URLSearchParams(location.search).get('checkout') === 'cancelled';
+  const paymentLocked = status === 'processing' || status === 'success' || Boolean(stripeSessionId);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -43,7 +48,7 @@ const Subscription: React.FC = () => {
   }, [isAuthenticated, isLoading, location, navigate]);
 
   useEffect(() => {
-    if (!isAuthenticated || hasActiveMembership) return;
+    if (!isAuthenticated || hasActiveMembership || stripeSessionId) return;
     let cancelled = false;
     Promise.all([getMembershipCheckoutConfig(), getMembershipQuote()])
       .then(([nextConfig, nextQuote]) => {
@@ -51,6 +56,7 @@ const Subscription: React.FC = () => {
         setConfig(nextConfig);
         setQuote(nextQuote);
         setStatus('ready');
+        if (checkoutCancelled) setMessage('Checkout was closed. You can return to secure payment below.');
       })
       .catch((error) => {
         if (cancelled) return;
@@ -58,14 +64,47 @@ const Subscription: React.FC = () => {
         setMessage(error instanceof Error ? error.message : 'Unable to load membership checkout.');
       });
     return () => { cancelled = true; };
-  }, [hasActiveMembership, isAuthenticated]);
+  }, [hasActiveMembership, isAuthenticated, stripeSessionId, checkoutCancelled]);
 
   useEffect(() => {
-    if (!config?.paypal.configured || !config.paypal.clientId || !quote || quote.finalPrice <= 0 || status !== 'ready') return;
+    if (!isAuthenticated || hasActiveMembership || !stripeSessionId) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const confirm = async (attempt = 0) => {
+      setStatus('processing');
+      setMessage('Confirming your membership payment…');
+      try {
+        const result = await confirmStripeMembershipCheckout(stripeSessionId);
+        if (cancelled) return;
+        if (result.active) {
+          setStatus('success');
+          setMessage('Your Ventus Travel membership is active.');
+          timer = setTimeout(() => window.location.assign('/subscription'), 1000);
+        } else if (result.pending && attempt < 5) {
+          timer = setTimeout(() => confirm(attempt + 1), 2000);
+        } else {
+          setStatus('error');
+          setMessage(result.pending
+            ? 'Your payment is still being confirmed. Please refresh shortly; do not pay again.'
+            : 'This payment has not activated your membership. Please contact Ventus before making another payment.');
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setStatus('error');
+        setMessage(error instanceof Error ? error.message : 'Unable to confirm your payment. Please refresh shortly; do not pay again.');
+      }
+    };
+    void confirm();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [isAuthenticated, hasActiveMembership, stripeSessionId]);
+
+  useEffect(() => {
+    if (config?.stripe?.configured || stripeSessionId || !config?.paypal.configured || !config.paypal.clientId || !quote || quote.finalPrice <= 0 || status !== 'ready') return;
+    let cancelled = false;
+    const container = paypalContainerRef.current;
     const renderButtons = () => {
-      if (cancelled || !(window as any).paypal?.Buttons || !paypalContainerRef.current) return;
-      paypalContainerRef.current.innerHTML = '';
+      if (cancelled || !(window as any).paypal?.Buttons || !container) return;
+      container.innerHTML = '';
       (window as any).paypal.Buttons({
         createOrder: async () => createPayPalMembershipOrder(appliedCoupon || undefined),
         onApprove: async (data: { orderID: string }) => {
@@ -90,7 +129,7 @@ const Subscription: React.FC = () => {
           setMessage('PayPal could not complete the payment. Please try again.');
         },
         style: { layout: 'vertical', shape: 'rect', label: 'pay' },
-      }).render(paypalContainerRef.current);
+      }).render(container);
     };
 
     const existing = document.querySelector<HTMLScriptElement>('script[data-ventus-paypal="membership"]');
@@ -115,9 +154,21 @@ const Subscription: React.FC = () => {
 
     return () => {
       cancelled = true;
-      if (paypalContainerRef.current) paypalContainerRef.current.innerHTML = '';
+      if (container) container.innerHTML = '';
     };
-  }, [appliedCoupon, config, quote, status]);
+  }, [appliedCoupon, config, quote, status, stripeSessionId]);
+
+  const startStripeCheckout = async () => {
+    if (paymentLocked) return;
+    setStatus('processing');
+    setMessage('Opening secure card payment…');
+    try {
+      window.location.assign(await createStripeMembershipCheckout(appliedCoupon || undefined));
+    } catch (error) {
+      setStatus('error');
+      setMessage(error instanceof Error ? error.message : 'Unable to open secure payment. Please try again.');
+    }
+  };
 
   const applyCoupon = async () => {
     setCouponMessage('');
@@ -177,20 +228,24 @@ const Subscription: React.FC = () => {
                 </div>
                 <ul className="membership-checkout-benefits">{MEMBER_BENEFITS.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
                 <div className="membership-coupon-row">
-                  <input className="form-control" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Membership code (optional)" disabled={status === 'processing'} />
-                  <button type="button" className="btn btn-outline-dark" onClick={applyCoupon} disabled={!couponCode.trim() || status === 'processing'}>Apply</button>
+                  <input className="form-control" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Membership code (optional)" disabled={paymentLocked} />
+                  <button type="button" className="btn btn-outline-dark" onClick={applyCoupon} disabled={!couponCode.trim() || paymentLocked}>Apply</button>
                 </div>
                 {couponMessage && <p className="membership-checkout-note">{couponMessage}</p>}
                 {message && <div className={`alert ${status === 'success' ? 'alert-success' : status === 'error' ? 'alert-danger' : 'alert-info'}`} role="status">{message}</div>}
                 {status === 'loading' && <div className="text-center"><div className="spinner-border" role="status" /><p>Preparing secure checkout…</p></div>}
-                {quote?.finalPrice === 0 ? (
-                  <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={activateComplimentary} disabled={status === 'processing'}>{status === 'processing' ? 'Activating…' : 'Activate membership'}</button>
+                {stripeSessionId ? (
+                  status === 'error' ? <div className="text-center"><button type="button" className="btn btn-outline-dark" onClick={() => window.location.reload()}>Check payment again</button><p className="mt-3"><a href="mailto:daniella@ventustravel.co.uk">Contact Ventus</a></p></div> : null
+                ) : quote?.finalPrice === 0 ? (
+                  <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={activateComplimentary} disabled={paymentLocked}>{status === 'processing' ? 'Activating…' : 'Activate membership'}</button>
+                ) : config?.stripe?.configured && quote ? (
+                  <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={startStripeCheckout} disabled={paymentLocked}>{status === 'processing' ? 'Opening secure payment…' : `Pay £${quote.finalPrice.toFixed(2)} securely`}</button>
                 ) : config?.paypal.configured ? (
                   <div ref={paypalContainerRef} id={PAYPAL_CONTAINER_ID} className="membership-paypal-container" aria-label="Secure PayPal or card payment" />
                 ) : status !== 'loading' ? (
                   <div className="alert alert-warning">Secure payment is being configured. Please contact Daniella to activate your membership.</div>
                 ) : null}
-                <p className="text-center mt-3 mb-0 small">Payment is created and verified securely by the Ventus server. Your membership activates only after PayPal confirms the exact £{quote?.finalPrice.toFixed(2) ?? '299.00'} payment.</p>
+                <p className="text-center mt-3 mb-0 small">{quote?.finalPrice === 0 ? 'Your membership code provides one year of access.' : 'One payment for one year of membership. No automatic renewal. Your membership activates once payment is confirmed.'}</p>
               </>
             )}
           </div>

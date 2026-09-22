@@ -56,7 +56,15 @@ EMAILJS_SERVICE_ID=
 EMAILJS_TEMPLATE_ID=
 EMAILJS_PUBLIC_KEY=
 
-# PayPal Configuration
+# Stripe hosted membership checkout (server only; never use REACT_APP_*).
+# Both values are required before the card-payment button is enabled.
+# Use test credentials for validation, then the matching live credentials.
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+# Webhook URL: https://ventus-backend.onrender.com/api/stripe/webhook
+# Events and activation checklist: ../STRIPE_SETUP.md
+
+# PayPal Configuration (fallback when Stripe is not configured)
 # Create separate sandbox and live REST apps in the PayPal developer dashboard.
 PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_client_secret
@@ -78,3 +86,13 @@ HOMEPAGE_EDITOR_EMAILS=
 BOOKING_NOTIFICATION_EMAIL=daniella@ventustravel.co.uk
 # Optional; defaults to MAILGUN_FROM_EMAIL, then PASSWORD_RESET_FROM_EMAIL.
 # BOOKING_FROM_EMAIL=Ventus Travel <bookings@mg.ventustravel.co.uk>
+
+# Staff allowed to link historical LE bookings to verified client accounts.
+# These staff must also verify their email through /admin/homepage; include them
+# in HOMEPAGE_EDITOR_EMAILS to allow that verification flow.
+RESERVATION_MANAGER_EMAILS=
+
+# Optional LE booking status webhooks. Agree x-ventus-webhook-key delivery with LE.
+# Use a random secret of at least 32 characters. Never put this key in the URL.
+# POST https://ventus-backend.onrender.com/api/le/webhook
+LE_WEBHOOK_ACCESS_KEY=
