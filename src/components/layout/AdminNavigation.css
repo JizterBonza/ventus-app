@@ -1,0 +1,8 @@
+.admin-navigation { background: #242824; color: #fff; position: relative; z-index: 20; }
+.admin-navigation .container { display: flex; align-items: center; gap: 8px 24px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+.admin-navigation span { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: #d5cfbb; }
+.admin-navigation a { font-size: 13px; color: #fff; padding: 4px 0; }
+.admin-navigation a.active, .admin-navigation a:hover { color: #e0c296; text-decoration: underline; text-underline-offset: 4px; }
+.admin-navigation a:focus-visible { outline: 2px solid #e0c296; outline-offset: 4px; }
+.navbar.ventus-overlay-navbar:has(+ .admin-navigation) { position: relative; background: #222224; }
+@media (max-width: 600px) { .admin-navigation .container { gap: 6px 16px; } .admin-navigation span { width: 100%; } }

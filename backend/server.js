@@ -7,6 +7,7 @@ const { Pool } = require('pg');
 require('dotenv').config();
 const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendBookingRequestNotification } = require('./email');
 const { registerHomepageRoutes } = require('./homepageRoutes');
+const { registerCategoryRoutes } = require('./categoryRoutes');
 const { stripeIsConfigured, ensureStripeMembershipSchema, createStripeMembershipHandlers } = require('./stripeMembership');
 const { registerReservationRoutes } = require('./reservationRoutes');
 const { isPublicHotelProxyRequest } = require('./reservationSupplier');
@@ -410,7 +411,9 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-const { ensureHomepageSchema } = registerHomepageRoutes(app, pool, authenticateToken);
+const homepageService = registerHomepageRoutes(app, pool, authenticateToken);
+const { ensureHomepageSchema } = homepageService;
+const { ensureCategorySchema } = registerCategoryRoutes(app, pool, authenticateToken, homepageService);
 const reservationService = registerReservationRoutes(app, pool, authenticateToken, { getActiveSubscription });
 
 // ============= AUTH ROUTES =============
@@ -1799,9 +1802,11 @@ const startServer = async () => {
 
   try {
     await ensureHomepageSchema();
+    await ensureCategorySchema();
     console.log('✓ Homepage CMS schema ready');
   } catch (error) {
     console.error('Homepage CMS schema initialization failed:', error);
+    throw error;
   }
 
   app.listen(PORT, HOST, () => {

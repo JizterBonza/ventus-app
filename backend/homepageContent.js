@@ -102,4 +102,4 @@ const allowedImageType = (bytes) => {
   return null;
 };
 
-module.exports = { defaults: normalizeHomepageContent(defaults), normalizeHomepageContent, allowedImageType, migrateLegacyThemeLinks };
+module.exports = { defaults: normalizeHomepageContent(defaults), normalizeHomepageContent, allowedImageType, migrateLegacyThemeLinks, allowedUrl };

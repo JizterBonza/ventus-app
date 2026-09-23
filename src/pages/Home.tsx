@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
 import { getHotelDetailsBatch, prefetchInspirationHotels } from "../utils/api";
 import { prefetchEditorialCollectionHotels } from "../utils/editorialCollections";
 import { HomepageContent, fetchHomepageContent, readCachedHomepageContent } from "../utils/homepageContent";
+import { CategoryPage, addCategoryCards, fetchCategories } from '../utils/categoryPages';
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SearchBarNew from "../components/shared/SearchBarNew";
@@ -36,7 +37,8 @@ const Home: React.FC = () => {
     const navigate = useNavigate();
     const { hotels, loading, error, clearError, searchByQuery } = useSearch();
     const [homepageContent, setHomepageContent] = useState<HomepageContent>(readCachedHomepageContent);
-    const interestCategories = homepageContent.cards;
+    const [categoryPages, setCategoryPages] = useState<CategoryPage[]>([]);
+    const interestCategories = useMemo(() => addCategoryCards(homepageContent.cards, categoryPages), [homepageContent.cards, categoryPages]);
     const [searchParams, setSearchParams] = useState({
         location: "",
         priceRange: "all",
@@ -62,6 +64,9 @@ const Home: React.FC = () => {
                 JSON.stringify(current) === JSON.stringify(content) ? current : content
             );
         }).catch((error) => console.warn('Using cached homepage content:', error));
+        void fetchCategories().then((categories) => {
+            if (!cancelled) setCategoryPages(categories);
+        }).catch((error) => console.warn('Category pages unavailable:', error));
         return () => { cancelled = true; };
     }, []);
 

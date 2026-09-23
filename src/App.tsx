@@ -28,6 +28,8 @@ import Subscription from "./pages/Subscription";
 import HomepageEditor from "./pages/HomepageEditor";
 import MyBookings from "./pages/MyBookings";
 import ReservationAdmin from "./pages/ReservationAdmin";
+import CategoryPage from './pages/CategoryPage';
+import CategoryEditor from './pages/CategoryEditor';
 import "./App.css";
 
 console.log("App component is loading");
@@ -71,6 +73,7 @@ function App() {
                         <Route path="/rooms" element={<Rooms />} />
                         <Route path="/destinations" element={<Destinations />} />
                         <Route path="/search-results" element={<SearchResults />} />
+                        <Route path="/categories/:slug" element={<CategoryPage />} />
                         <Route path="/hotel/:id" element={<HotelDetail />} />
                         
                         {/* Authentication Routes */}
@@ -100,6 +103,8 @@ function App() {
                         {/* Subscription */}
                         <Route path="/subscription" element={<Subscription />} />
                         <Route path="/admin/homepage" element={<ProtectedRoute><HomepageEditor /></ProtectedRoute>} />
+                        <Route path="/admin/categories" element={<ProtectedRoute><CategoryEditor /></ProtectedRoute>} />
+                        <Route path="/admin/categories/:id" element={<ProtectedRoute><CategoryEditor /></ProtectedRoute>} />
                         
                         {/* Legal Pages */}
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

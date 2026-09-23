@@ -243,7 +243,7 @@ const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode =
     }
   });
 
-  return { ensureHomepageSchema };
+  return { ensureHomepageSchema, requireAllowlistedEditor, requireEditor };
 };
 
 module.exports = { registerHomepageRoutes };

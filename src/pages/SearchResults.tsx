@@ -7,6 +7,7 @@ import { getVisitorCurrency } from "../utils/currency";
 import { getLiveNightlyPrice } from "../utils/livePricing";
 import { getEditorialCollection } from "../data/editorialCollections";
 import { loadEditorialCollectionHotels } from "../utils/editorialCollections";
+import { CategoryPage, categoryPath, loadCategoryHotels } from '../utils/categoryPages';
 import {
     SEARCH_SESSION_COOKIES,
     getCookie,
@@ -225,15 +226,15 @@ const getHotelOpeningTimestamp = (hotel: Hotel): number | null => {
     return Number.isFinite(timestamp) ? timestamp : null;
 };
 
-const SearchResults: React.FC = () => {
+const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
     const [urlSearchParams] = useSearchParams();
-    const currentSearchKey = urlSearchParams.toString();
-    const activeEditorialCollection = getEditorialCollection(urlSearchParams.get("collection"));
+    const currentSearchKey = `${category ? `${category.id}:${category.version}|` : ''}${urlSearchParams.toString()}`;
+    const activeEditorialCollection = category || getEditorialCollection(urlSearchParams.get("collection"));
     const requestedHotelIdValue = Number(urlSearchParams.get("hotelId"));
     const requestedHotelId = Number.isInteger(requestedHotelIdValue) && requestedHotelIdValue > 0
         ? requestedHotelIdValue
         : null;
-    const hasSearchCriteria = urlSearchParams.has("inspirationId") || urlSearchParams.has("location") || urlSearchParams.has("hotelId") || urlSearchParams.has("collection");
+    const hasSearchCriteria = Boolean(category) || urlSearchParams.has("inspirationId") || urlSearchParams.has("location") || urlSearchParams.has("hotelId") || urlSearchParams.has("collection");
     const { hotels, loading, error, searchAdvanced, clearResults } = useSearch();
     const { isAuthenticated, hasActiveMembership } = useAuth();
     
@@ -433,7 +434,7 @@ const SearchResults: React.FC = () => {
         const sortBy = urlSearchParams.get("sortBy") || "recommended";
 
         setSearchParams({
-            location: title || collection?.title || location || "",
+            location: category?.title || title || collection?.title || location || "",
             priceRange,
             rating,
             sortBy,
@@ -517,9 +518,9 @@ const SearchResults: React.FC = () => {
         };
 
         const runSearch = async () => {
-        if (collectionSlug) {
+        if (category || collectionSlug) {
             try {
-                const collectionHotels = await loadEditorialCollectionHotels(collectionSlug);
+                const collectionHotels = category ? await loadCategoryHotels(category) : await loadEditorialCollectionHotels(collectionSlug!);
                 if (!cancelled) {
                     setInspirationResults(collectionHotels);
                     setCollectionHasFullDetails(true);
@@ -577,7 +578,7 @@ const SearchResults: React.FC = () => {
         }
         };
 
-        setLoadingInspiration(Boolean(collectionSlug || requestedHotelId || inspirationId || location));
+        setLoadingInspiration(Boolean(category || collectionSlug || requestedHotelId || inspirationId || location));
         void runSearch().finally(() => {
             if (!cancelled) {
                 setLoadingInspiration(false);
@@ -589,7 +590,7 @@ const SearchResults: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults, hasActiveMembership, searchDatesAndRooms]);
+    }, [category, urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults, hasActiveMembership, searchDatesAndRooms]);
 
     // Enrich every result in the background. Cards remain visible while these calls complete,
     // while the complete detail set gives the filter counts a reliable source of truth.
@@ -807,13 +808,15 @@ const SearchResults: React.FC = () => {
         <div className="search-page">
             <Header />
             {/* Search Form */}
-            <SearchBarNew isSearching={isSearching} />
+            <SearchBarNew isSearching={isSearching} prefillLocation={category?.title} collectionPath={category ? categoryPath(category) : undefined} />
             <br />
 
             {/* Filters and Results */}
             <section className={`results-section ${filteredHotels.length > 0 ? "has-results" : ""} ${!isSearching && visibleHotels.length < filteredHotels.length ? "has-more-results" : ""}`}>
                 <div className="container">
                     {activeEditorialCollection && <h1 className="editorial-results-title">{activeEditorialCollection.title}</h1>}
+                    {category?.description && <p className="editorial-results-description">{category.description}</p>}
+                    {category && !isSearching && baseHotels.length > 0 && baseHotels.length < category.hotels.length && <p role="status">Some hotels in this collection are temporarily unavailable. Please check back shortly.</p>}
                     <div className="row">
                         {/* Results */}
                         <div className="col-md-12">

@@ -76,8 +76,8 @@ PAYPAL_ENVIRONMENT=sandbox
 # Example: {"WELCOME100":{"discountPercent":100,"description":"Complimentary membership"}}
 MEMBERSHIP_COUPONS_JSON={}
 
-# Homepage editor access (existing Ventus account emails, comma-separated).
-# The editor is at /admin/homepage and uses the normal login; no separate
+# Homepage and category editor access (existing Ventus account emails, comma-separated).
+# Editors are at /admin/homepage and /admin/categories and use the normal login; no separate
 # password or credentials are stored in this setting. Leave blank to disable
 # editing until the account email has been verified.
 HOMEPAGE_EDITOR_EMAILS=

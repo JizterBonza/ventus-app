@@ -79,6 +79,47 @@ redeploy does not discard edits. Changes become public on save, subject to the
 public endpoint's short cache lifetime. Do not store editor passwords in the
 repository or Render environment settings.
 
+### Category pages
+
+The admin header links to `/admin/categories` and `/admin/categories/new`.
+Category editors use the same `HOMEPAGE_EDITOR_EMAILS` allowlist and email
+verification as the homepage editor. Reservation managers receive their own
+header link based on `RESERVATION_MANAGER_EMAILS`; links do not grant API access.
+
+Create a page with a title, URL slug, description and cover image. Search by hotel
+name to add up to 50 hotels, then remove or reorder the selected rows. Save as a
+draft, or publish after adding an image and at least one hotel. Published pages
+use the existing hotel results template at `/categories/:slug`, including hotel
+details, member pricing, filters and date/guest searches. Unpublishing hides the
+public page. Drafts cannot be fetched through the public API.
+Unsaved category edits are kept in the current browser tab and can be restored
+after navigation. Saves still use the original version to prevent a restored
+draft from overwriting a newer server edit.
+
+“Show in homepage inspiration cards” adds published categories at the start of
+the existing homepage grid. A manually linked card takes precedence, avoiding
+duplicates. The homepage editor also has a category link selector for cards and
+slides. Changing a category slug changes its public URL; update any manually
+entered links that use the old URL.
+
+- `GET /api/admin/access` — signed-in account's navigation permissions
+- `GET /api/categories` — published categories
+- `GET /api/categories/:slug` — a published category, or 404
+- `GET /api/categories/admin` — all pages, including drafts (verified editor)
+- `POST /api/categories/admin` — create `{ category }` (verified editor)
+- `PUT /api/categories/admin/:id` — save `{ category, version }` (verified editor)
+
+Deploy both frontend and backend for this feature. Backend startup creates
+`category_pages` in PostgreSQL automatically; no new environment variables or
+manual migration are required. Uploaded covers use the existing image storage.
+Saves reject duplicate slugs and stale versions instead of overwriting another
+editor's changes. The public category API is not cached, so newly loaded pages
+reflect publication changes immediately.
+CMS schema setup must succeed before the backend starts accepting requests.
+For the PostgreSQL integration test, point `CATEGORY_TEST_DATABASE_URL` at a
+local test database and run `npm test` in `backend`; the test uses and removes
+its own randomly named schema.
+
 ## Database Schema
 
 ### Users Table

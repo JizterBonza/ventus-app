@@ -2,6 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import Navigation from "./Navigation";
 import Breadcrumb from "../shared/Breadcrumb";
+import AdminNavigation from './AdminNavigation';
 
 const Header: React.FC = () => {
     const location = useLocation();
@@ -38,6 +39,7 @@ const Header: React.FC = () => {
                     <Navigation />
                 </div>
             </nav>
+            <AdminNavigation />
             {!hideBreadcrumbs && <Breadcrumb />}
         </>
     );

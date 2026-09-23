@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { HomepageContent, HomepageSlide, HomepageEditorVerificationRequired, defaultHomepageContent, fetchHomepageForEditor, requestHomepageEditorCode, saveHomepageContent, uploadHomepageImage, verifyHomepageEditorCode } from '../utils/homepageContent';
 import { InterestCategory } from '../types/interests';
+import { CategoryPage, categoryPath, fetchCategories } from '../utils/categoryPages';
 import './HomepageEditor.css';
 
 type Section = 'slider' | 'cards';
@@ -20,9 +21,11 @@ const HomepageEditor: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [categories, setCategories] = useState<CategoryPage[]>([]);
 
   useEffect(() => {
     let active = true;
+    void fetchCategories().then((pages) => { if (active) setCategories(pages); }).catch(() => undefined);
     void fetchHomepageForEditor().then(({ content: loaded, version: loadedVersion }) => {
       if (!active) return;
       setContent(loaded);
@@ -179,6 +182,9 @@ const HomepageEditor: React.FC = () => {
             <input type="text" maxLength={section === 'slider' ? 160 : 240} value={section === 'slider' ? (item as HomepageSlide).subtitle : (item as InterestCategory).description} onChange={(event) => updateItem(section, index, section === 'slider' ? 'subtitle' : 'description', event.target.value)} />
           </label>
           <label>Link<input type="text" maxLength={2048} value={item.href || ''} onChange={(event) => updateItem(section, index, 'href', event.target.value)} placeholder="/search-results?location=London" /></label>
+          {categories.length > 0 && <label>Or link to a category page<select value={categories.some((page) => categoryPath(page) === item.href) ? item.href : ''} onChange={(event) => {
+            if (event.target.value) updateItem(section, index, 'href', event.target.value);
+          }}><option value="">Choose a published category…</option>{categories.map((page) => <option key={page.id} value={categoryPath(page)}>{page.title}</option>)}</select></label>}
           <label>Image URL<input type="text" maxLength={2048} value={item.image} onChange={(event) => updateItem(section, index, 'image', event.target.value)} placeholder="https://… or /assets/…" /></label>
         </div>
       </div>
@@ -215,7 +221,7 @@ const HomepageEditor: React.FC = () => {
             <button type="button" onClick={() => void save()} disabled={!dirty || saving || uploading !== null}>{saving ? 'Saving…' : 'Save homepage'}</button>
           </div>
           <section aria-labelledby="homepage-slides-title"><div className="homepage-editor-section-heading"><div><h2 id="homepage-slides-title">Featured slider</h2><p>These appear in Ventus’ Picks, in this order.</p></div><button type="button" onClick={() => addItem('slider')}>Add slide</button></div>{renderItems('slider')}</section>
-          <section aria-labelledby="homepage-cards-title"><div className="homepage-editor-section-heading"><div><h2 id="homepage-cards-title">Inspiration cards</h2><p>Use an internal path beginning with / or a full https:// link.</p></div><button type="button" onClick={() => addItem('cards')}>Add card</button></div>{renderItems('cards')}</section>
+          <section aria-labelledby="homepage-cards-title"><div className="homepage-editor-section-heading"><div><h2 id="homepage-cards-title">Inspiration cards</h2><p>Use an internal path beginning with / or a full https:// link. Published categories marked for the homepage appear automatically. <Link to="/admin/categories">Manage category pages →</Link></p></div><button type="button" onClick={() => addItem('cards')}>Add card</button></div>{renderItems('cards')}</section>
           <div className="homepage-editor-toolbar homepage-editor-bottom"><span>{dirty ? 'Unsaved changes' : 'All changes saved'}</span><button type="button" onClick={() => void save()} disabled={!dirty || saving || uploading !== null}>{saving ? 'Saving…' : 'Save homepage'}</button></div>
         </>}
       </section>

@@ -25,6 +25,8 @@ interface SearchBarNewProps {
     isSearching?: boolean;
     /** Enables property-specific nightly prices in the date picker for signed-in members. */
     hotelId?: number;
+    /** Keeps date/guest searches within a curated collection until the destination changes. */
+    collectionPath?: string;
 }
 
 interface LocationSuggestion {
@@ -183,7 +185,7 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
 const normalizeLocationDisplay = (raw: string) =>
     raw.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
 
-const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, isSearching = false, hotelId }) => {
+const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, isSearching = false, hotelId, collectionPath }) => {
     const [urlSearchParams, setUrlSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const routeLocation = useLocation();
@@ -587,7 +589,12 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
 
         persistGuestSession();
         locationChangedByUserRef.current = false;
-        navigate(`/search-results?${urlParams.toString()}`);
+        if (collectionPath && trimmedLocation === prefillLocation?.trim() && !selectedHotelId && !selectedLocationId) {
+            urlParams.delete('location');
+            navigate(`${collectionPath}?${urlParams.toString()}`);
+        } else {
+            navigate(`/search-results?${urlParams.toString()}`);
+        }
         if (onSearch) onSearch();
     };
 

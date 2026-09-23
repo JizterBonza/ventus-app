@@ -25,6 +25,7 @@
 .homepage-editor-fields { display: grid; gap: 12px; align-content: start; }
 .homepage-editor-fields label { display: block; font-weight: 600; }
 .homepage-editor-fields input { display: block; width: 100%; min-height: 42px; border: 1px solid #bbb; padding: 8px 10px; font-weight: 400; margin-top: 5px; }
+.homepage-editor-fields select { display: block; width: 100%; min-height: 42px; border: 1px solid #bbb; padding: 8px 10px; font-weight: 400; margin-top: 5px; background: #fff; }
 .homepage-editor-bottom { margin-top: 24px; }
 .homepage-editor-verification { max-width: 560px; border: 1px solid #d8d8d8; padding: 28px; background: #fff; }
 .homepage-editor-verification p { margin: 12px 0 24px; }

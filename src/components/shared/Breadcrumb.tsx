@@ -19,6 +19,18 @@ const Breadcrumb: React.FC<BreadcrumbProps> = () => {
         // Always start with Home
         const items: BreadcrumbItem[] = [{ label: "Home", path: "/" }];
 
+        if (pathnames[0] === 'categories') {
+            items.push({ label: 'Collections', path: '/#destinations' });
+            if (pathnames[1]) items.push({ label: pathnames[1].split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' '), active: true });
+            return items;
+        }
+        if (pathnames[0] === 'admin') {
+            items.push({ label: 'Admin' });
+            if (pathnames[1]) items.push({ label: pathnames[1] === 'categories' ? 'Category pages' : pathnames[1].charAt(0).toUpperCase() + pathnames[1].slice(1), path: `/admin/${pathnames[1]}`, active: pathnames.length === 2 });
+            if (pathnames[2]) items.push({ label: pathnames[2] === 'new' ? 'New category' : 'Edit category', active: true });
+            return items;
+        }
+
         // Special handling for hotel detail routes (/hotel/{id})
         if (pathnames.length === 2 && pathnames[0] === "hotel") {
             items.push({
