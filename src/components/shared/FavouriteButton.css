@@ -1,0 +1,15 @@
+.favourite-image, .header-image-container { position: relative; }
+.favourite-control { position: absolute; top: 14px; right: 14px; z-index: 5; }
+.hotel-favourite-button {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; min-width: 44px; padding: 0; border: 0; border-radius: 50%;
+  background: #fff; color: #242424; box-shadow: 0 2px 12px #0002; cursor: pointer;
+  transition: color .15s, box-shadow .15s;
+}
+.hotel-favourite-button:hover, .hotel-favourite-button.is-saved { background: #fff; color: #9c7746; }
+.hotel-favourite-button:focus-visible { outline: 3px solid #9c7746; outline-offset: 3px; }
+.hotel-favourite-button:disabled { cursor: wait; opacity: .7; }
+.favourite-error { position: absolute; top: 51px; right: 0; width: 220px; padding: 12px; background: #fff; color: #752c24; box-shadow: 0 2px 12px #0002; font-size: 13px; line-height: 1.5; }
+.hotel-card .card-image > a { display: block; width: 100%; height: 100%; }
+.home-pick-favourite { position: absolute; top: 14px; z-index: 8; }
+.home-pick-favourite .favourite-control { position: relative; inset: auto; }

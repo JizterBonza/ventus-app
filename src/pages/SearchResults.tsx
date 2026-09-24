@@ -1,3 +1,4 @@
+import FavouriteButton from "../components/shared/FavouriteButton";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
@@ -1030,15 +1031,17 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
                                                 className="hotel-result-row">
                                                 <div
                                                     className="hotel-card">
-                                                    <Link
-                                                        to={`/hotel/${hotel.id}${hotelLinkQuery ? `?${hotelLinkQuery}` : ""}`}
-                                                        className="card-image">
+                                                    <div className="card-image favourite-image">
+                                                    <Link to={`/hotel/${hotel.id}${hotelLinkQuery ? `?${hotelLinkQuery}` : ""}`}>
+
                                                         <ProgressiveImage
                                                             src={displayHotel.images?.[0]?.url || displayHotel.image}
                                                             alt={displayHotel.name}
                                                             priority={index < 3}
                                                         />
                                                     </Link>
+                                                    <FavouriteButton hotel={displayHotel} />
+                                                    </div>
                                                     <div 
                                                         className="card_content">
                                                         <div>

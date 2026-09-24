@@ -10,6 +10,7 @@ const { registerHomepageRoutes } = require('./homepageRoutes');
 const { registerCategoryRoutes } = require('./categoryRoutes');
 const { stripeIsConfigured, ensureStripeMembershipSchema, createStripeMembershipHandlers } = require('./stripeMembership');
 const { registerReservationRoutes } = require('./reservationRoutes');
+const { registerFavouritesRoutes } = require('./favouritesRoutes');
 const { isPublicHotelProxyRequest } = require('./reservationSupplier');
 
 const app = express();
@@ -415,6 +416,7 @@ const homepageService = registerHomepageRoutes(app, pool, authenticateToken);
 const { ensureHomepageSchema } = homepageService;
 const { ensureCategorySchema } = registerCategoryRoutes(app, pool, authenticateToken, homepageService);
 const reservationService = registerReservationRoutes(app, pool, authenticateToken, { getActiveSubscription });
+const favouritesService = registerFavouritesRoutes(app, pool, authenticateToken);
 
 // ============= AUTH ROUTES =============
 
@@ -1787,6 +1789,7 @@ const startServer = async () => {
     await ensureSubscriptionSchema();
     await ensureStripeMembershipSchema(pool);
     await reservationService.ensureSchema();
+    await favouritesService.ensureSchema();
     console.log('✓ Membership schema ready');
   } catch (error) {
     console.error('Membership schema initialization failed:', error);

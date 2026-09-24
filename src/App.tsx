@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { FavouritesProvider } from "./contexts/FavouritesContext";
 import ScrollToTop from "./components/shared/ScrollToTop";
 import ProtectedRoute from "./components/shared/ProtectedRoute";
 import Home from "./pages/Home";
@@ -61,6 +62,7 @@ function App() {
             <Router>
                 <ScrollToTop />
                 <AuthProvider>
+                    <FavouritesProvider>
                     <Routes>
                         {/* Public Routes */}
                         <Route path="/" element={<Home />} />
@@ -84,8 +86,8 @@ function App() {
                         <Route path="/signup" element={<Signup />} />
                         
                         {/* Favourites Route */}
-                        <Route path="/favorites" element={<Favourites />} />
-                        <Route path="/favourites" element={<Favourites />} />
+                        <Route path="/favorites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
+                        <Route path="/favourites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
                         
                         {/* Protected Routes - Require Authentication */}
                         <Route 
@@ -122,6 +124,7 @@ function App() {
                             }
                         />
                     </Routes>
+                </FavouritesProvider>
                 </AuthProvider>
             </Router>
         </div>

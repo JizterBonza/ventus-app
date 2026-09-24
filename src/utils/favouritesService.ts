@@ -1,76 +1,26 @@
+import { getAuthToken } from './authService';
 import { Hotel } from '../types/search';
 
-const FAVOURITES_KEY = 'ventus_favourites';
+export type FavouriteHotel = Pick<Hotel, 'id' | 'name' | 'location'> & Partial<Pick<Hotel, 'image' | 'description' | 'images'>>;
 
-/**
- * Get all favourite hotels
- */
-export const getFavourites = (): Hotel[] => {
-  try {
-    const favouritesStr = localStorage.getItem(FAVOURITES_KEY);
-    if (!favouritesStr) return [];
-    return JSON.parse(favouritesStr);
-  } catch (error) {
-    console.error('Error getting favourites:', error);
-    return [];
-  }
-};
+const base = process.env.REACT_APP_AUTH_API_URL
+  ? process.env.REACT_APP_AUTH_API_URL.replace(/\/auth\/?$/, '/favourites')
+  : process.env.NODE_ENV === 'production' ? 'https://ventus-backend.onrender.com/api/favourites' : '/api/favourites';
 
-/**
- * Check if a hotel is in favourites
- */
-export const isFavourite = (hotelId: number): boolean => {
-  const favourites = getFavourites();
-  return favourites.some(hotel => hotel.id === hotelId);
-};
+async function request(path = '', method = 'GET', hotel?: FavouriteHotel, signal?: AbortSignal) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to save your favourite hotels.');
+  const response = await fetch(`${base}${path}`, { method, signal, cache: 'no-store',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    ...(hotel ? { body: JSON.stringify({ hotel: { id: hotel.id, name: hotel.name, location: hotel.location,
+      description: hotel.description, image: hotel.images?.[0]?.url || hotel.image || '' } }) } : {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(response.status === 401 || response.status === 403
+    ? 'Please sign in again to manage your favourites.' : data.error || 'Unable to update your favourites. Please try again.');
+  return data;
+}
 
-/**
- * Add a hotel to favourites
- */
-export const addFavourite = (hotel: Hotel): void => {
-  try {
-    const favourites = getFavourites();
-    // Check if already exists
-    if (!favourites.some(h => h.id === hotel.id)) {
-      favourites.push(hotel);
-      localStorage.setItem(FAVOURITES_KEY, JSON.stringify(favourites));
-    }
-  } catch (error) {
-    console.error('Error adding favourite:', error);
-  }
-};
-
-/**
- * Remove a hotel from favourites
- */
-export const removeFavourite = (hotelId: number): void => {
-  try {
-    const favourites = getFavourites();
-    const filtered = favourites.filter(hotel => hotel.id !== hotelId);
-    localStorage.setItem(FAVOURITES_KEY, JSON.stringify(filtered));
-  } catch (error) {
-    console.error('Error removing favourite:', error);
-  }
-};
-
-/**
- * Toggle favourite status of a hotel
- */
-export const toggleFavourite = (hotel: Hotel): boolean => {
-  const isFav = isFavourite(hotel.id);
-  if (isFav) {
-    removeFavourite(hotel.id);
-    return false;
-  } else {
-    addFavourite(hotel);
-    return true;
-  }
-};
-
-/**
- * Clear all favourites
- */
-export const clearFavourites = (): void => {
-  localStorage.removeItem(FAVOURITES_KEY);
-};
-
+export const getFavourites = async (signal?: AbortSignal): Promise<FavouriteHotel[]> => (await request('', 'GET', undefined, signal)).hotels;
+export const addFavourite = async (hotel: FavouriteHotel): Promise<FavouriteHotel> => (await request(`/${hotel.id}`, 'PUT', hotel)).hotel;
+export const removeFavourite = async (hotelId: number): Promise<void> => { await request(`/${hotelId}`, 'DELETE'); };

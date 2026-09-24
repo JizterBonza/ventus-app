@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useLayoutEffect, useMemo } from "react";
+import FavouriteButton from "../components/shared/FavouriteButton";
+import React, { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import { Hotel } from "../types/search";
@@ -56,6 +57,18 @@ const Home: React.FC = () => {
     const loadingSliderHotels = false;
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
+    const [featuredHeartLeft, setFeaturedHeartLeft] = useState<number | null>(null);
+    const placeFeaturedHeart = useCallback(() => {
+        const gallery = sliderContainerRef.current;
+        const slide = gallery?.querySelector('.slick-current');
+        if (!gallery || !slide) return;
+        const image = slide.getBoundingClientRect();
+        const container = gallery.getBoundingClientRect();
+        setFeaturedHeartLeft(Math.max(14, Math.min(image.right, container.right) - container.left - 58));
+    }, []);
+    useLayoutEffect(() => { if (sliderReady) placeFeaturedHeart(); }, [sliderReady, currentSlide, placeFeaturedHeart]);
+    const activeSlide = sliderHotels[currentSlide];
+    const activeHotelId = activeSlide?.href.match(/^\/hotel\/(\d+)(?:[/?#]|$)/)?.[1];
 
     useEffect(() => {
         let cancelled = false;
@@ -303,6 +316,7 @@ const Home: React.FC = () => {
                                 });
                             }
                             $hotelHeaderGallery.css({ overflow: "hidden" });
+                            placeFeaturedHeart();
                         };
 
                         const applySliderLayout = (runSetPosition: boolean) => {
@@ -343,6 +357,7 @@ const Home: React.FC = () => {
                                 });
                             }
                             $hotelHeaderGallery.css({ overflow: "hidden" });
+                            placeFeaturedHeart();
 
                             if (runSetPosition) {
                                 const slickInstance = $hotelHeaderGallery[0]?.slick;
@@ -392,6 +407,7 @@ const Home: React.FC = () => {
 
                         $hotelHeaderGallery.on("beforeChange", function () {
                             setTrackMarginOnly();
+                            setFeaturedHeartLeft(null);
                         });
 
                         setSliderReady(true);
@@ -418,7 +434,7 @@ const Home: React.FC = () => {
                 $(window).off("resize.sliderWidths");
             }
         };
-    }, [sliderHotels, loadingSliderHotels]);
+    }, [sliderHotels, loadingSliderHotels, placeFeaturedHeart]);
 
     const renderStars = (rating: number) => {
         return Array.from({ length: 5 }, (_, i) => (
@@ -504,6 +520,9 @@ const Home: React.FC = () => {
 
             {/* Hero Slider Section */}
             <section className="page-header" style={{  overflow: "hidden", position: "relative" }}>
+                {sliderReady && activeHotelId && featuredHeartLeft !== null && <div className="home-pick-favourite" style={{ left: featuredHeartLeft }}>
+                    <FavouriteButton key={activeHotelId} hotel={{ id: Number(activeHotelId), name: activeSlide.title, location: activeSlide.subtitle, image: activeSlide.image }} />
+                </div>}
                 {(!sliderReady || loadingSliderHotels) && (
                     <div style={{
                         position: "absolute",
@@ -707,18 +726,17 @@ const Home: React.FC = () => {
                                                 key={hotel.id}
                                                 className={viewMode === "grid" ? "col-md-4 mb-4" : "mb-5"}
                                             >
-                                                <Link
-                                                    to={`/hotel/${hotel.id}`}
-                                                    title="Explore {room.name}"
-                                                    className="card hotel-card"
-                                                >
+                                                <div className="card hotel-card">
                                                    {/* <div className="card-overlay">Find out more</div> */} 
-                                                    <div className="card-image">
+                                                    <div className="card-image favourite-image">
+                                                        <Link to={`/hotel/${hotel.id}`}>
                                                         <ProgressiveImage
                                                             src={displayHotel.images?.[0]?.url || displayHotel.image}
                                                             alt={displayHotel.name}
                                                             style={{ minHeight: "262px" }}
                                                         />
+                                                        </Link>
+                                                        <FavouriteButton hotel={displayHotel} />
                                                         {loadingDetails && !detailedHotel && (
                                                             <div className="loading-overlay">
                                                                 <div
@@ -731,11 +749,11 @@ const Home: React.FC = () => {
                                                         )}
                                                     </div>
                                                     <div className="card-content">
-                                                        <h4>{displayHotel.name}</h4>
+                                                        <h4><Link to={`/hotel/${hotel.id}`}>{displayHotel.name}</Link></h4>
                                                         <div className="card-description">
-                                                        <span>View Hotels <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
+                                                        <Link to={`/hotel/${hotel.id}`}>View hotel <svg xmlns="http://www.w3.org/2000/svg" width="5" height="9" viewBox="0 0 5 9" fill="none">
 <path d="M0.275377 8.58105L4.42822 4.42821L0.275378 0.275363" stroke="white" stroke-width="0.778659"/>
-</svg></span>
+</svg></Link>
                                                             {/* 
                                                             {displayHotel.description
                                                                 ? displayHotel.description.length > 150
@@ -779,7 +797,7 @@ const Home: React.FC = () => {
                                                         </div>
                                                         */}
                                                     </div>
-                                                </Link>
+                                                </div>
                                             </div>
                                         );
                                     })}

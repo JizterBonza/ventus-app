@@ -126,7 +126,7 @@ const UserMenu: React.FC = () => {
             </li>
             <li>
               <Link
-                to="/favorites"
+                to="/favourites"
                 onClick={() => setIsOpen(false)}
                 style={{
                   display: 'block',
@@ -139,7 +139,7 @@ const UserMenu: React.FC = () => {
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <i className="ti-heart" style={{ marginRight: '10px' }}></i>
-                Favorites
+                My Favourites
               </Link>
             </li>
             <li>
