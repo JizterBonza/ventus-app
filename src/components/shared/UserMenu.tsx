@@ -41,7 +41,10 @@ const UserMenu: React.FC = () => {
   return (
     <div className="user-menu" ref={dropdownRef} style={{ position: 'relative' }}>
       <button
+        type="button"
         className="user-menu-button"
+        aria-label="Account menu"
+        aria-expanded={isOpen}
         onClick={toggleDropdown}
         style={{
           background: '#aa8453',
@@ -103,24 +106,6 @@ const UserMenu: React.FC = () => {
           </div>
 
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            <li>
-              <Link
-                to="/profile"
-                onClick={() => setIsOpen(false)}
-                style={{
-                  display: 'block',
-                  padding: '12px 15px',
-                  color: '#333',
-                  textDecoration: 'none',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <i className="ti-user" style={{ marginRight: '10px' }}></i>
-                My Profile
-              </Link>
-            </li>
             <li>
               <Link
                 to="/my-bookings"
@@ -207,4 +192,3 @@ const UserMenu: React.FC = () => {
 };
 
 export default UserMenu;
-
