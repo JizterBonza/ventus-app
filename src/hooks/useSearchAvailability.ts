@@ -24,26 +24,32 @@ export function useSearchAvailability(criteria: SearchCriteria, searchKey: strin
         let active = 0;
         let disposed = false;
         let currencyRequest: Promise<string> | undefined;
+        const checkHotel = async (hotelId: number) => {
+            let entry: HotelResult = null;
+            try {
+                currencyRequest ??= getVisitorCurrency();
+                const currency = await currencyRequest;
+                if (disposed) return;
+                const results = await checkHotelAvailability({ ...criteria, hotel_id: hotelId, currency });
+                const result = results.find((item) => Number(item.hotel_id) === hotelId);
+                if (result) entry = { result, currency };
+            } catch {
+                // Only this hotel failed. Other results and queued checks remain usable.
+            } finally {
+                if (!disposed) {
+                    setState((current) => current.key === key
+                        ? { key, hotels: { ...current.hotels, [hotelId]: entry } }
+                        : current);
+                }
+                active -= 1;
+                pump();
+            }
+        };
         const pump = () => {
             while (!disposed && active < 4 && pending.length > 0) {
                 const hotelId = pending.shift()!;
                 active += 1;
-                currencyRequest ??= getVisitorCurrency();
-                void currencyRequest.then(async (currency): Promise<HotelResult> => {
-                    if (disposed) return null;
-                    const results = await checkHotelAvailability({ ...criteria, hotel_id: hotelId, currency });
-                    const result = results.find((item) => Number(item.hotel_id) === hotelId);
-                    return result ? { result, currency } : null;
-                }).catch(() => null).then((result) => {
-                    if (!disposed) {
-                        setState((current) => current.key === key
-                            ? { key, hotels: { ...current.hotels, [hotelId]: result } }
-                            : current);
-                    }
-                }).finally(() => {
-                    active -= 1;
-                    pump();
-                });
+                void checkHotel(hotelId);
             }
         };
         queueRef.current = {
