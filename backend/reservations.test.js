@@ -12,10 +12,15 @@ const booking = (id, extra = {}) => ({ id, hotel_id: 42, hotel_name: 'Example Ho
   rooms: [{ guest_name: 'Sample Guest', room_type: 'Suite', adults: 2, cancellation_policy: 'Free before 12:00 hotel local time on 30 November. Later cancellation: one night.', benefits: ['Breakfast'] }], ...extra });
 const payload = (session = 'session-one') => ({ session_id: session, rate_index: 'rate-1', hotel_id: 42,
   start_date: '2027-12-01', end_date: '2027-12-04', guest_name: 'Sample Guest', guest_email: 'guest@example.test',
-  rooms: [{ adults: 2, children: [], send_email_to_guest: false }] });
+  rooms: [{ adults: 2, children: [], send_email_to_guest: true }] });
 
-test('booking validation preserves LE email and rejects raw cards and invalid dates', () => {
-  assert.equal(bookingPayload(payload()).rooms[0].send_email_to_guest, true);
+test('booking validation suppresses LE guest email and rejects raw cards and invalid dates', () => {
+  assert.equal(bookingPayload(payload()).rooms[0].send_email_to_guest, false);
+  const multiRoom = bookingPayload({ ...payload(), rooms: [
+    { adults: 2, send_email_to_guest: true }, { adults: 1, send_email_to_guest: true },
+  ] });
+  assert.deepEqual(multiRoom.rooms.map((room) => room.send_email_to_guest), [false, false]);
+  assert.equal(multiRoom.rooms[0].guest_email, 'guest@example.test');
   assert.throws(() => bookingPayload({ ...payload(), start_date: '2027-02-31' }));
   assert.throws(() => bookingPayload({ ...payload(), credit_card: { number: 'ignored' } }));
   const sanitized = sanitizeBooking({ ...booking(1), credit_card: { number: 'private' }, guest_email: 'private', links: { href: 'private' } });
@@ -94,12 +99,12 @@ test('reservation ownership, lifecycle, cancellation and durable email with Post
     const api = (path = '', body, user = 1) => request(`/api/reservations${path}`, body, user);
     const check = async (name, fn) => { await fn(); t.diagnostic(name); };
 
-    await check('a confirmed booking is owned by the signed-in member and LE email stays enabled', async () => {
+    await check('a confirmed booking is owned by the signed-in member and LE guest email is suppressed', async () => {
       assert.equal((await api('', undefined, 0)).status, 401);
       const response = await request('/v2/hotels/bookings', { ...payload(), user_id: 2 });
       assert.equal(response.status, 200);
       assert.equal((await response.json()).id, '101');
-      assert.equal(calls[0].body.rooms[0].send_email_to_guest, true);
+      assert.equal(calls[0].body.rooms[0].send_email_to_guest, false);
       const row = (await pool.query('SELECT * FROM reservations WHERE supplier_id = 101')).rows[0];
       assert.equal(row.user_id, 1);
       assert.equal(row.guest_email, 'guest@example.test');

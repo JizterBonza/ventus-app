@@ -45,12 +45,12 @@ describe('reservation submission', () => {
     window.localStorage.setItem('ventus_auth_user', JSON.stringify({ id: '1' }));
   });
   afterEach(() => { jest.restoreAllMocks(); window.localStorage.clear(); });
-  it('keeps LE email enabled and submits through the authenticated Ventus backend', async () => {
+  it('requests Ventus-only guest emails through the authenticated backend for every room', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 101, state: 'booked', confirmation_number: 'CONF101' }), { status: 200 }));
-    expect((await submitBooking(request)).message).toContain('Booking confirmed');
+    expect((await submitBooking({ ...request, rooms: [{ adults: 2 }, { adults: 1 }] })).message).toContain('Booking confirmed');
     expect(String(fetchMock.mock.calls[0][0])).toContain('/v2/hotels/bookings');
     expect(fetchMock.mock.calls[0][1]?.headers).toEqual(expect.objectContaining({ Authorization: 'Bearer member-token' }));
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).rooms[0].send_email_to_guest).toBe(true);
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).rooms.map((room: { send_email_to_guest: boolean }) => room.send_email_to_guest)).toEqual([false, false]);
   });
   it('does not retry an uncertain booking or claim that a pending booking is confirmed', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network timeout'));

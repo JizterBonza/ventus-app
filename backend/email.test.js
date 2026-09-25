@@ -161,7 +161,7 @@ test('existing EmailJS fallback remains available without Mailgun or Resend cred
   assert.equal(JSON.parse(requests[0].body).template_params.reset_url, reset.resetUrl);
 });
 
-test('confirmed reservation email is branded, escaped and in addition to LE', async () => {
+test('confirmed reservation email is branded, escaped and directs guests to Ventus', async () => {
   process.env.BOOKING_FROM_EMAIL = 'Ventus Travel <bookings@mg.example.com>';
   await sendReservationEmail({ recipient: 'guest@example.test', kind: 'confirmed', booking: {
     id: '123', hotel_name: '<Hotel>', check_in: '2027-12-01', check_out: '2027-12-04',
@@ -172,7 +172,9 @@ test('confirmed reservation email is branded, escaped and in addition to LE', as
   assert.equal(requests[0].body.get('from'), 'Ventus Travel <bookings@mg.example.com>');
   assert.equal(requests[0].body.get('to'), 'guest@example.test');
   assert.match(requests[0].body.get('html'), /&lt;Hotel&gt;/);
-  assert.match(requests[0].body.get('text'), /in addition to the confirmation from Little Emperors/);
+  assert.doesNotMatch(requests[0].body.get('text'), /Little Emperors|in addition to/);
+  assert.doesNotMatch(requests[0].body.get('html'), /Little Emperors|in addition to/);
+  assert.match(requests[0].body.get('text'), /view and manage this booking in the Ventus account/);
   assert.match(requests[0].body.get('html'), /my-bookings/);
   assert.doesNotMatch(requests[0].body.get('text'), /No payment has been taken/);
 });

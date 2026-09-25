@@ -1380,10 +1380,10 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
     rooms: bookingData.rooms.map((room, index) => ({
       adults: room.adults,
       children: room.children || [],
+      send_email_to_guest: false,
       ...(index === 0 ? {
         guest_name: bookingData.guestName.trim(),
         guest_email: bookingData.guestEmail.trim(),
-        send_email_to_guest: true,
       } : {}),
     })),
   };

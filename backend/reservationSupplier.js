@@ -52,7 +52,10 @@ function bookingPayload(body) {
     guest_name: body.guest_name.trim().slice(0, 200), guest_email: body.guest_email.trim().toLowerCase(),
     ...(body.eta != null && /^([01]?\d|2[0-3])$/.test(String(body.eta)) ? { eta: String(body.eta) } : {}),
     rooms: body.rooms.map((room, index) => ({ adults: room.adults, children: (room.children || []).map((child) => ({ age: child.age })),
-      ...(index === 0 ? { guest_name: body.guest_name.trim().slice(0, 200), guest_email: body.guest_email.trim().toLowerCase(), send_email_to_guest: true } : {}),
+      // Ventus sends the guest confirmation through its durable email queue.
+      // Enforce this for every room, including requests from older website versions.
+      send_email_to_guest: false,
+      ...(index === 0 ? { guest_name: body.guest_name.trim().slice(0, 200), guest_email: body.guest_email.trim().toLowerCase() } : {}),
     })),
   };
 }

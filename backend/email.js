@@ -325,7 +325,7 @@ const sendReservationEmail = async ({ recipient, kind, booking }) => {
   ];
   const note = isCancelled
     ? 'The supplier has confirmed cancellation. Any charges or refunds remain subject to the reservation terms.'
-    : 'This Ventus confirmation is in addition to the confirmation from Little Emperors. Hotel payment and cancellation terms apply. Your booking is available to manage in the Ventus account used to make it.';
+    : 'Hotel payment and cancellation terms apply. You can view and manage this booking in the Ventus account used to make it.';
   await sendAccountEmail({
     from, to: [recipient], reply_to: process.env.BOOKING_NOTIFICATION_EMAIL || 'daniella@ventustravel.co.uk',
     subject: `${isCancelled ? 'Booking cancelled' : 'Booking confirmed'} · Ventus Travel · ${booking.confirmation_number || booking.id}`,
