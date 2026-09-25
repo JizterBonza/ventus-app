@@ -2,9 +2,11 @@
 
 ## Current implementation
 
-Confirmed LE bookings now also queue a separate branded Ventus confirmation and
-cancellation email through the reservation service. LE's own guest email remains
-enabled. This is distinct from the booking-request acknowledgement described below.
+Confirmed bookings queue a branded Ventus confirmation and cancellation email
+through the reservation service. New booking requests set `send_email_to_guest`
+to `false` on every room, suppressing LE's guest booking confirmation. This does
+not change supplier notifications for historical bookings. This is distinct from
+the booking-request acknowledgement described below.
 See [reservation setup](RESERVATIONS_SETUP.md) for durable retries, status updates,
 historical linking and deployment checks.
 

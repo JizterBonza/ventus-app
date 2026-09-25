@@ -282,7 +282,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 <div className="alert alert-success booking-confirmation" role="status">
                     <h3>Booking received</h3>
                     <p>{message}</p>
-                    <p>Once confirmed, you’ll receive emails from Ventus and Little Emperors at {guestEmail}.</p>
+                    <p>Once confirmed, you’ll receive a Ventus confirmation email at {guestEmail}.</p>
                     <Link to="/my-bookings" className="btn btn-outline-dark">View My Bookings</Link>
                 </div>
             ) : (
