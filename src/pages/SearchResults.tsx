@@ -2,9 +2,9 @@ import FavouriteButton from "../components/shared/FavouriteButton";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
+import { useSearchAvailability } from "../hooks/useSearchAvailability";
 import { AvailabilityResponse, Hotel } from "../types/search";
-import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, searchHotelsByLocation, searchPredictions, checkHotelAvailability } from "../utils/api";
-import { getVisitorCurrency } from "../utils/currency";
+import { getHotelDetails, getHotelDetailsBatch, searchHotelsByInspiration, searchHotelsByLocation, searchPredictions } from "../utils/api";
 import { getLiveNightlyPrice } from "../utils/livePricing";
 import { getEditorialCollection } from "../data/editorialCollections";
 import { loadEditorialCollectionHotels } from "../utils/editorialCollections";
@@ -28,31 +28,6 @@ import Membership from "../components/shared/Membership";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
 
-async function settleWithConcurrency<T, R>(
-    items: T[],
-    concurrency: number,
-    worker: (item: T, index: number) => Promise<R>
-): Promise<PromiseSettledResult<R>[]> {
-    const results: PromiseSettledResult<R>[] = new Array(items.length);
-    let nextIndex = 0;
-
-    const runWorker = async () => {
-        while (nextIndex < items.length) {
-            const index = nextIndex++;
-            try {
-                results[index] = { status: "fulfilled", value: await worker(items[index], index) };
-            } catch (reason) {
-                results[index] = { status: "rejected", reason };
-            }
-        }
-    };
-
-    await Promise.all(
-        Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker())
-    );
-    return results;
-}
-
 type FilterOption = {
     key: string;
     label: string;
@@ -62,35 +37,6 @@ type FilterOption = {
 type AvailabilityMemberBenefits = {
     benefits: string[];
     footnotes: string[];
-};
-
-const availabilityResultToHotel = (result: AvailabilityResponse): Hotel => {
-    const info = result.hotel_info || {};
-    const images = Array.isArray(info.images) ? info.images.filter((image: any) => image?.url) : [];
-    const coords = Array.isArray(info.coords) ? info.coords : [];
-    return {
-        id: Number(result.hotel_id),
-        name: result.hotel_name || "Unknown Hotel",
-        location: info.location || "",
-        description: info.description || "",
-        latitude: typeof coords[0] === "number" ? coords[0] : undefined,
-        longitude: typeof coords[1] === "number" ? coords[1] : undefined,
-        display_order: result.display_order ?? undefined,
-        amenities: [],
-        hotel_information: [],
-        benefits: Array.isArray(info.benefits) ? info.benefits : [],
-        benefits_footnotes: Array.isArray(info.benefits_footnotes) ? info.benefits_footnotes : [],
-        images,
-        image: images[0]?.url,
-        videos: [],
-        available: result.is_available,
-        price: typeof result.lowest_rate === "number"
-            ? result.lowest_rate
-            : result.lowest_rate?.rate_in_requested_currency ?? result.lowest_rate?.rate,
-        links: {
-            self: result.links?.hotel || result.links?.self || { href: "", method: "GET" },
-        },
-    };
 };
 
 const getAvailabilityMemberBenefits = (
@@ -239,6 +185,24 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
     const { hotels, loading, error, searchAdvanced, clearResults } = useSearch();
     const { isAuthenticated, hasActiveMembership } = useAuth();
     
+    /** Dates + rooms actually selected in the header search (URL, falling back to cookies), for availability checks and hotel links. */
+    const searchDatesAndRooms = useMemo(() => {
+        const urlCheckIn = urlSearchParams.get("checkIn");
+        const urlCheckOut = urlSearchParams.get("checkOut");
+
+        const defaults = getDefaultSearchDateStrings();
+        const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
+        const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
+        const start_date = ci ? dateToStorageString(ci) : defaults.start_date;
+        const requestedEndDate = co ? dateToStorageString(co) : defaults.end_date;
+        const end_date = ensureMinimumCheckOutDateString(start_date, requestedEndDate);
+
+        const slots = resolveSearchRoomSlots(urlSearchParams);
+        const rooms = searchRoomSlotsToAvailabilityRooms(slots);
+
+        return { start_date, end_date, rooms };
+    }, [urlSearchParams]);
+
     const [searchParams, setSearchParams] = useState({
         location: "",
         priceRange: "all",
@@ -250,19 +214,27 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
     const [loadingMoreHotels, setLoadingMoreHotels] = useState(false);
     const [inspirationResults, setInspirationResults] = useState<Hotel[]>([]);
     const [collectionError, setCollectionError] = useState<string | null>(null);
-    const [availabilityTarget, setAvailabilityTarget] = useState<{ location_id?: number; inspiration_id?: number } | null>(null);
     const [collectionHasFullDetails, setCollectionHasFullDetails] = useState(false);
     const [completedSearchKey, setCompletedSearchKey] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const detailsRequestRef = useRef(0);
-    /** Starting-from price per hotel id (search dates, visitor currency). Only when authenticated. */
-    const [startingFromPrices, setStartingFromPrices] = useState<Record<number, { rate: number; currency: string }>>({});
-    const priceSearchKeyRef = useRef("");
-    const [loadingStartingFromPrices, setLoadingStartingFromPrices] = useState(true);
-    /** Availability per hotel id for the search dates/rooms; false = confirmed not available. */
-    const [hotelAvailability, setHotelAvailability] = useState<Record<number, boolean>>({});
-    /** Exact, date-specific member benefits returned with the live room rates. */
-    const [availabilityMemberBenefits, setAvailabilityMemberBenefits] = useState<Record<number, AvailabilityMemberBenefits>>({});
+    const { results: liveResults, requestHotels } = useSearchAvailability(searchDatesAndRooms, currentSearchKey, hasActiveMembership);
+    const startingFromPrices = useMemo(() => Object.fromEntries(
+        Object.entries(liveResults).flatMap(([id, entry]) => {
+            const price = entry && getLiveNightlyPrice(entry.result, entry.currency);
+            return price ? [[id, price]] : [];
+        })
+    ), [liveResults]);
+    const hotelAvailability = useMemo(() => Object.fromEntries(
+        Object.entries(liveResults).flatMap(([id, entry]) => typeof entry?.result.is_available === 'boolean'
+            ? [[id, entry.result.is_available]] : [])
+    ), [liveResults]);
+    const availabilityMemberBenefits = useMemo(() => Object.fromEntries(
+        Object.entries(liveResults).flatMap(([id, entry]) => {
+            const benefits = entry && getAvailabilityMemberBenefits(entry.result);
+            return benefits ? [[id, benefits]] : [];
+        })
+    ), [liveResults]);
     /** How many results are rendered/checked at once; "View More" reveals the next batch of 10. */
     const [visibleCount, setVisibleCount] = useState(10);
     const [filtersOpen, setFiltersOpen] = useState(false);
@@ -367,7 +339,6 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
                 return filtered;
         }
     }, [enrichedHotels, searchParams.priceRange, searchParams.rating, searchParams.sortBy, selectedFacilities, selectedHealthWellness, selectedFamily, startingFromPrices]);
-    const hotelIdsKey = useMemo(() => filteredHotels.map((h) => h.id).join(","), [filteredHotels]);
     // Availability is secondary information. Never keep the result cards behind its much
     // slower network calls; tags and member pricing can fill in progressively.
     const isSearching =
@@ -375,32 +346,14 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
         loadingInspiration ||
         (hasSearchCriteria && completedSearchKey !== currentSearchKey);
 
-    // Start over at 10 whenever the result set itself changes (new search or filter/sort change).
+    // New prices may reorder cards; they must not collapse an expanded result list.
     useEffect(() => {
         setVisibleCount(10);
-    }, [hotelIdsKey]);
+    }, [currentSearchKey, searchParams.priceRange, searchParams.rating, searchParams.sortBy, selectedFacilities, selectedHealthWellness, selectedFamily]);
 
     const visibleHotels = useMemo(() => filteredHotels.slice(0, visibleCount), [filteredHotels, visibleCount]);
     const visibleHotelIdsKey = useMemo(() => visibleHotels.map((h) => h.id).join(","), [visibleHotels]);
 
-    /** Dates + rooms actually selected in the header search (URL, falling back to cookies), for availability checks and hotel links. */
-    const searchDatesAndRooms = useMemo(() => {
-        const urlCheckIn = urlSearchParams.get("checkIn");
-        const urlCheckOut = urlSearchParams.get("checkOut");
-
-        const defaults = getDefaultSearchDateStrings();
-        const ci = parseSearchDate(urlCheckIn || getCookie(SEARCH_SESSION_COOKIES.CHECK_IN) || "");
-        const co = parseSearchDate(urlCheckOut || getCookie(SEARCH_SESSION_COOKIES.CHECK_OUT) || "");
-        const start_date = ci ? dateToStorageString(ci) : defaults.start_date;
-        const requestedEndDate = co ? dateToStorageString(co) : defaults.end_date;
-        const end_date = ensureMinimumCheckOutDateString(start_date, requestedEndDate);
-
-        const slots = resolveSearchRoomSlots(urlSearchParams);
-        const rooms = searchRoomSlotsToAvailabilityRooms(slots);
-
-        return { start_date, end_date, rooms };
-    }, [urlSearchParams]);
-    const searchDatesAndRoomsKey = `${searchDatesAndRooms.start_date}|${searchDatesAndRooms.end_date}|${JSON.stringify(searchDatesAndRooms.rooms)}`;
     /**
      * Query string to carry over to the hotel detail page so it uses these exact dates/guests
      * instead of guessing from cookies. Deliberately excludes `location` (and other search-only
@@ -443,77 +396,24 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
         clearResults();
         setInspirationResults([]);
         setCollectionError(null);
-        setAvailabilityTarget(null);
         setCollectionHasFullDetails(false);
         setLoadingMoreHotels(false);
 
-        const showFirstPage = (
-            target: { location_id?: number; inspiration_id?: number },
-            firstHotels: Hotel[],
-        ) => {
+        const showFirstPage = (firstHotels: Hotel[]) => {
             if (cancelled || firstHotels.length === 0) return;
             setInspirationResults(firstHotels);
-            setAvailabilityTarget(target);
             setCollectionHasFullDetails(true);
             setLoadingInspiration(false);
             setLoadingMoreHotels(true);
             setCompletedSearchKey(currentSearchKey);
         };
 
-        const loadFullCollection = async (
-            target: { location_id?: number; inspiration_id?: number },
-            catalogueRequest: Promise<Hotel[]>,
-        ) => {
-            const visibleCatalogueRequest = catalogueRequest.then((catalogue) => {
-                // Do not wait for the slower member-availability request to show every
-                // catalogue hotel. Extra availability-only properties can join later.
-                if (!cancelled && catalogue.length > 0) {
-                    setInspirationResults(catalogue);
-                    setAvailabilityTarget(target);
-                    setCollectionHasFullDetails(true);
-                    setLoadingInspiration(false);
-                    setCompletedSearchKey(currentSearchKey);
-                }
-                return catalogue;
-            });
-            const availabilityRequest = hasActiveMembership
-                ? getVisitorCurrency().then((currency) => checkHotelAvailability({
-                    ...target,
-                    ...searchDatesAndRooms,
-                    currency,
-                }))
-                : Promise.resolve<AvailabilityResponse[]>([]);
-            const [catalogueResult, availabilityResult] = await Promise.allSettled([
-                visibleCatalogueRequest,
-                availabilityRequest,
-            ]);
-            const catalogue = catalogueResult.status === "fulfilled" ? catalogueResult.value : [];
-            const aggregateAvailability = availabilityResult.status === "fulfilled" ? availabilityResult.value : [];
-            if (catalogue.length === 0 && aggregateAvailability.length === 0) {
-                throw new Error("No hotel collection could be loaded");
-            }
-
-            const catalogueById = new Map(catalogue.map((hotel) => [hotel.id, hotel]));
-            const availabilityHotels = aggregateAvailability.map((result) => {
-                const summary = availabilityResultToHotel(result);
-                const existing = catalogueById.get(summary.id);
-                catalogueById.delete(summary.id);
-                return existing
-                    ? {
-                        ...summary,
-                        ...existing,
-                        available: result.is_available,
-                        price: summary.price ?? existing.price,
-                    }
-                    : summary;
-            });
-            const hotels = aggregateAvailability.length > 0
-                ? [...availabilityHotels, ...Array.from(catalogueById.values())]
-                : catalogue;
+        const loadFullCollection = async (catalogueRequest: Promise<Hotel[]>) => {
+            const catalogue = await catalogueRequest;
             if (!cancelled) {
-                setInspirationResults(hotels);
-                setAvailabilityTarget(target);
-                setCollectionHasFullDetails(catalogue.length > 0);
+                // Keep every catalogue hotel, regardless of individual rate failures.
+                setInspirationResults(catalogue);
+                setCollectionHasFullDetails(true);
                 setLoadingMoreHotels(false);
             }
         };
@@ -544,10 +444,8 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
             // falling back to text search if the ID doesn't exist in this environment
             const numericInspirationId = Number(inspirationId);
             try {
-                const target = { inspiration_id: numericInspirationId };
                 await loadFullCollection(
-                    target,
-                    searchHotelsByInspiration(numericInspirationId, 10, (firstHotels) => showFirstPage(target, firstHotels)),
+                    searchHotelsByInspiration(numericInspirationId, 10, showFirstPage),
                 );
             } catch {
                 if (!cancelled && title) await searchAdvanced({ query: title, limit: 100 });
@@ -565,10 +463,8 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
                     locationId = exactMatch?.id || matches[0]?.id || null;
                 }
                 if (locationId) {
-                    const target = { location_id: locationId };
                     await loadFullCollection(
-                        target,
-                        searchHotelsByLocation(locationId, 10, (firstHotels) => showFirstPage(target, firstHotels)),
+                        searchHotelsByLocation(locationId, 10, showFirstPage),
                     );
                 } else {
                     await searchAdvanced({ query: location, limit: 100 });
@@ -591,7 +487,7 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
         return () => {
             cancelled = true;
         };
-    }, [category, urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults, hasActiveMembership, searchDatesAndRooms]);
+    }, [category, urlSearchParams, currentSearchKey, requestedHotelId, searchAdvanced, clearResults]);
 
     // Enrich every result in the background. Cards remain visible while these calls complete,
     // while the complete detail set gives the filter counts a reliable source of truth.
@@ -694,116 +590,9 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
         }
     }, [baseHotels.length, isSearching]);
 
-    // A destination/inspiration availability request returns every hotel's price in one response.
-    // Exact-property/fallback searches retain the small progressive batch request.
     useEffect(() => {
-        if (!hasActiveMembership || visibleHotels.length === 0) {
-            setStartingFromPrices({});
-            setHotelAvailability({});
-            setAvailabilityMemberBenefits({});
-            setLoadingStartingFromPrices(false);
-            return;
-        }
-        let cancelled = false;
-        setLoadingStartingFromPrices(true);
-        const priceSearchKey = `${currentSearchKey}|${searchDatesAndRoomsKey}`;
-        if (priceSearchKeyRef.current !== priceSearchKey) {
-            priceSearchKeyRef.current = priceSearchKey;
-            setStartingFromPrices({});
-            setHotelAvailability({});
-            setAvailabilityMemberBenefits({});
-        }
-        const { start_date, end_date, rooms } = searchDatesAndRooms;
-
-        (async () => {
-            try {
-                const currency = await getVisitorCurrency();
-                if (cancelled) return;
-                let availabilityRows: Array<{ hotel: Hotel; result: AvailabilityResponse }> = [];
-                if (availabilityTarget?.location_id || availabilityTarget?.inspiration_id) {
-                    const aggregateResults = await checkHotelAvailability({
-                        ...availabilityTarget,
-                        start_date,
-                        end_date,
-                        currency,
-                        rooms,
-                    });
-                    const hotelById = new Map(baseHotels.map((hotel) => [hotel.id, hotel]));
-                    const aggregateHotels = aggregateResults.map((result) => {
-                        const summary = availabilityResultToHotel(result);
-                        const existing = hotelById.get(summary.id);
-                        return existing
-                            ? {
-                                ...summary,
-                                ...existing,
-                                available: result.is_available,
-                                price: summary.price ?? existing.price,
-                                benefits: summary.benefits?.length ? summary.benefits : existing.benefits,
-                                benefits_footnotes: summary.benefits_footnotes?.length
-                                    ? summary.benefits_footnotes
-                                    : existing.benefits_footnotes,
-                            }
-                            : summary;
-                    });
-                    availabilityRows = aggregateResults.map((result, index) => ({
-                        hotel: aggregateHotels[index],
-                        result,
-                    }));
-                    if (!cancelled) {
-                        setInspirationResults((current) => {
-                            const currentIds = current.map((hotel) => hotel.id).join(",");
-                            const aggregateIds = aggregateHotels.map((hotel) => hotel.id).join(",");
-                            return currentIds === aggregateIds ? current : aggregateHotels;
-                        });
-                    }
-                } else {
-                    const results = await settleWithConcurrency(visibleHotels, 4, (hotel) =>
-                        checkHotelAvailability({
-                            hotel_id: hotel.id,
-                            start_date,
-                            end_date,
-                            currency,
-                            rooms,
-                        })
-                    );
-                    availabilityRows = results.flatMap((settled, index) => {
-                        const hotel = visibleHotels[index];
-                        const result = settled.status === "fulfilled" ? settled.value?.[0] : null;
-                        return hotel && result ? [{ hotel, result }] : [];
-                    });
-                }
-                if (cancelled) return;
-                const nextPrices: Record<number, { rate: number; currency: string }> = {};
-                const nextAvailability: Record<number, boolean> = {};
-                const nextBenefits: Record<number, AvailabilityMemberBenefits> = {};
-                availabilityRows.forEach(({ hotel, result: first }) => {
-                    nextAvailability[hotel.id] = !!first?.is_available;
-                    const exactBenefits = first ? getAvailabilityMemberBenefits(first) : null;
-                    if (exactBenefits) nextBenefits[hotel.id] = exactBenefits;
-                    const livePrice = getLiveNightlyPrice(first, currency);
-                    if (livePrice) nextPrices[hotel.id] = livePrice;
-                });
-                if (!cancelled) {
-                    setStartingFromPrices((prev) => ({ ...prev, ...nextPrices }));
-                    setHotelAvailability((prev) => ({ ...prev, ...nextAvailability }));
-                    setAvailabilityMemberBenefits((prev) => ({ ...prev, ...nextBenefits }));
-                }
-            } catch {
-                if (!cancelled) {
-                    setStartingFromPrices({});
-                    setHotelAvailability({});
-                    setAvailabilityMemberBenefits({});
-                }
-            } finally {
-                if (!cancelled) setLoadingStartingFromPrices(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-        // Stable scalar keys deliberately prevent a price update from retriggering the same search.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasActiveMembership, visibleHotelIdsKey, searchDatesAndRoomsKey, currentSearchKey, availabilityTarget?.location_id, availabilityTarget?.inspiration_id, baseHotels]);
+        if (!isSearching) requestHotels(visibleHotelIdsKey.split(',').filter(Boolean).map(Number));
+    }, [requestHotels, visibleHotelIdsKey, isSearching]);
 
     return (
         <div className="search-page">
@@ -1017,7 +806,7 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
                                         const detailedHotel = detailedHotels.find((dh) => dh.id === hotel.id);
                                         const displayHotel = detailedHotel || hotel;
                                         const exactMemberBenefits = availabilityMemberBenefits[hotel.id];
-                                        const liveBenefitsPending = hasActiveMembership && loadingStartingFromPrices && !exactMemberBenefits;
+                                        const liveBenefitsPending = hasActiveMembership && liveResults[hotel.id] === undefined;
                                         const memberBenefits = hasActiveMembership
                                             ? liveBenefitsPending ? [] : exactMemberBenefits?.benefits || Array.from(new Set((displayHotel.benefits || []).filter((benefit) => benefit.trim())))
                                             : [];
@@ -1069,7 +858,7 @@ const SearchResults: React.FC<{ category?: CategoryPage }> = ({ category }) => {
                                                             )}
                                                             {hasActiveMembership && (() => {
                                                                 const priceInfo = startingFromPrices[hotel.id];
-                                                                const isLoading = loadingStartingFromPrices && priceInfo == null;
+                                                                const isLoading = liveResults[hotel.id] === undefined;
                                                                 if (isLoading) {
                                                                     return (
                                                                         <p className="hotel-price">
