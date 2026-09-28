@@ -61,7 +61,7 @@ const Navigation: React.FC = () => {
                         </Link>
                     </li>
                     <li className="nav-item">
-                        <Link className="nav-link" to="/the-magazine">
+                        <Link className="nav-link" target="_blank" to="https://www.ventustravel.co.uk/the-magazine">
                             The Magazine
                         </Link>
                     </li>

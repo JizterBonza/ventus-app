@@ -153,20 +153,20 @@ const About: React.FC = () => {
                             <h2 id="adventures-heading">Follow along on my adventures</h2>
                             <a
                                 className="ventus-instagram-link"
-                                href="https://www.instagram.com/daniellagoodwin_/"
+                                href="https://www.instagram.com/ventustravel_/"
                                 target="_blank"
                                 rel="noreferrer"
-                                aria-label="Follow Daniella on Instagram"
+                                aria-label="Follow Ventus Travel on Instagram"
                             >
                                 <InstagramIcon />
                             </a>
                         </div>
                         <a
                             className="ventus-instagram-grid"
-                            href="https://www.instagram.com/daniellagoodwin_/"
+                            href="https://www.instagram.com/ventustravel_/"
                             target="_blank"
                             rel="noreferrer"
-                            aria-label="View Daniella's travel adventures on Instagram"
+                            aria-label="View Ventus Travel on Instagram"
                         >
                             {instagramImages.map((src, index) => (
                                 <img
