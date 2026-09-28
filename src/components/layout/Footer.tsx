@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
                                         <Link target="_blank" to="https://www.ventustravel.co.uk/destinations">Destinations</Link>
                                     </li>
                                     <li>
-                                        <Link target="_blank" to="https://www.ventustravel.co.uk/the-magazine">The Magazine</Link>
+                                        <Link to="/the-magazine">The Magazine</Link>
                                     </li>
                                 </ul>
                                 <ul>
