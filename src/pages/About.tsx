@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/layout/Layout";
+import InstagramFeed from "../components/InstagramFeed";
 import "./RecoveryPages.css";
 
 const amenities = [
@@ -13,10 +14,6 @@ const amenities = [
     { icon: "vip", text: "VIP status" },
     { icon: "crown", text: "Access to our exclusive relationships we have built" },
 ];
-
-const instagramImages = Array.from({ length: 6 }, (_, index) =>
-    `/assets/img/recovered/instagram-${index + 1}.webp`
-);
 
 const AmenityIcon: React.FC<{ name: string }> = ({ name }) => {
     const paths: Record<string, React.ReactNode> = {
@@ -161,23 +158,7 @@ const About: React.FC = () => {
                                 <InstagramIcon />
                             </a>
                         </div>
-                        <a
-                            className="ventus-instagram-grid"
-                            href="https://www.instagram.com/ventustravel_/"
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label="View Ventus Travel on Instagram"
-                        >
-                            {instagramImages.map((src, index) => (
-                                <img
-                                    src={src}
-                                    alt={`Daniella's travel adventure ${index + 1}`}
-                                    key={src}
-                                    loading="lazy"
-                                    decoding="async"
-                                />
-                            ))}
-                        </a>
+                        <InstagramFeed />
                     </div>
                 </section>
 

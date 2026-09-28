@@ -323,27 +323,26 @@
     stroke: none;
 }
 
-.ventus-instagram-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
+.ventus-instagram-feed {
+    min-width: 0;
     width: 100%;
 }
 
-.ventus-instagram-grid img {
+.ventus-instagram-feed .instagram-media {
     display: block;
-    aspect-ratio: 1;
-    width: 100%;
-    object-fit: cover;
-    transition: filter 250ms ease, transform 250ms ease;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
 }
 
-.ventus-instagram-grid:hover img:not(:hover) {
-    filter: saturate(.75) brightness(.88);
-}
-
-.ventus-instagram-grid img:hover {
-    transform: scale(1.02);
+.ventus-instagram-profile {
+    display: block;
+    margin-top: 1rem;
+    color: inherit;
+    font-size: .875rem;
+    text-align: center;
+    text-decoration: underline;
 }
 
 /* About: verified testimonial */
@@ -890,11 +889,6 @@
         font-size: 1.75rem;
     }
 
-    .ventus-instagram-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: .75rem;
-    }
-
     .ventus-testimonial-copy blockquote {
         font-size: 1.1rem;
     }
@@ -981,7 +975,6 @@
         animation: none;
     }
 
-    .ventus-instagram-grid img,
     .ventus-outline-link svg,
     .ventus-solid-link svg {
         transition: none;
