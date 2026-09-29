@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { instagramFeedUrl, instagramProfileUrl, InstagramPhoto, loadInstagramPhotos } from "../utils/instagramFeed";
 
-const profileUrl = "https://www.instagram.com/ventustravel_/";
+const profileUrl = instagramProfileUrl;
 const embedScriptUrl = "https://www.instagram.com/embed.js";
 
-const InstagramFeed: React.FC = () => {
+const NativeInstagramFeed: React.FC = () => {
     const embed = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -51,6 +52,41 @@ const InstagramFeed: React.FC = () => {
             <a className="ventus-instagram-profile" href={profileUrl} target="_blank" rel="noreferrer">
                 View @ventustravel_ on Instagram
             </a>
+        </div>
+    );
+};
+
+const InstagramFeed: React.FC<{ feedUrl?: string }> = ({ feedUrl = instagramFeedUrl }) => {
+    const [photos, setPhotos] = useState<InstagramPhoto[]>([]);
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        setPhotos([]);
+        setFailed(false);
+        if (feedUrl) {
+            loadInstagramPhotos(feedUrl).then(
+                (items) => { if (active) setPhotos(items); },
+                () => { if (active) setFailed(true); }
+            );
+        }
+        return () => { active = false; };
+    }, [feedUrl]);
+
+    if (!feedUrl || failed) return <NativeInstagramFeed />;
+
+    return (
+        <div className="ventus-instagram-feed" aria-busy={!photos.length}>
+            {photos.length ? (
+                <div className="ventus-instagram-grid">
+                    {photos.map(photo => (
+                        <a key={photo.id} href={photo.href} target="_blank" rel="noreferrer">
+                            <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async"
+                                onError={() => setFailed(true)} />
+                        </a>
+                    ))}
+                </div>
+            ) : <p role="status">Loading the latest Instagram photos…</p>}
         </div>
     );
 };

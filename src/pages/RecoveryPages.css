@@ -328,6 +328,38 @@
     width: 100%;
 }
 
+.ventus-instagram-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.ventus-instagram-grid a {
+    display: block;
+    aspect-ratio: 1;
+    overflow: hidden;
+}
+
+.ventus-instagram-grid a:focus-visible {
+    outline: 2px solid var(--ventus-gold);
+    outline-offset: 3px;
+}
+
+.ventus-instagram-grid img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0;
+}
+
+@media (max-width: 479px) {
+    .ventus-instagram-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .75rem;
+    }
+}
+
 .ventus-instagram-feed .instagram-media {
     display: block;
     width: 100% !important;
