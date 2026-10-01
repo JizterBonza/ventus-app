@@ -1,6 +1,6 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail } = require('./email');
+const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail, sendNewsletterConfirmation } = require('./email');
 
 const originalEnvironment = { ...process.env };
 const originalFetch = global.fetch;
@@ -177,4 +177,19 @@ test('confirmed reservation email is branded, escaped and directs guests to Vent
   assert.match(requests[0].body.get('text'), /view and manage this booking in the Ventus account/);
   assert.match(requests[0].body.get('html'), /my-bookings/);
   assert.doesNotMatch(requests[0].body.get('text'), /No payment has been taken/);
+});
+
+
+test('newsletter confirmation explains the no-card trial and includes confirmation and unsubscribe links', async () => {
+  const confirmUrl = 'https://ventus.example/email-preferences#action=confirm&token=example';
+  const unsubscribeUrl = 'https://ventus.example/email-preferences#action=unsubscribe&token=example';
+  await sendNewsletterConfirmation({ to: 'newsletter@example.test', confirmUrl, unsubscribeUrl });
+  const body = requests[0].body;
+  assert.deepEqual(body.getAll('to'), ['newsletter@example.test']);
+  assert.ok(body.get('text').includes(confirmUrl));
+  assert.ok(body.get('text').includes(unsubscribeUrl));
+  assert.match(body.get('text'), /No card is required and there is no automatic charge/);
+  assert.match(body.get('html'), /Confirm my emails/);
+  assert.match(body.get('html'), /Unsubscribe/);
+  assert.equal(body.get('o:tracking'), 'no');
 });

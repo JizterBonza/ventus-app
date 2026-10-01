@@ -13,6 +13,7 @@ import SearchBarNew from "../components/shared/SearchBarNew";
 import ProgressiveImage from "../components/shared/ProgressiveImage";
 import PageHeader from "../components/shared/PageHeader";
 
+import TrialWelcomePopup from "../components/shared/TrialWelcomePopup";
 import Membership from "../components/shared/Membership";
 import QuoteForm from "../components/shared/QuoteForm";
 import BannerCTA from "../components/shared/BannerCTA";
@@ -993,6 +994,7 @@ const Home: React.FC = () => {
             <QuoteForm />
             <BannerCTA />
             <Footer />
+            <TrialWelcomePopup />
         </div>
     );
 };

@@ -338,4 +338,21 @@ const sendReservationEmail = async ({ recipient, kind, booking }) => {
   }, provider);
 };
 
-module.exports = { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail };
+const sendNewsletterConfirmation = async ({ to, confirmUrl, unsubscribeUrl }) => {
+  const provider = getAccountEmailProvider();
+  if (!provider) throw new Error('Email delivery is not configured');
+  const explanation = 'Discover exceptional hotel rates, complimentary breakfasts, hotel credits and upgrades where available. Create a Ventus account and try membership free for seven days. No card is required and there is no automatic charge. Afterwards, you can choose an annual membership for £299. Hotel bookings are paid separately under the hotel’s terms.';
+  return sendAccountEmail({
+    from: process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL,
+    to: [to], reply_to: process.env.PASSWORD_RESET_REPLY_TO || 'daniella@ventustravel.co.uk',
+    subject: 'Discover more from every stay · Ventus Travel',
+    text: `Thanks for your interest in Ventus.\n\n${explanation}\n\nConfirm that you would like Ventus emails about new hotels, destinations, membership benefits and saving opportunities: ${confirmUrl}\n\nThis confirmation link expires in 24 hours.\n\nUnsubscribe: ${unsubscribeUrl}\n\nIf you did not request this email, you can ignore it. You will not join the mailing list unless you confirm.`,
+    html: brandedEmail({ eyebrow: 'Discover Ventus', title: 'More from every stay', greeting: 'Thank you for your interest in Ventus.',
+      body: `${escapeHtml(explanation)}<br><br>Confirm your email to receive new hotels, destinations, membership benefits and saving opportunities.`,
+      actionLabel: 'Confirm my emails', actionUrl: confirmUrl,
+      footnote: `This link expires in 24 hours. If you did not request this email, you can ignore it. You will not join the mailing list unless you confirm.<br><br><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe</a> at any time. Potential savings vary by hotel, destination, dates and bookings.`,
+    }),
+  }, provider);
+};
+
+module.exports = { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail, sendNewsletterConfirmation };

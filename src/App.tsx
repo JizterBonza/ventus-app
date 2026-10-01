@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookieSettings from "./pages/CookieSettings";
+import EmailPreferences from "./pages/EmailPreferences";
 import Subscription from "./pages/Subscription";
 import HomepageEditor from "./pages/HomepageEditor";
 import MyBookings from "./pages/MyBookings";
@@ -84,6 +85,7 @@ function App() {
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
                         <Route path="/signup" element={<Signup />} />
+                        <Route path="/email-preferences" element={<EmailPreferences />} />
                         
                         {/* Favourites Route */}
                         <Route path="/favorites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
