@@ -254,7 +254,7 @@ const Subscription: React.FC = () => {
                       </>
                     ) : trialEnded ? (
                       <>
-                        <p>Your trial ended on {formattedTrialExpiry}. Choose an annual membership to continue viewing member prices and making new bookings.</p>
+                        <p>Choose an annual membership to continue viewing member prices and making new bookings.</p>
                         <p>You can still view and manage your existing reservations in <Link to="/my-bookings">My Bookings</Link>.</p>
                       </>
                     ) : (

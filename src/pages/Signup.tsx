@@ -116,7 +116,7 @@ const Signup: React.FC = () => {
                 {validationErrors.agreeToTerms && <div className="invalid-feedback">{validationErrors.agreeToTerms}</div>}
               </div>
               <button type="submit" className="btn btn-primary btn-lg butn-dark w-100 mt-4" disabled={isSubmitting}>{isSubmitting ? 'Creating your account…' : 'Create account and confirm email'}</button>
-              <p className="signup-supporting-copy text-center mt-3 mb-0">Confirm your email before continuing to secure payment. No charge is made at this step.</p>
+              <p className="signup-supporting-copy text-center mt-3 mb-0">Confirm your email, then sign in to start your free trial or choose annual membership. No charge is made at this step.</p>
             </form>
             <p className="signup-supporting-copy text-center mt-4 mb-0">Already have an account? <Link to="/login"><strong>Login here</strong></Link></p>
           </div>
