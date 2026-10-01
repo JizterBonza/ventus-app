@@ -18,7 +18,7 @@ test('homepage offer is accessible, keeps the no-card terms and dismisses for th
     const { unmount } = render(<TrialWelcomePopup />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     act(() => jest.advanceTimersByTime(1200));
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('THE TRAVEL MEMBERSHIP THAT PAYS FOR ITSELF*');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('The travel membership that pays for itself*');
     expect(screen.getByText('No card required. No automatic charge.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'START YOUR 7 DAY FREE TRIAL' })).toHaveAttribute('href', '/signup');
     const close = screen.getByRole('button', { name: 'Close free trial offer' });

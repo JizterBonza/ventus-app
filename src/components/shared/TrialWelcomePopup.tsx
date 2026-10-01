@@ -77,21 +77,30 @@ const TrialWelcomePopup: React.FC = () => {
             <section className="trial-welcome-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="trial-welcome-title">
                 <button className="trial-welcome-close" type="button" onClick={dismiss} ref={closeRef} aria-label="Close free trial offer">×</button>
                 <div className="trial-welcome-scroll">
-                    <div className="trial-welcome-offer">
-                        <p className="trial-welcome-brand">VENTUS TRAVEL</p>
-                        <h2 id="trial-welcome-title">THE TRAVEL MEMBERSHIP<br />THAT PAYS FOR ITSELF*</h2>
-                        <p className="trial-welcome-tagline">Because you deserve more from every stay.</p>
-                        <p>Join Ventus today and unlock exceptional hotel rates and exclusive benefits at the world’s most iconic addresses.</p>
-                        <div className="trial-welcome-promise"><strong>7 DAYS.</strong><span>COMPLIMENTARY MEMBERSHIP.</span><span>JUST MORE FROM EVERY STAY.</span></div>
-                        <Link className="trial-welcome-button" to={isAuthenticated ? '/subscription' : '/signup'} onClick={dismiss}>START YOUR 7 DAY FREE TRIAL</Link>
-                        <p className="trial-welcome-reassurance">No card required. No automatic charge.</p>
-                        <p className="trial-welcome-signin">Already a member? <Link to="/login" onClick={dismiss}>Sign in</Link></p>
-                        <p className="trial-welcome-terms">Enjoy your first 7 days complimentary. Afterwards, choose an annual membership for £299. <Link to="/terms-of-service" onClick={dismiss}>Membership terms</Link> apply.</p>
-                        <p className="trial-welcome-footnote">* Potential savings vary depending on hotel, destination, travel dates and bookings. Individual savings may exceed the annual membership fee.</p>
+                    <div className="trial-welcome-hero">
+                        <div className="trial-welcome-photo">
+                            <img className="trial-welcome-destination" src="/assets/img/featured/villa-treville-positano.webp" alt="Sunlit gardens at Villa Treville in Positano" />
+                            <img className="trial-welcome-logo" src="/assets/img/logo.svg" alt="Ventus Travel" />
+                            <div className="trial-welcome-caption"><p>Villa Treville</p><span>Positano, Italy</span></div>
+                        </div>
+                        <div className="trial-welcome-offer">
+                            <p className="trial-welcome-eyebrow">THE VENTUS MEMBERSHIP</p>
+                            <h2 id="trial-welcome-title">The travel membership<br /><em>that pays for itself*</em></h2>
+                            <p className="trial-welcome-tagline">Because you deserve more from every stay.</p>
+                            <p className="trial-welcome-description">Join Ventus today and unlock exceptional hotel rates and exclusive benefits at the world’s most iconic addresses.</p>
+                            <div className="trial-welcome-promise"><strong>7 <span>days.</span></strong><div><span>COMPLIMENTARY MEMBERSHIP.</span><span>Just more from every stay.</span></div></div>
+                            <Link className="trial-welcome-button trial-welcome-primary" to={isAuthenticated ? '/subscription' : '/signup'} onClick={dismiss}><span>START YOUR 7 DAY FREE TRIAL</span><span aria-hidden="true">↗</span></Link>
+                            <p className="trial-welcome-reassurance"><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m3 8 3 3 7-7" /></svg>No card required. No automatic charge.</p>
+                            <p className="trial-welcome-signin">Already a member? <Link to="/login" onClick={dismiss}>Sign in</Link></p>
+                            <p className="trial-welcome-terms">Enjoy your first 7 days complimentary. Afterwards, choose an annual membership for £299. <Link to="/terms-of-service" onClick={dismiss}>Membership terms</Link> apply.</p>
+                            <p className="trial-welcome-footnote">* Potential savings vary depending on hotel, destination, travel dates and bookings. Individual savings may exceed the annual membership fee.</p>
+                        </div>
                     </div>
                     <div className="trial-welcome-discover">
-                        <h3>WANT TO SEE HOW MUCH YOU COULD SAVE?</h3>
-                        <p>Sign up to discover how Ventus works, explore member rates and see how much you could save on your next luxury stay.</p>
+                        <div className="trial-welcome-discover-copy">
+                            <h3>Want to see how much<br />you could save?</h3>
+                            <p>Sign up to discover how Ventus works, explore member rates and see how much you could save on your next luxury stay.</p>
+                        </div>
                         {status === 'success' ? <p className="trial-welcome-message" role="status">{message}</p> : (
                             <form onSubmit={subscribe}>
                                 <div className="trial-welcome-email-row">
