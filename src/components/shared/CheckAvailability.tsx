@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 import { getNightlyPrice, getStayTotal } from "../../utils/livePricing";
+import { DEFAULT_DISPLAY_CURRENCY } from "../../utils/currency";
 import { getRoomTypeImages } from "../../utils/roomImages";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -20,33 +21,6 @@ import {
     searchRoomSlotsToBookingInitialRooms,
     type SearchRoomSlot,
 } from "../../utils/searchSession";
-
-const SUPPORTED_CURRENCIES = ["PHP", "USD", "EUR", "GBP", "JPY", "AUD", "SGD"] as const;
-
-/** Country/region code → supported currency. Used for both locale and IP-based detection. */
-const COUNTRY_TO_CURRENCY: Record<string, string> = {
-    PH: "PHP", US: "USD", GB: "GBP", UK: "GBP", JP: "JPY", AU: "AUD", SG: "SGD",
-    AT: "EUR", BE: "EUR", CY: "EUR", DE: "EUR", EE: "EUR", ES: "EUR", FI: "EUR",
-    FR: "EUR", GR: "EUR", IE: "EUR", IT: "EUR", LT: "EUR", LU: "EUR", LV: "EUR",
-    MT: "EUR", NL: "EUR", PT: "EUR", SI: "EUR", SK: "EUR",
-};
-
-function currencyForCountry(countryCode: string): string {
-    const code = (countryCode || "").toUpperCase();
-    const currency = COUNTRY_TO_CURRENCY[code];
-    return currency && SUPPORTED_CURRENCIES.includes(currency as (typeof SUPPORTED_CURRENCIES)[number]) ? currency : "PHP";
-}
-
-/** Fallback when IP geolocation is not available (e.g. SSR or request failed). */
-function getCurrencyFromLocale(): string {
-    try {
-        const locale = typeof navigator !== "undefined" ? navigator.language : "";
-        const region = (locale.split("-")[1] || "").toUpperCase();
-        return currencyForCountry(region);
-    } catch {
-        return "PHP";
-    }
-}
 
 interface AvailabilityResultWithFormData extends AvailabilityResponse {
     formData?: {
@@ -142,7 +116,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         const dates = getDefaultSearchDateStrings();
         return {
             ...dates,
-            currency: getCurrencyFromLocale(),
+            currency: DEFAULT_DISPLAY_CURRENCY,
             adults: 1,
         };
     });
@@ -198,31 +172,6 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         }
         setSearchHydrated(true);
     }, [urlSearchParams, setSearchParams]);
-
-    // Set default currency from user's location (IP-based, so VPN/location changes are reflected)
-    useEffect(() => {
-        let cancelled = false;
-        const controller = new AbortController();
-        (async () => {
-            try {
-                const res = await fetch("https://ipapi.co/json/", {
-                    signal: controller.signal,
-                });
-                if (!res.ok || cancelled) return;
-                const data = await res.json();
-                const country = data?.country_code;
-                if (cancelled || !country) return;
-                const currency = currencyForCountry(country);
-                setFormData((prev) => ({ ...prev, currency }));
-            } catch {
-                // Keep locale-based default on network/parse error or abort
-            }
-        })();
-        return () => {
-            cancelled = true;
-            controller.abort();
-        };
-    }, []);
 
     const [isChecking, setIsChecking] = useState(false);
     const [availabilityResult, setAvailabilityResult] = useState<AvailabilityResponse | null>(null);

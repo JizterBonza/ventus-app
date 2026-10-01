@@ -44,6 +44,13 @@ test("does not invent a currency", () => {
     expect(getNightlyPrice({ rate: 500 })).toBeNull();
 });
 
+test("a GBP request never relabels a hotel's local amount when conversion is unavailable", () => {
+    expect(getNightlyPrice({ rate: 23108, currency_code: 'PHP' }, 'PHP', 'GBP'))
+        .toEqual({ rate: 23108, currency: 'PHP' });
+    expect(getStayTotal({ total_to_book: 46216, currency_code: 'PHP' }, 'PHP', 'GBP'))
+        .toEqual({ rate: 46216, currency: 'PHP' });
+});
+
 test("does not present a nightly rate as a booking total", () => {
     expect(getStayTotal({ rate: 500, currency_code: "GBP" })).toBeNull();
     expect(getStayTotal({ total_to_book: 1500, currency_code: "GBP" })).toEqual({ rate: 1500, currency: "GBP" });
