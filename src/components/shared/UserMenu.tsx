@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDisplayCurrency } from '../../hooks/useDisplayCurrency';
+import { DISPLAY_CURRENCIES, setDisplayCurrency } from '../../utils/currency';
+import './UserMenu.css';
 
 const UserMenu: React.FC = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const currency = useDisplayCurrency();
+  const currencyId = useId();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -166,6 +171,18 @@ const UserMenu: React.FC = () => {
                 <i className="ti-settings" style={{ marginRight: '10px' }}></i>
                 Settings
               </Link>
+            </li>
+            <li className="user-menu-currency">
+              <label htmlFor={currencyId}>
+                <i className="ti-world" aria-hidden="true"></i>
+                Currency
+              </label>
+              <select id={currencyId} value={currency} onChange={(event) => setDisplayCurrency(event.target.value)} aria-describedby={`${currencyId}-help`}>
+                {DISPLAY_CURRENCIES.map(({ code, name }) => (
+                  <option key={code} value={code}>{code} — {name}</option>
+                ))}
+              </select>
+              <p id={`${currencyId}-help`}>For hotel prices. Hotels may charge in their local currency.</p>
             </li>
           </ul>
 

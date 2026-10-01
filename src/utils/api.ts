@@ -1297,12 +1297,14 @@ export const getHotelCalendarRates = async (
       );
     };
 
-    let response = await fetchCalendar(normalizedCurrency);
+    let responseCurrency = normalizedCurrency;
+    let response = await fetchCalendar(responseCurrency);
     // The supplier's availability endpoint supports more currencies than its
     // calendar endpoint. Fall back to its GBP calendar instead of leaving the
     // date picker blank for visitors whose local currency is rejected.
     if (!response.ok && normalizedCurrency !== 'GBP' && (response.status === 400 || response.status === 422)) {
-      response = await fetchCalendar('GBP');
+      responseCurrency = 'GBP';
+      response = await fetchCalendar(responseCurrency);
     }
 
     if (!response.ok) {
@@ -1316,7 +1318,7 @@ export const getHotelCalendarRates = async (
       .map((item: any) => ({
         date: item.date,
         rate: item.rate ?? null,
-        currency: item.currency || normalizedCurrency,
+        currency: item.currency || responseCurrency,
         is_closed: Boolean(item.is_closed),
       }));
 

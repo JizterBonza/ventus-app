@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate } from "../../types/search";
 import { checkHotelAvailability } from "../../utils/api";
 import { getNightlyPrice, getStayTotal } from "../../utils/livePricing";
-import { DEFAULT_DISPLAY_CURRENCY } from "../../utils/currency";
+import { useDisplayCurrency } from "../../hooks/useDisplayCurrency";
 import { getRoomTypeImages } from "../../utils/roomImages";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -111,12 +111,12 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
     onRateSelected,
 }) => {
     const { isAuthenticated, hasActiveMembership } = useAuth();
+    const displayCurrency = useDisplayCurrency();
     const [urlSearchParams, setSearchParams] = useSearchParams();
     const [formData, setFormData] = useState(() => {
         const dates = getDefaultSearchDateStrings();
         return {
             ...dates,
-            currency: DEFAULT_DISPLAY_CURRENCY,
             adults: 1,
         };
     });
@@ -194,7 +194,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         if (formData.adults < 1) {
             return "Number of adults must be at least 1";
         }
-        if (!formData.currency) {
+        if (!displayCurrency) {
             return "Please select a currency";
         }
         return null;
@@ -293,7 +293,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                 start_date: formData.start_date,
                 end_date: formData.end_date,
                 adults: formData.adults,
-                currency: formData.currency,
+                currency: displayCurrency,
                 ...(initialRooms ? { initialRooms } : {}),
             },
             selectedRateIndex: chosenRateIndex || undefined,
@@ -334,7 +334,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
             hotel_id: hotelId,
             start_date: formData.start_date,
             end_date: formData.end_date,
-            currency: formData.currency,
+            currency: displayCurrency,
             rooms: roomsPayload,
         };
 
@@ -378,7 +378,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         formData.start_date,
         formData.end_date,
         formData.adults,
-        formData.currency,
+        displayCurrency,
         searchRoomSlots,
         urlSearchParams,
         recheckNonce,
@@ -412,9 +412,9 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
         rate: Rate | Record<string, any>,
         fallbackCurrency: string
     ): { value: number | null; currency: string | null; isStayTotal: boolean } => {
-        const nightly = getNightlyPrice(rate, fallbackCurrency, formData.currency);
+        const nightly = getNightlyPrice(rate, fallbackCurrency, displayCurrency);
         if (nightly) return { value: nightly.rate, currency: nightly.currency, isStayTotal: false };
-        const total = getStayTotal(rate, fallbackCurrency, formData.currency);
+        const total = getStayTotal(rate, fallbackCurrency, displayCurrency);
         if (total) return { value: total.rate, currency: total.currency, isStayTotal: true };
         return { value: null, currency: null, isStayTotal: false };
     };
@@ -601,7 +601,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                             {roomRates.map((rate, rateIndex) => {
                                                                 const { value, currency, isStayTotal } = getRateValueAndCurrency(
                                                                     rate as Rate,
-                                                                    roomType.currency ?? availabilityResult.default_currency ?? formData.currency
+                                                                    roomType.currency ?? availabilityResult.default_currency ?? displayCurrency
                                                                 );
                                                                 const rateTitle = (rate as Rate).title || `Rate ${rateIndex + 1}`;
                                                                 const cancellationPolicy =

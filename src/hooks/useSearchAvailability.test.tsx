@@ -1,11 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useSearchAvailability } from './useSearchAvailability';
 import { checkHotelAvailability } from '../utils/api';
-import { getVisitorCurrency } from '../utils/currency';
+import { setDisplayCurrency } from '../utils/currency';
 import { AvailabilityResponse } from '../types/search';
 
 jest.mock('../utils/api', () => ({ checkHotelAvailability: jest.fn() }));
-jest.mock('../utils/currency', () => ({ getVisitorCurrency: jest.fn() }));
 const criteria = { start_date: '2026-12-23', end_date: '2026-12-26', rooms: [{ adults: 2 }] };
 const response = (id: number, rate = 608) => [{ hotel_id: id, is_available: true, lowest_rate: rate, default_currency: 'GBP' }] as AvailabilityResponse[];
 const deferred = () => {
@@ -16,8 +15,9 @@ const deferred = () => {
 };
 beforeEach(() => {
     jest.resetAllMocks();
-    (getVisitorCurrency as jest.Mock).mockResolvedValue('GBP');
+    localStorage.clear();
 });
+afterEach(() => localStorage.clear());
 
 test('shows successful prices progressively, isolates errors and caps simultaneous hotel checks at four', async () => {
     const calls = Array.from({ length: 6 }, deferred);
@@ -86,4 +86,21 @@ test('mismatched supplier hotels are not displayed as another hotel’s price', 
     const { result } = renderHook(() => useSearchAvailability(criteria, 'UK', true));
     act(() => result.current.requestHotels([1]));
     await waitFor(() => expect(result.current.results[1]).toBeNull());
+});
+
+test('a currency change refreshes visible hotels and discards old queued prices', async () => {
+    const old = deferred();
+    (checkHotelAvailability as jest.Mock).mockImplementation(({ currency, hotel_id }) => currency === 'GBP'
+        ? old.promise : Promise.resolve(response(hotel_id, 700)));
+    const { result } = renderHook(() => useSearchAvailability(criteria, 'UK', true));
+    act(() => result.current.requestHotels([1, 2, 3, 4, 5]));
+    await waitFor(() => expect(checkHotelAvailability).toHaveBeenCalledTimes(4));
+    act(() => setDisplayCurrency('EUR'));
+    expect(result.current.results).toEqual({});
+    act(() => result.current.requestHotels([1]));
+    await waitFor(() => expect(result.current.results[1]?.currency).toBe('EUR'));
+    await act(async () => old.resolve(response(1, 608)));
+    expect(result.current.results[1]?.result.lowest_rate).toBe(700);
+    expect(checkHotelAvailability).toHaveBeenCalledTimes(5);
+    expect(checkHotelAvailability).toHaveBeenLastCalledWith({ ...criteria, hotel_id: 1, currency: 'EUR' });
 });

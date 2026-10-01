@@ -77,7 +77,7 @@ describe('getHotelCalendarRates', () => {
         headers: { 'Content-Type': 'application/json' },
       }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        content: [{ date: '2026-09-16', rate: '1,800', currency: 'GBP', is_closed: false }],
+        content: [{ date: '2026-09-16', rate: '1,800', is_closed: false }],
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

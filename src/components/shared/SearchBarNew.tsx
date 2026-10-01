@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { getHotelCalendarRates, searchPredictions } from "../../utils/api";
-import { getVisitorCurrency } from "../../utils/currency";
+import { useDisplayCurrency } from "../../hooks/useDisplayCurrency";
 import { useAuth } from "../../contexts/AuthContext";
 import type { HotelCalendarRate } from "../../types/search";
 import {
@@ -190,6 +190,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
     const navigate = useNavigate();
     const routeLocation = useLocation();
     const { hasActiveMembership } = useAuth();
+    const currency = useDisplayCurrency();
 
     const [location, setLocation] = useState("");
     const [checkIn, setCheckIn] = useState<Date | null>(() => {
@@ -287,10 +288,10 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         }
 
         let cancelled = false;
+        setCalendarRates({});
         setCalendarRatesLoading(true);
         void (async () => {
             try {
-                const currency = await getVisitorCurrency();
                 const rates = await getHotelCalendarRates(calendarHotelId, currency);
                 if (cancelled) return;
                 setCalendarRates(
@@ -306,7 +307,7 @@ const SearchBarNew: React.FC<SearchBarNewProps> = ({ onSearch, prefillLocation, 
         return () => {
             cancelled = true;
         };
-    }, [calendarHotelId, hasActiveMembership, showCalendar]);
+    }, [calendarHotelId, hasActiveMembership, showCalendar, currency]);
 
     // Close dropdowns on outside click
     useEffect(() => {

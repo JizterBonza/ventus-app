@@ -16,7 +16,6 @@ jest.mock('../utils/api', () => ({
     searchHotelsByLocation: jest.fn(), searchHotelsByInspiration: jest.fn(), searchPredictions: jest.fn(),
     getHotelDetails: jest.fn(), getHotelDetailsBatch: jest.fn(), checkHotelAvailability: jest.fn(),
 }));
-jest.mock('../utils/currency', () => ({ getVisitorCurrency: () => Promise.resolve('GBP') }));
 jest.mock('../components/shared/FavouriteButton', () => () => null);
 jest.mock('../components/layout/Header', () => () => null);
 jest.mock('../components/layout/Footer', () => () => null);

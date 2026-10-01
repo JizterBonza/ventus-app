@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AvailabilityParams, AvailabilityResponse } from '../types/search';
 import { checkHotelAvailability } from '../utils/api';
-import { getVisitorCurrency } from '../utils/currency';
+import { useDisplayCurrency } from './useDisplayCurrency';
 
 type SearchCriteria = Pick<AvailabilityParams, 'start_date' | 'end_date' | 'rooms'>;
 type HotelResult = { result: AvailabilityResponse; currency: string } | null;
@@ -9,7 +9,8 @@ type SearchState = { key: string; hotels: Record<number, HotelResult> };
 
 /** Search-card prices only. Booking forms always obtain a fresh supplier session. */
 export function useSearchAvailability(criteria: SearchCriteria, searchKey: string, enabled: boolean) {
-    const key = JSON.stringify([searchKey, criteria.start_date, criteria.end_date, criteria.rooms]);
+    const currency = useDisplayCurrency();
+    const key = JSON.stringify([searchKey, criteria.start_date, criteria.end_date, criteria.rooms, currency]);
     const [state, setState] = useState<SearchState>({ key, hotels: {} });
     const queueRef = useRef<{ key: string; enqueue: (ids: number[]) => void } | null>(null);
 
@@ -23,13 +24,9 @@ export function useSearchAvailability(criteria: SearchCriteria, searchKey: strin
         const pending: number[] = [];
         let active = 0;
         let disposed = false;
-        let currencyRequest: Promise<string> | undefined;
         const checkHotel = async (hotelId: number) => {
             let entry: HotelResult = null;
             try {
-                currencyRequest ??= getVisitorCurrency();
-                const currency = await currencyRequest;
-                if (disposed) return;
                 const results = await checkHotelAvailability({ ...criteria, hotel_id: hotelId, currency });
                 const result = results.find((item) => Number(item.hotel_id) === hotelId);
                 if (result) entry = { result, currency };
