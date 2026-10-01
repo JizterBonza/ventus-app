@@ -15,7 +15,8 @@ const BENEFITS = [
 ];
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
-  const { isAuthenticated, hasActiveMembership } = useAuth();
+  const { isAuthenticated, hasActiveMembership, user } = useAuth();
+  const canTrial = !isAuthenticated || user?.trial?.eligible;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,13 +37,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }
         <button type="button" className="subscription-modal-close" onClick={onClose} aria-label="Close membership information">×</button>
         <img src="/assets/img/ventus-logo.png" alt="Ventus" className="membership-checkout-logo" />
         <h2 id="membership-modal-title">Ventus Travel membership</h2>
-        <p>Join for £299 per year and unlock the live prices and hotel benefits available to Ventus members.</p>
+        <p>{canTrial ? 'Try Ventus free for 7 days, with no card required. Explore member prices and hotel benefits, then choose £299 for one year. No automatic charge.' : 'Join for £299 per year and unlock the live prices and hotel benefits available to Ventus members.'}</p>
         <ul className="membership-checkout-benefits">{BENEFITS.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
         {hasActiveMembership ? (
           <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={onClose}>Continue exploring</button>
         ) : (
           <Link className="btn btn-primary btn-lg butn-dark w-100" to={isAuthenticated ? '/subscription' : '/signup'} onClick={onClose}>
-            {isAuthenticated ? 'Complete membership' : 'Create account and join'}
+            {canTrial ? (isAuthenticated ? 'Explore your free trial' : 'Create account for free trial') : 'Complete membership'}
           </Link>
         )}
       </section>

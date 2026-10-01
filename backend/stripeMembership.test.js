@@ -36,7 +36,7 @@ test('Stripe checkout and signed webhooks with PostgreSQL', { skip: !process.env
   let server;
   try {
     await pool.query('CREATE TABLE users (id INTEGER PRIMARY KEY)');
-    await pool.query('INSERT INTO users VALUES (1), (2), (3)');
+    await pool.query('INSERT INTO users VALUES (1), (2), (3), (4)');
     await pool.query(`CREATE TABLE subscriptions (
       id BIGSERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), plan_id TEXT, status TEXT,
       amount_paid NUMERIC(12, 2), currency CHAR(3), payment_provider TEXT,
@@ -170,6 +170,20 @@ test('Stripe checkout and signed webhooks with PostgreSQL', { skip: !process.env
       assert.doesNotMatch(await response.text(), /SECRET/);
       throwOnCreate = false;
       assert.equal((await post('checkout', {}, 3)).status, 201);
+    });
+    await check('trial members can upgrade and completion ends the trial without extending or duplicating it', async () => {
+      await pool.query(`INSERT INTO subscriptions (user_id,plan_id,status,payment_provider,starts_at,expires_at)
+        VALUES (4,'travel-trial','active','trial',NOW(),NOW()+INTERVAL '7 days')`);
+      assert.equal((await post('checkout', {}, 4)).status, 201);
+      const upgrade = [...sessions.values()].find(s => s.client_reference_id === '4');
+      pay(upgrade);
+      const results = await Promise.all([post('confirm', { sessionId: upgrade.id }, 4), webhook('checkout.session.completed', upgrade)]);
+      assert.ok(results.every(r => r.status === 200));
+      const rows = (await pool.query('SELECT * FROM subscriptions WHERE user_id=4')).rows;
+      assert.equal(rows.length, 2);
+      assert.equal(rows.find(s => s.payment_provider === 'trial').status, 'converted');
+      assert.equal(rows.find(s => s.payment_provider === 'stripe').status, 'active');
+      assert.equal((await post('checkout', {}, 4)).status, 409);
     });
   } finally {
     if (server) await new Promise((resolve) => server.close(resolve));

@@ -2184,6 +2184,17 @@
   margin: 0 auto 28px;
 }
 
+.membership-trial-panel {
+  background: #eff2ea;
+  border: 1px solid #d7ddd1;
+  padding: clamp(20px, 4vw, 32px);
+  margin-bottom: 36px;
+  text-align: center;
+}
+
+.membership-trial-panel h2 { font-size: clamp(1.5rem, 4vw, 2rem); }
+.membership-trial-eyebrow { color: #765f3c; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
+
 .membership-checkout-price {
   color: #1f1f1f;
   font-family: inherit;

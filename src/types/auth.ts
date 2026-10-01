@@ -10,6 +10,7 @@ export interface User {
   avatar?: string;
   createdAt: string;
   membershipActive: boolean;
+  trial?: { eligible: boolean; used: boolean; expiresAt: string | null };
   membership?: {
     id: string;
     planId: string;
@@ -66,4 +67,5 @@ export interface AuthContextType {
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  refreshUser: () => Promise<void>;
 }

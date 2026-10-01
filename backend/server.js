@@ -9,6 +9,7 @@ const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordRese
 const { registerHomepageRoutes } = require('./homepageRoutes');
 const { registerCategoryRoutes } = require('./categoryRoutes');
 const { stripeIsConfigured, ensureStripeMembershipSchema, createStripeMembershipHandlers } = require('./stripeMembership');
+const { TRIAL_DAYS, ensureTrialSchema, findActiveMembership, getTrialStatus, endTrialOnUpgrade, createTrialHandler } = require('./membershipTrial');
 const { registerReservationRoutes } = require('./reservationRoutes');
 const { registerFavouritesRoutes } = require('./favouritesRoutes');
 const { isPublicHotelProxyRequest } = require('./reservationSupplier');
@@ -244,17 +245,7 @@ const ensureSubscriptionSchema = async () => {
 
 const getActiveSubscription = async (userId, client = pool) => {
   if (!subscriptionSchemaReady) return null;
-  const result = await client.query(
-    `SELECT id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
-     FROM subscriptions
-     WHERE user_id = $1
-       AND status = 'active'
-       AND (expires_at IS NULL OR expires_at > NOW())
-     ORDER BY starts_at DESC
-     LIMIT 1`,
-    [userId]
-  );
-  return result.rows[0] || null;
+  return findActiveMembership(userId, client);
 };
 
 const serializeSubscription = (subscription) => subscription ? {
@@ -280,7 +271,8 @@ const serializeUser = async (user) => {
     avatar: user.avatar,
     createdAt: user.created_at.toISOString(),
     membershipActive: Boolean(subscription),
-    membership: serializeSubscription(subscription)
+    membership: serializeSubscription(subscription),
+    trial: await getTrialStatus(user, subscription, pool)
   };
 };
 
@@ -847,7 +839,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.get('/api/auth/verify', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, city_of_residence, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, phone, city_of_residence, avatar, created_at, email_verified_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -878,7 +870,7 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
 app.get('/api/auth/user', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, city_of_residence, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, phone, city_of_residence, avatar, created_at, email_verified_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -1043,6 +1035,7 @@ const persistCompletedMembershipPayment = async ({ orderId, captureId, amount, c
       throw Object.assign(new Error('PayPal payment amount did not match the membership order'), { statusCode: 400 });
     }
 
+    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [order.user_id]);
     const existing = await client.query(
       'SELECT * FROM subscriptions WHERE paypal_order_id = $1 LIMIT 1',
       [orderId]
@@ -1059,6 +1052,8 @@ const persistCompletedMembershipPayment = async ({ orderId, captureId, amount, c
       );
       subscription = inserted.rows[0];
     }
+
+    if (subscription.status === 'active') await endTrialOnUpgrade(order.user_id, client);
 
     await client.query(
       `UPDATE paypal_orders
@@ -1080,14 +1075,29 @@ const activateComplimentaryMembership = async (userId, quote) => {
   if (!quote.couponValid || !quote.couponHash || quote.finalPrice !== 0) {
     throw Object.assign(new Error('A valid complimentary membership code is required'), { statusCode: 400 });
   }
-  const result = await pool.query(
-    `INSERT INTO subscriptions (
-      user_id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
-    ) VALUES ($1, $2, 'active', 0, $3, 'coupon', NOW(), NOW() + INTERVAL '1 year')
-    RETURNING *`,
-    [userId, quote.planId, quote.currency]
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    const existing = await getActiveSubscription(userId, client);
+    if (existing && existing.payment_provider !== 'trial') {
+      await client.query('COMMIT');
+      return existing;
+    }
+    const result = await client.query(
+      `INSERT INTO subscriptions (
+        user_id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
+      ) VALUES ($1, $2, 'active', 0, $3, 'coupon', NOW(), NOW() + INTERVAL '1 year')
+      RETURNING *`,
+      [userId, quote.planId, quote.currency]
+    );
+    await endTrialOnUpgrade(userId, client);
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally { client.release(); }
 };
 
 app.get('/api/subscriptions/config', (req, res) => {
@@ -1102,6 +1112,7 @@ app.get('/api/subscriptions/config', (req, res) => {
       interval: 'yearly'
     },
     stripe: { configured: stripeIsConfigured() },
+    trial: { days: TRIAL_DAYS, cardRequired: false },
     paypal: {
       configured: paypalIsConfigured(),
       clientId: process.env.PAYPAL_CLIENT_ID || null,
@@ -1111,6 +1122,7 @@ app.get('/api/subscriptions/config', (req, res) => {
 });
 
 const stripeMembership = createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSubscription, publicAppUrl: PUBLIC_APP_URL });
+app.post('/api/subscriptions/trial', authenticateToken, createTrialHandler({ pool, serializeSubscription }));
 app.post('/api/subscriptions/stripe/checkout', authenticateToken, stripeMembership.checkout);
 app.post('/api/subscriptions/stripe/confirm', authenticateToken, stripeMembership.confirm);
 app.post('/api/stripe/webhook', stripeMembership.webhook);
@@ -1139,7 +1151,7 @@ app.post('/api/subscriptions/quote', (req, res) => {
 app.post('/api/subscriptions/paypal/order', authenticateToken, async (req, res) => {
   try {
     const existingSubscription = await getActiveSubscription(req.user.id);
-    if (existingSubscription) {
+    if (existingSubscription && existingSubscription.payment_provider !== 'trial') {
       return res.status(409).json({ success: false, error: 'This account already has an active membership' });
     }
 
@@ -1255,7 +1267,7 @@ app.post('/api/subscriptions/paypal/capture', authenticateToken, async (req, res
 app.post('/api/subscriptions/complimentary', authenticateToken, async (req, res) => {
   try {
     const existingSubscription = await getActiveSubscription(req.user.id);
-    if (existingSubscription) {
+    if (existingSubscription && existingSubscription.payment_provider !== 'trial') {
       return res.json({ success: true, subscription: serializeSubscription(existingSubscription), message: 'Your membership is active.' });
     }
     const quote = getMembershipQuote(req.body.planId || MEMBERSHIP_PLAN_ID, req.body.couponCode);
@@ -1787,6 +1799,7 @@ const startServer = async () => {
 
   try {
     await ensureSubscriptionSchema();
+    await ensureTrialSchema(pool);
     await ensureStripeMembershipSchema(pool);
     await reservationService.ensureSchema();
     await favouritesService.ensureSchema();

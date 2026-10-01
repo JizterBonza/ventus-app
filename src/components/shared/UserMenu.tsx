@@ -107,6 +107,13 @@ const UserMenu: React.FC = () => {
 
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             <li>
+              <Link to="/subscription" onClick={() => setIsOpen(false)}
+                style={{ display: 'block', padding: '12px 15px', color: '#333', textDecoration: 'none' }}>
+                <i className="ti-id-badge" aria-hidden="true" style={{ marginRight: '10px' }}></i>
+                My Membership
+              </Link>
+            </li>
+            <li>
               <Link
                 to="/my-bookings"
                 onClick={() => setIsOpen(false)}

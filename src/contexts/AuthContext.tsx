@@ -47,6 +47,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const user = await getCurrentUser();
+    if (user) {
+      if (user.membership?.expiresAt && !(Date.parse(user.membership.expiresAt) > Date.now())) user.membershipActive = false;
+      setAuthState(prev => ({ ...prev, user, isAuthenticated: true }));
+    }
+  }, []);
+
+  // Expiry also applies to tabs left open. The server independently enforces access.
+  useEffect(() => {
+    const expiry = authState.user?.membership?.expiresAt;
+    if (!expiry || !authState.user?.membershipActive) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const checkExpiry = () => {
+      const remaining = Date.parse(expiry) - Date.now();
+      if (!Number.isFinite(remaining) || remaining <= 0) {
+        setAuthState(prev => ({ ...prev, user: prev.user ? { ...prev.user, membershipActive: false } : null }));
+        void refreshUser();
+      } else {
+        timer = setTimeout(checkExpiry, Math.min(remaining, 2147483647));
+      }
+    };
+    checkExpiry();
+    const onFocus = () => { clearTimeout(timer); checkExpiry(); void refreshUser(); };
+    window.addEventListener('focus', onFocus);
+    return () => { clearTimeout(timer); window.removeEventListener('focus', onFocus); };
+  }, [authState.user?.membership?.expiresAt, authState.user?.membershipActive, refreshUser]);
+
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -122,14 +150,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = useMemo(() => ({
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
-    hasActiveMembership: Boolean(authState.user?.membershipActive),
+    hasActiveMembership: Boolean(authState.user?.membershipActive && (!authState.user.membership?.expiresAt || Date.parse(authState.user.membership.expiresAt) > Date.now())),
     isLoading: authState.isLoading,
     error: authState.error,
     login,
     signup,
     logout,
-    clearError
-  }), [authState.user, authState.isAuthenticated, authState.isLoading, authState.error, login, signup, logout, clearError]);
+    clearError,
+    refreshUser
+  }), [authState.user, authState.isAuthenticated, authState.isLoading, authState.error, login, signup, logout, clearError, refreshUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

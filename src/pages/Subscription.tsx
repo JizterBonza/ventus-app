@@ -13,6 +13,7 @@ import {
   getMembershipQuote,
   MembershipCheckoutConfig,
   MembershipQuote,
+  startMembershipTrial,
 } from '../utils/authService';
 
 const MEMBER_BENEFITS = [
@@ -28,7 +29,16 @@ const PAYPAL_CONTAINER_ID = 'secure-membership-paypal-buttons';
 const Subscription: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, hasActiveMembership, isLoading } = useAuth();
+  const { isAuthenticated, hasActiveMembership, isLoading, user, refreshUser } = useAuth();
+  const isTrial = hasActiveMembership && user?.membership?.paymentProvider === 'trial';
+  const hasAnnualMembership = hasActiveMembership && !isTrial;
+  const trialExpiry = user?.trial?.expiresAt;
+  const trialEnded = !hasActiveMembership && user?.trial?.used;
+  const formattedTrialExpiry = trialExpiry ? new Date(trialExpiry).toLocaleString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  }) : '';
+  const [trialBusy, setTrialBusy] = useState(false);
+  const [trialError, setTrialError] = useState('');
   const [config, setConfig] = useState<MembershipCheckoutConfig | null>(null);
   const [quote, setQuote] = useState<MembershipQuote | null>(null);
   const [couponCode, setCouponCode] = useState('');
@@ -39,7 +49,7 @@ const Subscription: React.FC = () => {
   const paypalContainerRef = useRef<HTMLDivElement | null>(null);
   const stripeSessionId = new URLSearchParams(location.search).get('stripe_session_id');
   const checkoutCancelled = new URLSearchParams(location.search).get('checkout') === 'cancelled';
-  const paymentLocked = status === 'processing' || status === 'success' || Boolean(stripeSessionId);
+  const paymentLocked = trialBusy || status === 'processing' || status === 'success' || Boolean(stripeSessionId);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -48,7 +58,7 @@ const Subscription: React.FC = () => {
   }, [isAuthenticated, isLoading, location, navigate]);
 
   useEffect(() => {
-    if (!isAuthenticated || hasActiveMembership || stripeSessionId) return;
+    if (!isAuthenticated || hasAnnualMembership || stripeSessionId) return;
     let cancelled = false;
     Promise.all([getMembershipCheckoutConfig(), getMembershipQuote()])
       .then(([nextConfig, nextQuote]) => {
@@ -64,10 +74,10 @@ const Subscription: React.FC = () => {
         setMessage(error instanceof Error ? error.message : 'Unable to load membership checkout.');
       });
     return () => { cancelled = true; };
-  }, [hasActiveMembership, isAuthenticated, stripeSessionId, checkoutCancelled]);
+  }, [hasAnnualMembership, isAuthenticated, stripeSessionId, checkoutCancelled]);
 
   useEffect(() => {
-    if (!isAuthenticated || hasActiveMembership || !stripeSessionId) return;
+    if (!isAuthenticated || hasAnnualMembership || !stripeSessionId) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     const confirm = async (attempt = 0) => {
@@ -96,10 +106,10 @@ const Subscription: React.FC = () => {
     };
     void confirm();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [isAuthenticated, hasActiveMembership, stripeSessionId]);
+  }, [isAuthenticated, hasAnnualMembership, stripeSessionId]);
 
   useEffect(() => {
-    if (config?.stripe?.configured || stripeSessionId || !config?.paypal.configured || !config.paypal.clientId || !quote || quote.finalPrice <= 0 || status !== 'ready') return;
+    if (trialBusy || config?.stripe?.configured || stripeSessionId || !config?.paypal.configured || !config.paypal.clientId || !quote || quote.finalPrice <= 0 || status !== 'ready') return;
     let cancelled = false;
     const container = paypalContainerRef.current;
     const renderButtons = () => {
@@ -156,7 +166,19 @@ const Subscription: React.FC = () => {
       cancelled = true;
       if (container) container.innerHTML = '';
     };
-  }, [appliedCoupon, config, quote, status, stripeSessionId]);
+  }, [appliedCoupon, config, quote, status, stripeSessionId, trialBusy]);
+
+  const startTrial = async () => {
+    if (paymentLocked) return;
+    setTrialBusy(true);
+    setTrialError('');
+    try {
+      await startMembershipTrial();
+      await refreshUser();
+    } catch (error) {
+      setTrialError(error instanceof Error ? error.message : 'Unable to start your trial. Please try again.');
+    } finally { setTrialBusy(false); }
+  };
 
   const startStripeCheckout = async () => {
     if (paymentLocked) return;
@@ -212,7 +234,7 @@ const Subscription: React.FC = () => {
         <div className="container"><div className="row justify-content-center"><div className="col-lg-8">
           <div className="auth-card membership-checkout-card">
             <img src="/assets/img/ventus-logo.png" alt="Ventus" className="membership-checkout-logo" />
-            {hasActiveMembership ? (
+            {hasAnnualMembership ? (
               <div className="text-center">
                 <h2>Your membership is active</h2>
                 <p>You can view live member prices, exact benefits and available room rates.</p>
@@ -220,8 +242,35 @@ const Subscription: React.FC = () => {
               </div>
             ) : (
               <>
+                {!stripeSessionId && (isTrial || trialEnded || user?.trial?.eligible) && (
+                  <section className="membership-trial-panel" aria-label="Free trial">
+                    <p className="membership-trial-eyebrow">Seven days with Ventus</p>
+                    <h2>{isTrial ? 'Your free trial is active' : trialEnded ? 'Your free trial has ended' : 'Try Ventus free for 7 days'}</h2>
+                    {isTrial ? (
+                      <>
+                        <p>Enjoy member prices, hotel benefits and booking access until <strong>{formattedTrialExpiry}</strong>.</p>
+                        <p>No automatic charge. Choose an annual membership below whenever you’re ready.</p>
+                        <Link to="/" className="btn btn-primary btn-lg butn-dark">Explore hotels</Link>
+                      </>
+                    ) : trialEnded ? (
+                      <>
+                        <p>Your trial ended on {formattedTrialExpiry}. Choose an annual membership to continue viewing member prices and making new bookings.</p>
+                        <p>You can still view and manage your existing reservations in <Link to="/my-bookings">My Bookings</Link>.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>Explore member prices, hotel benefits and book your next stay. No card required and no automatic charge.</p>
+                        <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={startTrial} disabled={paymentLocked}>
+                          {trialBusy ? 'Starting your trial…' : 'Start free trial'}
+                        </button>
+                        <p className="small mt-3 mb-0">One trial per account. Hotel bookings are paid separately under the hotel’s terms. Afterwards, choose £299 for one year of membership.</p>
+                      </>
+                    )}
+                    {trialError && <div className="alert alert-danger mt-3" role="alert">{trialError}</div>}
+                  </section>
+                )}
                 <div className="text-center mb-4">
-                  <h2>Complete your Travel membership</h2>
+                  <h2>{isTrial ? 'Continue with annual membership' : 'Your annual Travel membership'}</h2>
                   <p className="mb-1">One annual membership</p>
                   <div className="membership-checkout-price">£{quote?.finalPrice.toFixed(0) ?? '299'} <small>per year</small></div>
                   {quote && quote.discountPercent > 0 && <p className="text-muted"><s>£{quote.basePrice.toFixed(0)}</s> · {quote.discountPercent}% membership discount</p>}
@@ -245,7 +294,7 @@ const Subscription: React.FC = () => {
                 ) : status !== 'loading' ? (
                   <div className="alert alert-warning">Secure payment is being configured. Please contact Daniella to activate your membership.</div>
                 ) : null}
-                <p className="text-center mt-3 mb-0 small">{quote?.finalPrice === 0 ? 'Your membership code provides one year of access.' : 'One payment for one year of membership. No automatic renewal. Your membership activates once payment is confirmed.'}</p>
+                <p className="text-center mt-3 mb-0 small">{quote?.finalPrice === 0 ? 'Your membership code provides one year of access.' : 'One payment for one year of membership. No automatic renewal. Your year starts once payment is confirmed.'}</p>
               </>
             )}
           </div>

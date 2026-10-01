@@ -617,6 +617,13 @@ export const activateComplimentaryMembership = async (couponCode: string): Promi
   await parseApiResponse(response);
 };
 
+export const startMembershipTrial = async (): Promise<void> => {
+  const response = await fetch(`${SUBSCRIPTIONS_API_URL}/trial`, {
+    method: 'POST', headers: membershipAuthHeaders(), body: JSON.stringify({}),
+  });
+  await parseApiResponse(response);
+};
+
 export const getSubscriptionStatus = async (): Promise<{ hasActiveSubscription: boolean }> => {
   const response = await fetch(`${SUBSCRIPTIONS_API_URL}/status`, {
     headers: membershipAuthHeaders(),

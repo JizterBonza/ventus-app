@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const Stripe = require('stripe');
+const { endTrialOnUpgrade } = require('./membershipTrial');
 
 const stripeIsConfigured = () => /^(sk|rk)_(test|live)_\S+$/.test(process.env.STRIPE_SECRET_KEY || '') &&
   /^whsec_\S+$/.test(process.env.STRIPE_WEBHOOK_SECRET || '');
@@ -45,6 +46,9 @@ function createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSub
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      // Match checkout/trial lock order: account first, then its order.
+      await client.query(`SELECT users.id FROM users JOIN stripe_membership_orders orders ON orders.user_id = users.id
+        WHERE orders.id = $1 FOR UPDATE OF users`, [session.metadata?.ventus_order_id]);
       const { rows } = await client.query('SELECT * FROM stripe_membership_orders WHERE id = $1 FOR UPDATE', [session.metadata?.ventus_order_id]);
       const order = rows[0];
       if (!order || order.stripe_session_id !== session.id ||
@@ -65,6 +69,7 @@ function createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSub
       [order.user_id, order.plan_id, order.amount_minor / 100, order.currency, session.id]);
       await client.query(`UPDATE stripe_membership_orders SET status = 'PAID', payment_intent_id = $2, updated_at = NOW() WHERE id = $1`, [order.id, payment.id]);
       const membership = await client.query('SELECT status, expires_at FROM subscriptions WHERE stripe_session_id = $1', [session.id]);
+      if (membership.rows[0]?.status === 'active') await endTrialOnUpgrade(order.user_id, client);
       await client.query('COMMIT');
       const subscription = membership.rows[0];
       return { active: subscription?.status === 'active' && new Date(subscription.expires_at).getTime() > Date.now(), pending: false };
@@ -91,7 +96,8 @@ function createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSub
       // Serialize repeated clicks/tabs and reuse the open checkout to avoid duplicate payments.
       const user = await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
       if (!user.rows.length) throw failure('Account not found.', 404);
-      if (await getActiveSubscription(req.user.id, client)) throw failure('This account already has an active membership.', 409);
+      const membership = await getActiveSubscription(req.user.id, client);
+      if (membership && membership.payment_provider !== 'trial') throw failure('This account already has an active membership.', 409);
       const previous = await client.query(`SELECT * FROM stripe_membership_orders WHERE user_id = $1 AND status = 'OPEN' ORDER BY created_at DESC`, [req.user.id]);
       for (const order of previous.rows) {
         if (order.livemode !== stripeIsLive()) continue;

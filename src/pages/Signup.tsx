@@ -90,7 +90,7 @@ const Signup: React.FC = () => {
             <div className="auth-card_heading">
               <img src="/assets/img/ventus-logo.png" alt="Ventus" />
               <h3 className="text-center mb-3">Join now to unlock<br />exclusive member benefits</h3>
-              <p className="text-center mb-4">Travel membership · £299 per year</p>
+              <p className="text-center mb-4">Try Ventus free for 7 days. No card required.<br />Then choose £299 for one year. No automatic charge.</p>
             </div>
             {submitMessage && <div className="alert alert-danger" role="alert">{submitMessage}</div>}
             <form onSubmit={handleSubmit} noValidate>
