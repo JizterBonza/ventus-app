@@ -6,6 +6,8 @@ import { subscribeToNewsletter } from '../../utils/newsletter';
 import './TrialWelcomePopup.css';
 
 const DISMISSED_KEY = 'ventus:trial-welcome-dismissed:v1';
+const DISMISSED_UNTIL_KEY = 'ventus:trial-welcome-dismissed-until:v1';
+const DISMISSAL_DAYS = 30;
 
 const TrialWelcomePopup: React.FC = () => {
     const { isLoading, isAuthenticated, hasActiveMembership, user } = useAuth();
@@ -21,12 +23,14 @@ const TrialWelcomePopup: React.FC = () => {
     const sendingRef = useRef(false);
     const dismiss = useCallback(() => {
         setOpen(false);
+        try { localStorage.setItem(DISMISSED_UNTIL_KEY, String(Date.now() + DISMISSAL_DAYS * 24 * 60 * 60 * 1000)); } catch { /* Fall back to this visit. */ }
         try { sessionStorage.setItem(DISMISSED_KEY, '1'); } catch { /* Still dismiss this visit. */ }
     }, []);
 
     useEffect(() => {
         if (!eligible) { setOpen(false); return; }
         try { if (sessionStorage.getItem(DISMISSED_KEY)) return; } catch { /* Storage is optional. */ }
+        try { if (Number(localStorage.getItem(DISMISSED_UNTIL_KEY)) > Date.now()) return; } catch { /* Storage is optional. */ }
         const timer = window.setTimeout(() => setOpen(true), 1200);
         return () => window.clearTimeout(timer);
     }, [eligible]);

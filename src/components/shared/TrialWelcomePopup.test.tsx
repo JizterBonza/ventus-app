@@ -8,13 +8,13 @@ jest.mock('../../contexts/AuthContext', () => ({ useAuth: () => mockAuth }));
 jest.mock('react-router-dom', () => ({ Link: ({ to, children, ...props }: any) => <a href={to} {...props}>{children}</a> }), { virtual: true });
 jest.mock('../../utils/newsletter', () => ({ subscribeToNewsletter: jest.fn() }));
 beforeEach(() => {
-    jest.useFakeTimers(); jest.clearAllMocks(); sessionStorage.clear();
+    jest.useFakeTimers(); jest.clearAllMocks(); sessionStorage.clear(); localStorage.clear();
     Object.assign(mockAuth, { isLoading: false, isAuthenticated: false, hasActiveMembership: false, user: null });
 });
 afterEach(() => { jest.useRealTimers(); });
 const open = () => { render(<TrialWelcomePopup />); act(() => jest.advanceTimersByTime(1200)); };
 
-test('homepage offer is accessible, keeps the no-card terms and dismisses for the session', () => {
+test('homepage offer is accessible, keeps the no-card terms and remembers dismissal across visits', () => {
     const { unmount } = render(<TrialWelcomePopup />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     act(() => jest.advanceTimersByTime(1200));
@@ -29,7 +29,16 @@ test('homepage offer is accessible, keeps the no-card terms and dismisses for th
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(document.body.style.overflow).not.toBe('hidden');
-    unmount(); open(); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    unmount(); sessionStorage.clear(); open(); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+test('the offer can return on a new visit once the 30-day dismissal expires', () => {
+    const { unmount } = render(<TrialWelcomePopup />);
+    act(() => jest.advanceTimersByTime(1200));
+    fireEvent.click(screen.getByRole('button', { name: 'Close free trial offer' }));
+    unmount(); sessionStorage.clear();
+    jest.setSystemTime(Date.now() + 30 * 24 * 60 * 60 * 1000 + 1);
+    open(); expect(screen.getByRole('dialog')).toBeInTheDocument();
 });
 
 test.each(['loading', 'member', 'trial-used'])('does not show the offer to %s visitors', (state) => {

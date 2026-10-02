@@ -48,7 +48,7 @@
 }
 .trial-welcome-dialog .trial-welcome-primary { width: 100%; justify-content: space-between; min-height: 50px; padding-inline: 22px; }
 .trial-welcome-primary > span:last-child { font-size: 22px; line-height: 1; }
-.trial-welcome-dialog .trial-welcome-button:hover { background: #3f5547; border-color: #3f5547; color: #fff; }
+.trial-welcome-dialog .trial-welcome-button:hover { display: inline-flex; background: #3f5547; border-color: #3f5547; color: #fff; }
 .trial-welcome-button:disabled { opacity: .65; cursor: wait; }
 .trial-welcome-dialog a:not(.trial-welcome-button) { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .trial-welcome-dialog :is(a,button,input):focus-visible { outline: 2px solid #9a7c4e; outline-offset: 3px; }
