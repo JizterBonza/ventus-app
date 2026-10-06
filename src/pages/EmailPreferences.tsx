@@ -41,7 +41,7 @@ const EmailPreferenceRequest: React.FC<{hash: string}> = ({hash}) => {
             {status === 'loading' && <p role="status">Updating your preferences…</p>}
             {message && <p role={status === 'error' ? 'alert' : 'status'}>{message}</p>}
             {status === 'error' && <button className="btn btn-primary" type="button" onClick={() => void complete(action === 'unsubscribe')}>Try again</button>}
-            {status === 'success' && action === 'confirm' && <><p>Try Ventus free for 7 days. No card required and no automatic charge. Afterwards, choose an annual membership for £299.</p><Link className="btn btn-primary" to="/signup">Start your 7 day free trial</Link></>}
+            {status === 'success' && action === 'confirm' && <><p>Try Ventus free for 7 days. Add your card and pay £0 today, then £299 per year unless you cancel before your trial ends. Cancel in one click from My Membership.</p><Link className="btn btn-primary" to="/signup">Start your 7 day free trial</Link></>}
         </>}
         <p className="mt-4"><Link to="/">Return to Ventus</Link></p>
     </div></section></Layout>;
