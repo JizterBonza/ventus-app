@@ -30,7 +30,7 @@ const Footer: React.FC = () => {
                                 </ul>
                                 <ul>
                                     <li>
-                                        <Link target="_blank" to="https://www.ventustravel.co.uk/destinations">Destinations</Link>
+                                        <Link to="/">Destinations</Link>
                                     </li>
                                     <li>
                                         <Link target="_blank" to="https://www.ventustravel.co.uk/the-magazine">The Magazine</Link>

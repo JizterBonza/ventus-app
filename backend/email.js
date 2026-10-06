@@ -341,7 +341,7 @@ const sendReservationEmail = async ({ recipient, kind, booking }) => {
 const sendNewsletterConfirmation = async ({ to, confirmUrl, unsubscribeUrl }) => {
   const provider = getAccountEmailProvider();
   if (!provider) throw new Error('Email delivery is not configured');
-  const explanation = 'Discover exceptional hotel rates, complimentary breakfasts, hotel credits and upgrades where available. Create a Ventus account and try membership free for seven days. No card is required and there is no automatic charge. Afterwards, you can choose an annual membership for £299. Hotel bookings are paid separately under the hotel’s terms.';
+  const explanation = 'Discover exceptional hotel rates, complimentary breakfasts, hotel credits and upgrades where available. Create a Ventus account and try membership free for seven days. Add your card to start your seven-day complimentary trial. You pay £0 today, then £299 each year unless you cancel before your trial ends. You can cancel in one click from My Membership. Hotel bookings are paid separately under the hotel’s terms.';
   return sendAccountEmail({
     from: process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL,
     to: [to], reply_to: process.env.PASSWORD_RESET_REPLY_TO || 'daniella@ventustravel.co.uk',
@@ -355,4 +355,25 @@ const sendNewsletterConfirmation = async ({ to, confirmUrl, unsubscribeUrl }) =>
   }, provider);
 };
 
-module.exports = { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail, sendNewsletterConfirmation };
+const sendMembershipReminder = async ({ to, firstName, kind, billingAt, amount }) => {
+  const provider = getAccountEmailProvider();
+  if (!provider) throw new Error('Membership email delivery is not configured');
+  const trial = kind.startsWith('trial-');
+  const when = new Date(billingAt).toLocaleString('en-GB', { day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/London',timeZoneName:'short' });
+  const price = new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(amount);
+  const url = `${(process.env.PUBLIC_APP_URL || 'https://destinations.ventustravel.co.uk').replace(/\/$/,'')}/subscription`;
+  const title = trial ? 'Your complimentary stay with Ventus is nearly over' : 'Your Ventus membership is due to renew';
+  const body = `${trial ? 'Your seven-day complimentary trial ends' : 'Your annual membership renews'} on ${when}. Unless you cancel before then, your saved card will be charged ${price} for the next year of membership. Your membership renews annually until cancelled.`;
+  const cancel = 'You can cancel in one click from My Membership. You will keep access until the end of your current trial or paid membership period. Your existing hotel reservations are unaffected.';
+  return sendAccountEmail({
+    from:process.env.PASSWORD_RESET_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL,to:[to],
+    reply_to:process.env.PASSWORD_RESET_REPLY_TO || 'daniella@ventustravel.co.uk',
+    subject:`${trial ? 'Your free trial is ending' : 'Your membership renewal reminder'} · Ventus Travel`,
+    text:`Hello ${firstName || 'there'},\n\n${body}\n\n${cancel}\n\nManage or cancel membership: ${url}\n\nHotel bookings are charged separately under the hotel's terms.`,
+    html:brandedEmail({eyebrow:'Your membership',title,greeting:`Hello ${escapeHtml(firstName || 'there')},`,
+      body:`${escapeHtml(body)}<br><br>${escapeHtml(cancel)}`,actionLabel:'Manage or cancel membership',actionUrl:url,
+      footnote:'Hotel bookings are charged separately under the hotel’s terms. For help, reply to this email.'}),
+  },provider);
+};
+
+module.exports = { sendMembershipReminder, getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordResetEmail, sendVerificationEmail, sendHomepageEditorCode, sendBookingRequestNotification, sendReservationEmail, sendNewsletterConfirmation };

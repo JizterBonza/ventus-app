@@ -1,3 +1,4 @@
+import DepositHelp from './DepositHelp';
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AvailabilityParams, AvailabilityResponse, Rate } from "../../types/search";
@@ -653,7 +654,7 @@ const CheckAvailability: React.FC<CheckAvailabilityProps> = ({
                                                                                     </ul>
                                                                                 )}
                                                                                 {cancellationPolicy && <p>{cancellationPolicy}</p>}
-                                                                                {paymentDescription && <p>{paymentDescription}</p>}
+                                                                                {paymentDescription && <><p>{paymentDescription}</p><DepositHelp description={paymentDescription} /></>}
                                                                             </details>
                                                                         )}
                                                                     </div>

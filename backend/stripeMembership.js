@@ -26,7 +26,7 @@ async function ensureStripeMembershipSchema(pool) {
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_stripe_session ON subscriptions(stripe_session_id)');
 }
 
-function createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSubscription, publicAppUrl, stripeClient }) {
+function createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSubscription, publicAppUrl, stripeClient, recurring }) {
   const getStripe = () => {
     if (!stripeIsConfigured()) throw failure('Secure card checkout is temporarily unavailable.', 503);
     return stripeClient || new Stripe(process.env.STRIPE_SECRET_KEY, { maxNetworkRetries: 2, timeout: 20000 });
@@ -163,6 +163,7 @@ function createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSub
     if (event.livemode !== stripeIsLive()) return res.status(400).json({ success: false, error: 'Incorrect Stripe payment mode.' });
     try {
       const object = event.data.object;
+      if (recurring) await recurring.handleEvent(event);
       if (['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type) && object.metadata?.ventus_order_id) {
         await fulfill(object.id);
       }

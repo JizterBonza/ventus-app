@@ -91,6 +91,9 @@ test('reservation ownership, lifecycle, cancellation and durable email with Post
     service = registerReservationRoutes(app, pool, auth, { getActiveSubscription: async () => activeMember,
       supplier, sendEmail: async (message) => { if (failEmail) throw new Error('Email provider down'); sent.push(message); } });
     await service.ensureSchema(); await service.ensureSchema();
+    const loyalty = require('./loyaltyRoutes').registerLoyaltyRoutes(app,pool,auth);
+    await loyalty.ensureSchema();
+    await pool.query("INSERT INTO hotel_loyalty_cards(id,user_id,programme,membership_number) VALUES('11111111-1111-4111-8111-111111111111',1,'Hotel programme','123456')");
     app.use('/v2', (req, res) => res.sendStatus(isPublicHotelProxyRequest(req.method, new URL(req.originalUrl, 'http://local').pathname) ? 200 : 404));
     server = await new Promise((resolve) => { const listener = app.listen(0, '127.0.0.1', () => resolve(listener)); });
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -101,10 +104,14 @@ test('reservation ownership, lifecycle, cancellation and durable email with Post
 
     await check('a confirmed booking is owned by the signed-in member and LE guest email is suppressed', async () => {
       assert.equal((await api('', undefined, 0)).status, 401);
-      const response = await request('/v2/hotels/bookings', { ...payload(), user_id: 2 });
+      const response = await request('/v2/hotels/bookings', { ...payload(), user_id: 2, loyalty_card_id: '11111111-1111-4111-8111-111111111111' });
       assert.equal(response.status, 200);
       assert.equal((await response.json()).id, '101');
       assert.equal(calls[0].body.rooms[0].send_email_to_guest, false);
+      assert.equal(calls[0].body.loyalty_number, '123456');
+      const stolen = await request('/v2/hotels/bookings', {...payload(),session_id:'stolen-loyalty',loyalty_card_id:'11111111-1111-4111-8111-111111111111'},2);
+      assert.equal(stolen.status,400);
+      assert.equal(calls.filter(call=>call.method==='POST').length,1);
       const row = (await pool.query('SELECT * FROM reservations WHERE supplier_id = 101')).rows[0];
       assert.equal(row.user_id, 1);
       assert.equal(row.guest_email, 'guest@example.test');

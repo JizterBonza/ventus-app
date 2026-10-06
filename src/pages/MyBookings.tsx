@@ -1,3 +1,4 @@
+import DepositHelp from '../components/shared/DepositHelp';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
@@ -16,7 +17,7 @@ export const ReservationDetails: React.FC<{ booking: Reservation }> = ({ booking
       <h4>{room.room_type || `Room ${index + 1}`}</h4>
       <p>{room.guest_name}{room.adults ? ` · ${room.adults} adult${room.adults === 1 ? '' : 's'}` : ''}</p>
       {room.benefits.length > 0 && <ul>{room.benefits.map((benefit, i) => <li key={i}>{benefit}</li>)}</ul>}
-      {room.deposit_policy && <p><strong>Payment terms</strong><br />{room.deposit_policy}</p>}
+      {room.deposit_policy && <><p><strong>Payment terms</strong><br />{room.deposit_policy}</p><DepositHelp description={room.deposit_policy} /></>}
       <p className="reservation-policy"><strong>Cancellation policy</strong><br />{room.cancellation_policy || 'Please contact Ventus for the cancellation terms.'}</p>
     </div>)}
     {booking.cancellation_deadline && <p className="reservation-deadline">Cancellation deadline: {booking.cancellation_deadline} (as supplied by the hotel; check the policy for its time zone).</p>}

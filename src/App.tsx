@@ -1,3 +1,5 @@
+import WelcomeEmbed from './pages/WelcomeEmbed';
+import LoyaltyCards from './pages/LoyaltyCards';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavouritesProvider } from "./contexts/FavouritesContext";
@@ -67,6 +69,7 @@ function App() {
                     <Routes>
                         {/* Public Routes */}
                         <Route path="/" element={<Home />} />
+                        <Route path="/welcome-embed" element={<WelcomeEmbed />} />
                         <Route path="/home-backup" element={<HomeBackup />} />
                         <Route path="/about-us" element={<About />} />
                         <Route path="/the-magazine" element={<Magazine />} />
@@ -100,7 +103,8 @@ function App() {
                                 </ProtectedRoute>
                             } 
                         />
-                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/loyalty-cards" element={<LoyaltyCards />} />
+                    <Route path="/settings" element={<Settings />} />
                         <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
                         <Route path="/admin/reservations" element={<ProtectedRoute><ReservationAdmin /></ProtectedRoute>} />
                         

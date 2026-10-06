@@ -20,6 +20,11 @@ export interface User {
     paymentProvider: string;
     startsAt: string;
     expiresAt: string | null;
+    recurring?: boolean;
+    billingStatus?: string | null;
+    trialEndsAt?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    renewalAmount?: number | null;
   } | null;
 }
 

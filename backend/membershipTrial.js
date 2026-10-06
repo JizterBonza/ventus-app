@@ -2,21 +2,22 @@ const TRIAL_DAYS = 7;
 const failure = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 
 async function ensureTrialSchema(pool) {
+  await pool.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ');
   // Keep the row after expiry or upgrade: changing an email cannot restart a trial.
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_one_membership_trial_per_user
     ON subscriptions(user_id) WHERE payment_provider = 'trial'`);
 }
 
 async function findActiveMembership(userId, client) {
-  return (await client.query(`SELECT id, plan_id, status, amount_paid, currency, payment_provider, starts_at, expires_at
+  return (await client.query(`SELECT *
     FROM subscriptions WHERE user_id = $1 AND status = 'active'
     AND (expires_at IS NULL OR expires_at > NOW())
     ORDER BY (payment_provider <> 'trial') DESC, starts_at DESC LIMIT 1`, [userId])).rows[0] || null;
 }
 
 async function getTrialStatus(user, membership, client) {
-  const trial = (await client.query(`SELECT expires_at FROM subscriptions
-    WHERE user_id = $1 AND payment_provider = 'trial' LIMIT 1`, [user.id])).rows[0];
+  const trial = (await client.query(`SELECT COALESCE(trial_ends_at, expires_at) AS expires_at FROM subscriptions
+    WHERE user_id = $1 AND (payment_provider = 'trial' OR trial_ends_at IS NOT NULL) ORDER BY starts_at LIMIT 1`, [user.id])).rows[0];
   return {
     eligible: Boolean(user.email_verified_at && !membership && !trial),
     used: Boolean(trial),

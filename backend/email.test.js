@@ -180,7 +180,7 @@ test('confirmed reservation email is branded, escaped and directs guests to Vent
 });
 
 
-test('newsletter confirmation explains the no-card trial and includes confirmation and unsubscribe links', async () => {
+test('newsletter confirmation explains the card-upfront trial and includes confirmation and unsubscribe links', async () => {
   const confirmUrl = 'https://ventus.example/email-preferences#action=confirm&token=example';
   const unsubscribeUrl = 'https://ventus.example/email-preferences#action=unsubscribe&token=example';
   await sendNewsletterConfirmation({ to: 'newsletter@example.test', confirmUrl, unsubscribeUrl });
@@ -188,7 +188,7 @@ test('newsletter confirmation explains the no-card trial and includes confirmati
   assert.deepEqual(body.getAll('to'), ['newsletter@example.test']);
   assert.ok(body.get('text').includes(confirmUrl));
   assert.ok(body.get('text').includes(unsubscribeUrl));
-  assert.match(body.get('text'), /No card is required and there is no automatic charge/);
+  assert.match(body.get('text'), /£0 today, then £299 each year unless you cancel/);
   assert.match(body.get('html'), /Confirm my emails/);
   assert.match(body.get('html'), /Unsubscribe/);
   assert.equal(body.get('o:tracking'), 'no');

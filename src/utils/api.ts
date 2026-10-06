@@ -1342,6 +1342,7 @@ export const getHotelCalendarRates = async (
  * POST /v2/hotels/bookings
  */
 export interface BookingRequest {
+  loyaltyCardId?: string;
   hotelId: number;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
@@ -1379,6 +1380,7 @@ export const submitBooking = async (bookingData: BookingRequest): Promise<Bookin
     guest_name: bookingData.guestName.trim(),
     guest_email: bookingData.guestEmail.trim(),
     ...(bookingData.eta ? { eta: bookingData.eta } : {}),
+    ...(bookingData.loyaltyCardId ? { loyalty_card_id: bookingData.loyaltyCardId } : {}),
     rooms: bookingData.rooms.map((room, index) => ({
       adults: room.adults,
       children: room.children || [],

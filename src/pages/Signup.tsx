@@ -90,7 +90,7 @@ const Signup: React.FC = () => {
             <div className="auth-card_heading">
               <img src="/assets/img/ventus-logo.png" alt="Ventus" />
               <h3 className="text-center mb-3">Join now to unlock<br />exclusive member benefits</h3>
-              <p className="text-center mb-4">Try Ventus free for 7 days. No card required.<br />Then choose £299 for one year. No automatic charge.</p>
+              <p className="text-center mb-4">Enjoy 7 days of complimentary Ventus Travel Club membership and discover what travel looks like when you have the right access, then stay for £299 a year.</p>
             </div>
             {submitMessage && <div className="alert alert-danger" role="alert">{submitMessage}</div>}
             <form onSubmit={handleSubmit} noValidate>
@@ -116,9 +116,10 @@ const Signup: React.FC = () => {
                 {validationErrors.agreeToTerms && <div className="invalid-feedback">{validationErrors.agreeToTerms}</div>}
               </div>
               <button type="submit" className="btn btn-primary btn-lg butn-dark w-100 mt-4" disabled={isSubmitting}>{isSubmitting ? 'Creating your account…' : 'Create account and confirm email'}</button>
-              <p className="signup-supporting-copy text-center mt-3 mb-0">Confirm your email, then sign in to start your free trial or choose annual membership. No charge is made at this step.</p>
+              <p className="signup-supporting-copy text-center mt-3 mb-0">Confirm your email, then add your card to start your trial. £0 today, then £299 a year unless you cancel. No charge is made when creating your account.</p>
             </form>
             <p className="signup-supporting-copy text-center mt-4 mb-0">Already have an account? <Link to="/login"><strong>Login here</strong></Link></p>
+            <p className="signup-supporting-copy text-center mt-4 mb-0">Exceptional hotels. Rates reserved for members. Signature benefits. Privileged access, wherever you go.</p>
           </div>
         </div></div></div>
       </section>

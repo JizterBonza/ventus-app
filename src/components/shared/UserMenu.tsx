@@ -138,6 +138,24 @@ const UserMenu: React.FC = () => {
             </li>
             <li>
               <Link
+                to="/loyalty-cards"
+                onClick={() => setIsOpen(false)}
+                style={{
+                  display: 'block',
+                  padding: '12px 15px',
+                  color: '#333',
+                  textDecoration: 'none',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <i className="ti-id-badge" style={{ marginRight: '10px' }}></i>
+                Hotel loyalty cards
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/favourites"
                 onClick={() => setIsOpen(false)}
                 style={{

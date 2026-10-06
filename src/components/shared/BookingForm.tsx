@@ -6,6 +6,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { ensureMinimumCheckOutDateString } from "../../utils/searchSession";
 import { getStayTotal } from "../../utils/livePricing";
 
+import { getLoyaltyCards, LoyaltyCard } from '../../utils/loyaltyCards';
+import DepositHelp from './DepositHelp';
+
 interface BookingFormProps {
     hotelId: number;
     hotelName: string;
@@ -96,6 +99,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
     );
     const [guestEmail, setGuestEmail] = useState(user?.email || "");
     const [eta, setEta] = useState("");
+    const [loyaltyCards, setLoyaltyCards] = useState<LoyaltyCard[]>([]);
+    const [loyaltyCardId, setLoyaltyCardId] = useState('');
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        let ignore = false;
+        getLoyaltyCards().then(cards => { if (!ignore) setLoyaltyCards(cards); }).catch(() => {});
+        return () => { ignore = true; };
+    }, [isAuthenticated]);
     const [cardStored, setCardStored] = useState(false);
     const [cardMessage, setCardMessage] = useState("");
     const [sessionError, setSessionError] = useState(false);
@@ -205,6 +216,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 guestName: guestName.trim(),
                 guestEmail: guestEmail.trim(),
                 eta: eta || undefined,
+                loyaltyCardId: loyaltyCardId || undefined,
                 rooms,
             });
             setStatus("success");
@@ -257,7 +269,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
             <div className="booking-rate-details">
                 {selected.rate?.description && <p>{selected.rate.description}</p>}
-                {selected.rate?.payment_description && <p><strong>Payment:</strong> {selected.rate.payment_description}</p>}
+                {selected.rate?.payment_description && <><p><strong>Payment:</strong> {selected.rate.payment_description}</p><DepositHelp description={selected.rate.payment_description} /></>}
                 {selected.rate?.cancellation_policy && <p><strong>Cancellation:</strong> {selected.rate.cancellation_policy}</p>}
                 {selected.rate?.cancellation_deadline && <p><strong>Cancellation deadline:</strong> {selected.rate.cancellation_deadline}</p>}
                 {typeof selected.rate?.is_tax_included === "boolean" && (
@@ -292,6 +304,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         <input id="bookingGuestName" className="form-control" type="text" value={guestName} onChange={(event) => setGuestName(event.target.value)} autoComplete="name" required />
                         <label htmlFor="bookingGuestEmail" className="form-label">Email *</label>
                         <input id="bookingGuestEmail" className="form-control" type="email" value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} autoComplete="email" required />
+                        <label htmlFor="bookingLoyaltyCard" className="form-label">Hotel loyalty card (optional)</label>
+                        <select id="bookingLoyaltyCard" className="form-control" value={loyaltyCardId} onChange={event => setLoyaltyCardId(event.target.value)}>
+                            <option value="">Don’t add a loyalty card</option>
+                            {loyaltyCards.map(card => <option key={card.id} value={card.id}>{card.programme} · {card.number}</option>)}
+                        </select>
+                        <p className="small">Choose the programme accepted by this hotel. <Link to="/loyalty-cards" target="_blank" rel="noreferrer">Manage loyalty cards</Link>. Refresh this page after saving a new card.</p>
                         <label htmlFor="bookingEta" className="form-label">Estimated arrival time</label>
                         <select id="bookingEta" className="form-control" value={eta} onChange={(event) => setEta(event.target.value)}>
                             <option value="">Select an hour (optional)</option>

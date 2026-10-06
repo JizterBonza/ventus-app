@@ -9,10 +9,13 @@ const { getPasswordResetEmailProvider, getAccountEmailProvider, sendPasswordRese
 const { registerHomepageRoutes } = require('./homepageRoutes');
 const { registerCategoryRoutes } = require('./categoryRoutes');
 const { stripeIsConfigured, ensureStripeMembershipSchema, createStripeMembershipHandlers } = require('./stripeMembership');
-const { TRIAL_DAYS, ensureTrialSchema, findActiveMembership, getTrialStatus, endTrialOnUpgrade, createTrialHandler } = require('./membershipTrial');
+const { TRIAL_DAYS, ensureTrialSchema, findActiveMembership, getTrialStatus, endTrialOnUpgrade } = require('./membershipTrial');
 const { registerReservationRoutes } = require('./reservationRoutes');
 const { registerFavouritesRoutes } = require('./favouritesRoutes');
 const { registerNewsletterRoutes } = require('./newsletterRoutes');
+const { ensureRecurringSchema, createRecurringMembership } = require('./recurringMembership');
+const { ensureReminderSchema, createMembershipReminderWorker } = require('./membershipReminders');
+const { registerLoyaltyRoutes } = require('./loyaltyRoutes');
 const { isPublicHotelProxyRequest } = require('./reservationSupplier');
 
 const app = express();
@@ -28,6 +31,9 @@ const corsOptions = {
       'https://ventus-app.onrender.com',  // Production frontend
       'https://ventus-app-staging.onrender.com',  // Staging frontend
       'https://ventus-travel-staging.onrender.com',  // Alternative staging frontend
+      'https://ventustravel.co.uk',
+      'https://www.ventustravel.co.uk',
+      'https://ventus-travel.webflow.io',
       'https://destinations.ventustravel.co.uk',  // Public destinations frontend
     ];
     
@@ -257,7 +263,12 @@ const serializeSubscription = (subscription) => subscription ? {
   currency: subscription.currency,
   paymentProvider: subscription.payment_provider,
   startsAt: subscription.starts_at?.toISOString?.() || subscription.starts_at,
-  expiresAt: subscription.expires_at?.toISOString?.() || subscription.expires_at || null
+  expiresAt: subscription.expires_at?.toISOString?.() || subscription.expires_at || null,
+  recurring: subscription.payment_provider === 'stripe_subscription',
+  billingStatus: subscription.stripe_status || null,
+  trialEndsAt: subscription.trial_ends_at?.toISOString?.() || subscription.trial_ends_at || null,
+  cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+  renewalAmount: subscription.renewal_amount_minor == null ? null : subscription.renewal_amount_minor / 100
 } : null;
 
 const serializeUser = async (user) => {
@@ -411,6 +422,7 @@ const { ensureCategorySchema } = registerCategoryRoutes(app, pool, authenticateT
 const reservationService = registerReservationRoutes(app, pool, authenticateToken, { getActiveSubscription });
 const favouritesService = registerFavouritesRoutes(app, pool, authenticateToken);
 const newsletterService = registerNewsletterRoutes(app, pool);
+const loyaltyService = registerLoyaltyRoutes(app, pool, authenticateToken);
 
 // ============= AUTH ROUTES =============
 
@@ -1114,7 +1126,8 @@ app.get('/api/subscriptions/config', (req, res) => {
       interval: 'yearly'
     },
     stripe: { configured: stripeIsConfigured() },
-    trial: { days: TRIAL_DAYS, cardRequired: false },
+    trial: { days: TRIAL_DAYS, cardRequired: true },
+    recurring: true,
     paypal: {
       configured: paypalIsConfigured(),
       clientId: process.env.PAYPAL_CLIENT_ID || null,
@@ -1123,10 +1136,20 @@ app.get('/api/subscriptions/config', (req, res) => {
   });
 });
 
-const stripeMembership = createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSubscription, publicAppUrl: PUBLIC_APP_URL });
-app.post('/api/subscriptions/trial', authenticateToken, createTrialHandler({ pool, serializeSubscription }));
-app.post('/api/subscriptions/stripe/checkout', authenticateToken, stripeMembership.checkout);
-app.post('/api/subscriptions/stripe/confirm', authenticateToken, stripeMembership.confirm);
+const recurringMembership = createRecurringMembership({ pool, getMembershipQuote, getActiveSubscription, serializeSubscription, publicAppUrl: PUBLIC_APP_URL });
+const membershipReminders = createMembershipReminderWorker(pool, recurringMembership.sync);
+const stripeMembership = createStripeMembershipHandlers({ pool, getMembershipQuote, getActiveSubscription, publicAppUrl: PUBLIC_APP_URL, recurring: recurringMembership });
+app.post('/api/subscriptions/trial', authenticateToken, (req,res) => res.status(409).json({success:false,error:'Please refresh My Membership to start your trial with secure card checkout.'}));
+app.post('/api/subscriptions/stripe/checkout', authenticateToken, recurringMembership.checkout);
+app.post('/api/subscriptions/stripe/confirm', authenticateToken, async (req,res,next) => {
+  try {
+    const found = typeof req.body.sessionId === 'string' && (await pool.query('SELECT id FROM recurring_membership_orders WHERE stripe_session_id=$1 AND user_id=$2',[req.body.sessionId,req.user.id])).rows.length;
+    return found ? recurringMembership.confirm(req,res) : stripeMembership.confirm(req,res);
+  } catch(e) { next(e); }
+});
+app.get('/api/subscriptions/recurring', authenticateToken, recurringMembership.status);
+app.post('/api/subscriptions/recurring/cancel', authenticateToken, recurringMembership.cancel);
+app.post('/api/subscriptions/recurring/portal', authenticateToken, recurringMembership.portal);
 app.post('/api/stripe/webhook', stripeMembership.webhook);
 
 app.post('/api/subscriptions/quote', (req, res) => {
@@ -1803,6 +1826,9 @@ const startServer = async () => {
     await ensureSubscriptionSchema();
     await ensureTrialSchema(pool);
     await ensureStripeMembershipSchema(pool);
+    await ensureRecurringSchema(pool);
+    await ensureReminderSchema(pool);
+    await loyaltyService.ensureSchema();
     await reservationService.ensureSchema();
     await favouritesService.ensureSchema();
     await newsletterService.ensureSchema();
@@ -1830,6 +1856,7 @@ const startServer = async () => {
 
   app.listen(PORT, HOST, () => {
     reservationService.start();
+    membershipReminders.start();
     console.log(`=== Backend Server Started ===`);
     console.log(`✓ Server running on http://${HOST}:${PORT}`);
     console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);

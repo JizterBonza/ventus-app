@@ -4,6 +4,13 @@ import { User, LoginCredentials, SignupData, AuthResponse } from '../types/auth'
 const AUTH_TOKEN_KEY = 'ventus_auth_token';
 const AUTH_USER_KEY = 'ventus_auth_user';
 
+// A non-authentication preference shared with the marketing site: known account
+// holders do not need the signup popup. Never store a token in this cookie.
+const rememberAccount = () => {
+  const domain = /(^|\.)ventustravel\.co\.uk$/.test(window.location.hostname) ? '; Domain=ventustravel.co.uk; Secure' : '';
+  document.cookie = `ventus_account_known=1; Path=/; Max-Age=31536000; SameSite=Lax${domain}`;
+};
+
 // API configuration
 // Priority: 1. Environment variable, 2. Production URL, 3. Development proxy
 const getApiUrl = () => {
@@ -95,6 +102,7 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
     }
     if (data.user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+      rememberAccount();
     }
 
     return {
@@ -230,11 +238,13 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
     }
 
     // Store auth token and user data
+    rememberAccount();
     if (result.token) {
       localStorage.setItem(AUTH_TOKEN_KEY, result.token);
     }
     if (result.user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(result.user));
+      rememberAccount();
     }
 
     return {
@@ -300,6 +310,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
     // Update localStorage with fresh user data
     if (data.user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+      rememberAccount();
     }
     
     return data.user;
@@ -363,6 +374,7 @@ export const updateUserEmail = async (newEmail: string, currentPassword: string)
     // Update localStorage with new user data
     if (data.user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+      rememberAccount();
     }
 
     return {
@@ -562,7 +574,7 @@ export const getMembershipCheckoutConfig = async (): Promise<MembershipCheckoutC
 export const createStripeMembershipCheckout = async (couponCode?: string): Promise<string> => {
   const response = await fetch(`${SUBSCRIPTIONS_API_URL}/stripe/checkout`, {
     method: 'POST', headers: membershipAuthHeaders(),
-    body: JSON.stringify({ planId: 'travel-yearly', couponCode }),
+    body: JSON.stringify({ planId: 'travel-yearly', couponCode, acceptRecurring: true }),
   });
   const data = await parseApiResponse<{ url: string }>(response);
   const url = new URL(data.url);
@@ -690,4 +702,17 @@ export const subscribeUser = async (
       error: error instanceof Error ? error.message : 'Failed to process subscription'
     };
   }
+};
+
+export const getRecurringMembership = async (): Promise<{ subscription: User['membership'] }> => {
+  return parseApiResponse(await fetch(`${SUBSCRIPTIONS_API_URL}/recurring`, { headers: membershipAuthHeaders(), cache: 'no-store' }));
+};
+export const cancelRecurringMembership = async (): Promise<{ subscription: User['membership'] }> => {
+  return parseApiResponse(await fetch(`${SUBSCRIPTIONS_API_URL}/recurring/cancel`, { method: 'POST', headers: membershipAuthHeaders(), body: '{}' }));
+};
+export const openMembershipBilling = async (): Promise<string> => {
+  const data = await parseApiResponse<{ url: string }>(await fetch(`${SUBSCRIPTIONS_API_URL}/recurring/portal`, { method: 'POST', headers: membershipAuthHeaders(), body: '{}' }));
+  const url = new URL(data.url);
+  if (url.protocol !== 'https:' || url.hostname !== 'billing.stripe.com') throw new Error('Unable to open your billing details.');
+  return url.href;
 };

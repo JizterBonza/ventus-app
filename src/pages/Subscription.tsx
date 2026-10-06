@@ -1,308 +1,115 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import BannerCTA from '../components/shared/BannerCTA';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  activateComplimentaryMembership,
-  capturePayPalMembershipOrder,
-  createPayPalMembershipOrder,
-  createStripeMembershipCheckout,
-  confirmStripeMembershipCheckout,
-  getMembershipCheckoutConfig,
-  getMembershipQuote,
-  MembershipCheckoutConfig,
-  MembershipQuote,
-  startMembershipTrial,
-} from '../utils/authService';
+import { User } from '../types/auth';
+import { activateComplimentaryMembership, createStripeMembershipCheckout, confirmStripeMembershipCheckout,
+  getMembershipCheckoutConfig, getMembershipQuote, MembershipCheckoutConfig, MembershipQuote,
+  getRecurringMembership, cancelRecurringMembership, openMembershipBilling } from '../utils/authService';
 
-const MEMBER_BENEFITS = [
-  'Exclusive member rates and preferential offers',
-  'Complimentary breakfasts, hotel credits and experiences',
-  'Priority upgrades where available',
-  'Flexible hotel-direct cancellation and payment conditions',
-  'Access to Ventus Travel advice and booking support',
-];
-
-const PAYPAL_CONTAINER_ID = 'secure-membership-paypal-buttons';
+const BENEFITS = ['Exclusive member rates and preferential offers','Complimentary breakfasts, hotel credits and experiences',
+  'Priority upgrades where available','Flexible hotel-direct cancellation and payment conditions','Access to Ventus Travel advice and booking support'];
+const dateLabel = (value?: string | null) => value ? new Date(value).toLocaleString('en-GB', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}) : '';
 
 const Subscription: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { isAuthenticated, hasActiveMembership, isLoading, user, refreshUser } = useAuth();
-  const isTrial = hasActiveMembership && user?.membership?.paymentProvider === 'trial';
-  const hasAnnualMembership = hasActiveMembership && !isTrial;
-  const trialExpiry = user?.trial?.expiresAt;
-  const trialEnded = !hasActiveMembership && user?.trial?.used;
-  const formattedTrialExpiry = trialExpiry ? new Date(trialExpiry).toLocaleString('en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
-  }) : '';
-  const [trialBusy, setTrialBusy] = useState(false);
-  const [trialError, setTrialError] = useState('');
-  const [config, setConfig] = useState<MembershipCheckoutConfig | null>(null);
-  const [quote, setQuote] = useState<MembershipQuote | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState('');
-  const [couponMessage, setCouponMessage] = useState('');
-  const [status, setStatus] = useState<'loading' | 'ready' | 'processing' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('');
-  const paypalContainerRef = useRef<HTMLDivElement | null>(null);
-  const stripeSessionId = new URLSearchParams(location.search).get('stripe_session_id');
-  const checkoutCancelled = new URLSearchParams(location.search).get('checkout') === 'cancelled';
-  const paymentLocked = trialBusy || status === 'processing' || status === 'success' || Boolean(stripeSessionId);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate('/login', { replace: true, state: { from: location } });
-    }
-  }, [isAuthenticated, isLoading, location, navigate]);
-
-  useEffect(() => {
-    if (!isAuthenticated || hasAnnualMembership || stripeSessionId) return;
-    let cancelled = false;
-    Promise.all([getMembershipCheckoutConfig(), getMembershipQuote()])
-      .then(([nextConfig, nextQuote]) => {
-        if (cancelled) return;
-        setConfig(nextConfig);
-        setQuote(nextQuote);
-        setStatus('ready');
-        if (checkoutCancelled) setMessage('Checkout was closed. You can return to secure payment below.');
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setStatus('error');
-        setMessage(error instanceof Error ? error.message : 'Unable to load membership checkout.');
-      });
-    return () => { cancelled = true; };
-  }, [hasAnnualMembership, isAuthenticated, stripeSessionId, checkoutCancelled]);
-
-  useEffect(() => {
-    if (!isAuthenticated || hasAnnualMembership || !stripeSessionId) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const confirm = async (attempt = 0) => {
-      setStatus('processing');
-      setMessage('Confirming your membership payment…');
+  const navigate=useNavigate(),location=useLocation();
+  const {isAuthenticated,hasActiveMembership,isLoading,user,refreshUser}=useAuth();
+  const [recurring,setRecurring]=useState<User['membership']>(null);
+  const [config,setConfig]=useState<MembershipCheckoutConfig|null>(null);
+  const [quote,setQuote]=useState<MembershipQuote|null>(null);
+  const [status,setStatus]=useState<'loading'|'ready'|'processing'|'success'|'error'>('loading');
+  const [message,setMessage]=useState('');
+  const [coupon,setCoupon]=useState(''),[appliedCoupon,setAppliedCoupon]=useState(''),[couponMessage,setCouponMessage]=useState('');
+  const [accepted,setAccepted]=useState(false);
+  const sessionId=new URLSearchParams(location.search).get('stripe_session_id');
+  const billing=recurring || (user?.membership?.recurring ? user.membership : null);
+  const continuing=billing && !['canceled','incomplete_expired'].includes(billing.billingStatus || '');
+  const legacyTrial=hasActiveMembership && user?.membership?.paymentProvider==='trial';
+  const existingAnnual=hasActiveMembership && !legacyTrial && !billing;
+  const eligible=Boolean(user?.trial?.eligible);
+  const locked=status==='loading'||status==='processing'||status==='success'||Boolean(sessionId);
+  const price=quote?.finalPrice ?? 299;
+  useEffect(()=>{if(!isLoading&&!isAuthenticated)navigate('/login',{replace:true,state:{from:location}});},[isAuthenticated,isLoading,location,navigate]);
+  useEffect(()=>{
+    if(!isAuthenticated||sessionId)return;
+    let cancelled=false;
+    Promise.all([getRecurringMembership(),getMembershipCheckoutConfig(),getMembershipQuote()]).then(([state,c,q])=>{
+      if(cancelled)return;setRecurring(state.subscription);setConfig(c);setQuote(q);setStatus('ready');
+      if(new URLSearchParams(location.search).get('checkout')==='cancelled')setMessage('Checkout was closed. Your trial starts only after you complete secure checkout.');
+    }).catch(e=>{if(!cancelled){setStatus('error');setMessage(e.message||'Unable to load your membership. Please refresh.');}});
+    return()=>{cancelled=true;};
+  },[isAuthenticated,sessionId,location.search]);
+  useEffect(()=>{
+    if(!isAuthenticated||!sessionId)return;
+    let cancelled=false,timer:ReturnType<typeof setTimeout>;
+    const check=async(attempt=0)=>{
+      setStatus('processing');setMessage('Confirming your membership…');
       try {
-        const result = await confirmStripeMembershipCheckout(stripeSessionId);
-        if (cancelled) return;
-        if (result.active) {
-          setStatus('success');
-          setMessage('Your Ventus Travel membership is active.');
-          timer = setTimeout(() => window.location.assign('/subscription'), 1000);
-        } else if (result.pending && attempt < 5) {
-          timer = setTimeout(() => confirm(attempt + 1), 2000);
-        } else {
-          setStatus('error');
-          setMessage(result.pending
-            ? 'Your payment is still being confirmed. Please refresh shortly; do not pay again.'
-            : 'This payment has not activated your membership. Please contact Ventus before making another payment.');
-        }
-      } catch (error) {
-        if (cancelled) return;
-        setStatus('error');
-        setMessage(error instanceof Error ? error.message : 'Unable to confirm your payment. Please refresh shortly; do not pay again.');
-      }
+        const result=await confirmStripeMembershipCheckout(sessionId);
+        if(cancelled)return;
+        if(result.active){await refreshUser();if(cancelled)return;setStatus('success');setMessage('Your Ventus membership is active.');timer=setTimeout(()=>window.location.assign('/subscription'),900);}
+        else if(result.pending&&attempt<5)timer=setTimeout(()=>check(attempt+1),2000);
+        else{setStatus('error');setMessage('Your membership has not yet been confirmed. Check again or contact Ventus before starting another checkout.');}
+      }catch(e){if(!cancelled){setStatus('error');setMessage(e instanceof Error?e.message:'Unable to confirm your membership.');}}
     };
-    void confirm();
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [isAuthenticated, hasAnnualMembership, stripeSessionId]);
-
-  useEffect(() => {
-    if (trialBusy || config?.stripe?.configured || stripeSessionId || !config?.paypal.configured || !config.paypal.clientId || !quote || quote.finalPrice <= 0 || status !== 'ready') return;
-    let cancelled = false;
-    const container = paypalContainerRef.current;
-    const renderButtons = () => {
-      if (cancelled || !(window as any).paypal?.Buttons || !container) return;
-      container.innerHTML = '';
-      (window as any).paypal.Buttons({
-        createOrder: async () => createPayPalMembershipOrder(appliedCoupon || undefined),
-        onApprove: async (data: { orderID: string }) => {
-          setStatus('processing');
-          setMessage('Confirming your payment securely…');
-          try {
-            await capturePayPalMembershipOrder(data.orderID);
-            setStatus('success');
-            setMessage('Your Ventus Travel membership is active.');
-            window.setTimeout(() => window.location.assign('/'), 1200);
-          } catch (error) {
-            setStatus('error');
-            setMessage(error instanceof Error ? error.message : 'Payment could not be verified. No membership was activated.');
-          }
-        },
-        onCancel: () => {
-          setStatus('ready');
-          setMessage('Payment was cancelled. You have not been charged by Ventus Travel.');
-        },
-        onError: () => {
-          setStatus('error');
-          setMessage('PayPal could not complete the payment. Please try again.');
-        },
-        style: { layout: 'vertical', shape: 'rect', label: 'pay' },
-      }).render(container);
-    };
-
-    const existing = document.querySelector<HTMLScriptElement>('script[data-ventus-paypal="membership"]');
-    if ((window as any).paypal?.Buttons) {
-      renderButtons();
-    } else if (existing) {
-      existing.addEventListener('load', renderButtons, { once: true });
-    } else {
-      const script = document.createElement('script');
-      script.dataset.ventusPaypal = 'membership';
-      script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.paypal.clientId)}&currency=GBP&components=buttons&intent=capture`;
-      script.async = true;
-      script.addEventListener('load', renderButtons, { once: true });
-      script.addEventListener('error', () => {
-        if (!cancelled) {
-          setStatus('error');
-          setMessage('Secure payment could not be loaded. Please try again shortly.');
-        }
-      }, { once: true });
-      document.body.appendChild(script);
-    }
-
-    return () => {
-      cancelled = true;
-      if (container) container.innerHTML = '';
-    };
-  }, [appliedCoupon, config, quote, status, stripeSessionId, trialBusy]);
-
-  const startTrial = async () => {
-    if (paymentLocked) return;
-    setTrialBusy(true);
-    setTrialError('');
-    try {
-      await startMembershipTrial();
-      await refreshUser();
-    } catch (error) {
-      setTrialError(error instanceof Error ? error.message : 'Unable to start your trial. Please try again.');
-    } finally { setTrialBusy(false); }
+    void check();return()=>{cancelled=true;clearTimeout(timer);};
+  },[isAuthenticated,sessionId,refreshUser]);
+  const checkout=async()=>{
+    if(locked||!accepted)return;setStatus('processing');setMessage('Opening secure checkout…');
+    try{window.location.assign(await createStripeMembershipCheckout(appliedCoupon||undefined));}
+    catch(e){setStatus('error');setMessage(e instanceof Error?e.message:'Unable to open checkout.');}
   };
-
-  const startStripeCheckout = async () => {
-    if (paymentLocked) return;
-    setStatus('processing');
-    setMessage('Opening secure card payment…');
-    try {
-      window.location.assign(await createStripeMembershipCheckout(appliedCoupon || undefined));
-    } catch (error) {
-      setStatus('error');
-      setMessage(error instanceof Error ? error.message : 'Unable to open secure payment. Please try again.');
-    }
+  const apply=async()=>{
+    setCouponMessage('');setAccepted(false);
+    try{const q=await getMembershipQuote(coupon);if(!q.couponValid){setCouponMessage('That membership code is not valid.');return;}setQuote(q);setAppliedCoupon(coupon.trim());setCouponMessage(q.couponDescription||'Membership code applied.');}
+    catch(e){setCouponMessage(e instanceof Error?e.message:'Unable to check that code.');}
   };
-
-  const applyCoupon = async () => {
-    setCouponMessage('');
-    try {
-      const nextQuote = await getMembershipQuote(couponCode);
-      if (!nextQuote.couponValid) {
-        setCouponMessage('That membership code is not valid.');
-        return;
-      }
-      setQuote(nextQuote);
-      setAppliedCoupon(couponCode.trim());
-      setCouponMessage(nextQuote.couponDescription || 'Membership code applied.');
-      setStatus('ready');
-    } catch (error) {
-      setCouponMessage(error instanceof Error ? error.message : 'Unable to validate that membership code.');
-    }
+  const complimentary=async()=>{
+    if(locked||!appliedCoupon)return;setStatus('processing');
+    try{await activateComplimentaryMembership(appliedCoupon);await refreshUser();setStatus('ready');setMessage('Your membership is active.');}
+    catch(e){setStatus('error');setMessage(e instanceof Error?e.message:'Unable to activate membership.');}
   };
-
-  const activateComplimentary = async () => {
-    if (!appliedCoupon) return;
-    setStatus('processing');
-    setMessage('Activating your membership…');
-    try {
-      await activateComplimentaryMembership(appliedCoupon);
-      setStatus('success');
-      setMessage('Your Ventus Travel membership is active.');
-      window.setTimeout(() => window.location.assign('/'), 900);
-    } catch (error) {
-      setStatus('error');
-      setMessage(error instanceof Error ? error.message : 'Unable to activate your membership.');
-    }
+  const cancel=async()=>{
+    if(locked)return;setStatus('processing');setMessage('Cancelling your renewal…');
+    try{const state=await cancelRecurringMembership();setRecurring(state.subscription);await refreshUser();setStatus('ready');setMessage('Your renewal is cancelled. No further membership payments will be taken.');}
+    catch(e){setStatus('error');setMessage(e instanceof Error?e.message:'Unable to cancel. Please try again.');}
   };
-
-  if (isLoading || (!isAuthenticated && status === 'loading')) {
-    return <Layout><div className="container section-padding text-center"><div className="spinner-border" role="status" /><p className="mt-3">Loading your account…</p></div></Layout>;
-  }
-
-  return (
-    <Layout>
-      <section className="subscription-page section-padding">
-        <div className="container"><div className="row justify-content-center"><div className="col-lg-8">
-          <div className="auth-card membership-checkout-card">
-            <img src="/assets/img/ventus-logo.png" alt="Ventus" className="membership-checkout-logo" />
-            {hasAnnualMembership ? (
-              <div className="text-center">
-                <h2>Your membership is active</h2>
-                <p>You can view live member prices, exact benefits and available room rates.</p>
-                <Link to="/" className="btn btn-primary btn-lg butn-dark">Explore hotels</Link>
-              </div>
-            ) : (
-              <>
-                {!stripeSessionId && (isTrial || trialEnded || user?.trial?.eligible) && (
-                  <section className="membership-trial-panel" aria-label="Free trial">
-                    <p className="membership-trial-eyebrow">Seven days with Ventus</p>
-                    <h2>{isTrial ? 'Your free trial is active' : trialEnded ? 'Your free trial has ended' : 'Try Ventus free for 7 days'}</h2>
-                    {isTrial ? (
-                      <>
-                        <p>Enjoy member prices, hotel benefits and booking access until <strong>{formattedTrialExpiry}</strong>.</p>
-                        <p>No automatic charge. Choose an annual membership below whenever you’re ready.</p>
-                        <Link to="/" className="btn btn-primary btn-lg butn-dark">Explore hotels</Link>
-                      </>
-                    ) : trialEnded ? (
-                      <>
-                        <p>Choose an annual membership to continue viewing member prices and making new bookings.</p>
-                        <p>You can still view and manage your existing reservations in <Link to="/my-bookings">My Bookings</Link>.</p>
-                      </>
-                    ) : (
-                      <>
-                        <p>Explore member prices, hotel benefits and book your next stay. No card required and no automatic charge.</p>
-                        <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={startTrial} disabled={paymentLocked}>
-                          {trialBusy ? 'Starting your trial…' : 'Start free trial'}
-                        </button>
-                        <p className="small mt-3 mb-0">One trial per account. Hotel bookings are paid separately under the hotel’s terms. Afterwards, choose £299 for one year of membership.</p>
-                      </>
-                    )}
-                    {trialError && <div className="alert alert-danger mt-3" role="alert">{trialError}</div>}
-                  </section>
-                )}
-                <div className="text-center mb-4">
-                  <h2>{isTrial ? 'Continue with annual membership' : 'Your annual Travel membership'}</h2>
-                  <p className="mb-1">One annual membership</p>
-                  <div className="membership-checkout-price">£{quote?.finalPrice.toFixed(0) ?? '299'} <small>per year</small></div>
-                  {quote && quote.discountPercent > 0 && <p className="text-muted"><s>£{quote.basePrice.toFixed(0)}</s> · {quote.discountPercent}% membership discount</p>}
-                </div>
-                <ul className="membership-checkout-benefits">{MEMBER_BENEFITS.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
-                <div className="membership-coupon-row">
-                  <input className="form-control" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Membership code (optional)" disabled={paymentLocked} />
-                  <button type="button" className="btn btn-outline-dark" onClick={applyCoupon} disabled={!couponCode.trim() || paymentLocked}>Apply</button>
-                </div>
-                {couponMessage && <p className="membership-checkout-note">{couponMessage}</p>}
-                {message && <div className={`alert ${status === 'success' ? 'alert-success' : status === 'error' ? 'alert-danger' : 'alert-info'}`} role="status">{message}</div>}
-                {status === 'loading' && <div className="text-center"><div className="spinner-border" role="status" /><p>Preparing secure checkout…</p></div>}
-                {stripeSessionId ? (
-                  status === 'error' ? <div className="text-center"><button type="button" className="btn btn-outline-dark" onClick={() => window.location.reload()}>Check payment again</button><p className="mt-3"><a href="mailto:daniella@ventustravel.co.uk">Contact Ventus</a></p></div> : null
-                ) : quote?.finalPrice === 0 ? (
-                  <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={activateComplimentary} disabled={paymentLocked}>{status === 'processing' ? 'Activating…' : 'Activate membership'}</button>
-                ) : config?.stripe?.configured && quote ? (
-                  <button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={startStripeCheckout} disabled={paymentLocked}>{status === 'processing' ? 'Opening secure payment…' : `Pay £${quote.finalPrice.toFixed(2)} securely`}</button>
-                ) : config?.paypal.configured ? (
-                  <div ref={paypalContainerRef} id={PAYPAL_CONTAINER_ID} className="membership-paypal-container" aria-label="Secure PayPal or card payment" />
-                ) : status !== 'loading' ? (
-                  <div className="alert alert-warning">Secure payment is being configured. Please contact Daniella to activate your membership.</div>
-                ) : null}
-                <p className="text-center mt-3 mb-0 small">{quote?.finalPrice === 0 ? 'Your membership code provides one year of access.' : 'One payment for one year of membership. No automatic renewal. Your year starts once payment is confirmed.'}</p>
-              </>
-            )}
-          </div>
-        </div></div></div>
-      </section>
-      <BannerCTA />
-    </Layout>
-  );
+  const manage=async()=>{
+    if(locked)return;setStatus('processing');
+    try{window.location.assign(await openMembershipBilling());}
+    catch(e){setStatus('error');setMessage(e instanceof Error?e.message:'Unable to open your billing details.');}
+  };
+  if(isLoading||!isAuthenticated)return <Layout><div className="container section-padding text-center"><p>Loading your account…</p></div></Layout>;
+  return <Layout><section className="subscription-page section-padding"><div className="container"><div className="row justify-content-center"><div className="col-lg-8"><div className="auth-card membership-checkout-card">
+    <img src="/assets/img/ventus-logo.png" alt="Ventus" className="membership-checkout-logo" />
+    {message&&<div className={`alert ${status==='error'?'alert-danger':'alert-info'}`} role="status">{message}</div>}
+    {sessionId ? <div className="text-center">{status==='error'&&<><button type="button" className="btn btn-outline-dark" onClick={()=>window.location.reload()}>Check membership again</button><p className="mt-3"><a href="mailto:daniella@ventustravel.co.uk">Contact Ventus</a></p></>}</div> : continuing ? <div className="text-center">
+      <h2>{billing.status && billing.status!=='active'?'Your membership is inactive':billing.cancelAtPeriodEnd?'Your renewal is cancelled':billing.billingStatus==='trialing'?'Your free trial is active':billing.billingStatus==='active'?'Your membership is active':'Your membership needs attention'}</h2>
+      {billing.cancelAtPeriodEnd?<p>{billing.status==='active'||!billing.status?<>You can enjoy member access until <strong>{dateLabel(billing.expiresAt)}</strong>. </>:null}There will be no renewal payment.</p>:<>
+        <p>{billing.billingStatus==='trialing'?'Your complimentary trial ends':'Your next renewal is'} on <strong>{dateLabel(billing.expiresAt)}</strong>.</p>
+        <p>£{(billing.renewalAmount??299).toFixed(2)} per year, renewing automatically until cancelled.</p>
+        <p>{billing.billingStatus==='trialing'?'We’ll email you three days and one day before your trial ends.':'We’ll email you one month, one week and one day before renewal.'}</p>
+      </>}
+      <Link to="/" className="btn btn-primary btn-lg butn-dark">Explore hotels</Link>
+      <div className="d-flex flex-wrap justify-content-center gap-3 mt-4">
+        <button className="btn btn-outline-dark" type="button" onClick={manage} disabled={locked}>Payment details &amp; invoices</button>
+        {!billing.cancelAtPeriodEnd&&<button className="btn btn-outline-dark" type="button" onClick={cancel} disabled={locked}>{status==='processing'?'Please wait…':'Cancel membership renewal'}</button>}
+      </div>
+      <p className="small mt-3">Cancellation takes one click. Your existing hotel reservations remain available in <Link to="/my-bookings">My Bookings</Link>.</p>
+    </div> : existingAnnual ? <div className="text-center"><h2>Your membership is active</h2><p>{user?.membership?.expiresAt?`Your membership is valid until ${dateLabel(user.membership.expiresAt)}.`:'Enjoy your Ventus member benefits.'}</p><p>Your existing membership does not renew automatically.</p><Link to="/" className="btn btn-primary btn-lg butn-dark">Explore hotels</Link></div> : <>
+      {legacyTrial&&<div className="membership-trial-panel"><h2>Your free trial is active</h2><p>Your original card-free trial lasts until <strong>{dateLabel(user?.trial?.expiresAt)}</strong>. No automatic charge applies to this trial.</p><Link to="/">Explore hotels</Link></div>}
+      {!hasActiveMembership&&user?.trial?.used&&<p>Your free trial has ended. You can still manage existing reservations in <Link to="/my-bookings">My Bookings</Link>.</p>}
+      <div className="text-center mb-4"><h2>{eligible?'Your first 7 days, complimentary':'Your annual Travel membership'}</h2><div className="membership-checkout-price">{eligible?'£0 today':`£${price.toFixed(2)}`}<small>{eligible?`, then £${price.toFixed(2)} per year`:' per year'}</small></div><p>{eligible?'Add your card to start your trial. No membership payment is taken today.':'Annual membership renews automatically until cancelled.'}</p></div>
+      <ul className="membership-checkout-benefits">{BENEFITS.map(b=><li key={b}>{b}</li>)}</ul>
+      <div className="membership-coupon-row"><input aria-label="Membership code" className="form-control" placeholder="Membership code (optional)" value={coupon} onChange={e=>setCoupon(e.target.value)} disabled={locked}/><button type="button" className="btn btn-outline-dark" disabled={locked||!coupon.trim()} onClick={apply}>Apply</button></div>
+      {couponMessage&&<p>{couponMessage}</p>}
+      {quote?.finalPrice===0?<><button type="button" className="btn btn-primary btn-lg butn-dark w-100" disabled={locked} onClick={complimentary}>Activate complimentary membership</button><p className="small mt-3">Your code provides one year of access with no automatic renewal.</p></>:<>
+        <label className="booking-terms-confirmation mt-3"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} disabled={locked}/><span>{eligible?`I agree to a 7-day complimentary trial, then £${price.toFixed(2)} per year`:`I agree to pay £${price.toFixed(2)} now and each year`}, renewing automatically until I cancel. I can cancel in one click from My Membership before the next payment. <Link to="/terms-of-service">Membership terms</Link> apply.</span></label>
+        {config?.stripe?.configured&&quote?<button type="button" className="btn btn-primary btn-lg butn-dark w-100" onClick={checkout} disabled={locked||!accepted}>{status==='processing'?'Opening secure checkout…':eligible?'Add card & start free trial':`Join for £${price.toFixed(2)} per year`}</button>:<p role="status">{status==='loading'?'Preparing your membership…':'Checkout is temporarily unavailable. Please refresh or contact Ventus.'}</p>}
+        <p className="text-center small mt-3">{eligible?'We’ll remind you three days and one day before your trial ends. ':''}Cancel anytime before your next payment. Hotel bookings are paid separately under the hotel’s terms.</p>
+      </>}
+    </>}
+  </div></div></div></div></section><BannerCTA/></Layout>;
 };
-
 export default Subscription;

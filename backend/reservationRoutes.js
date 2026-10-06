@@ -55,6 +55,12 @@ function registerReservationRoutes(app, pool, authenticate, { getActiveSubscript
   app.post('/v2/hotels/bookings', authenticate, route(async (req, res) => {
     if (!await getActiveSubscription(req.user.id)) throw error('An active Ventus membership is required to make a new booking.', 403);
     const payload = bookingPayload(req.body || {});
+    if (req.body.loyalty_card_id) {
+      if (!/^[a-f0-9-]{36}$/i.test(String(req.body.loyalty_card_id))) throw error('Select a saved hotel loyalty card.');
+      const card = (await pool.query('SELECT membership_number FROM hotel_loyalty_cards WHERE id=$1 AND user_id=$2',[req.body.loyalty_card_id,req.user.id])).rows[0];
+      if (!card) throw error('This loyalty card is not available for your account.');
+      payload.loyalty_number = card.membership_number;
+    }
     const sessionHash = crypto.createHash('sha256').update(payload.session_id).digest('hex');
     const attempt = await pool.query(`INSERT INTO reservation_attempts (session_hash, user_id) VALUES ($1, $2)
       ON CONFLICT DO NOTHING RETURNING session_hash`, [sessionHash, req.user.id]);

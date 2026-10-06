@@ -27,12 +27,12 @@ declare const $: any;
 function getHomeHeroSliderLayout(containerWidth: number) {
     const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
     if (vw <= 480) {
-        return { gap: 12, slideRatio: 0.9, trackMarginRatio: 0.06, firstSlideWidthMul: 1 };
+        return { gap: 12, slideRatio: 0.82, trackMarginRatio: 0.04, firstSlideWidthMul: 1 };
     }
     if (vw <= 768) {
-        return { gap: 16, slideRatio: 0.865, trackMarginRatio: 0.1, firstSlideWidthMul: 1 };
+        return { gap: 16, slideRatio: 0.65, trackMarginRatio: 0.06, firstSlideWidthMul: 1 };
     }
-    return { gap: 30, slideRatio: 0.7, trackMarginRatio: 0.16, firstSlideWidthMul: 1.1 };
+    return { gap: 30, slideRatio: 0.48, trackMarginRatio: 0.06, firstSlideWidthMul: 1 };
 }
 
 const Home: React.FC = () => {
@@ -520,7 +520,7 @@ const Home: React.FC = () => {
             </div>
 
             {/* Hero Slider Section */}
-            <section className="page-header" style={{  overflow: "hidden", position: "relative" }}>
+            <section className="page-header ventus-picks-gallery" style={{  overflow: "hidden", position: "relative" }}>
                 {sliderReady && activeHotelId && featuredHeartLeft !== null && <div className="home-pick-favourite" style={{ left: featuredHeartLeft }}>
                     <FavouriteButton key={activeHotelId} hotel={{ id: Number(activeHotelId), name: activeSlide.title, location: activeSlide.subtitle, image: activeSlide.image }} />
                 </div>}
