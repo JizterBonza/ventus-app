@@ -8,13 +8,14 @@ jest.mock('../../contexts/AuthContext', () => ({ useAuth: () => mockAuth }));
 jest.mock('react-router-dom', () => ({ Link: ({ to, children, ...props }: any) => <a href={to} {...props}>{children}</a> }), { virtual: true });
 jest.mock('../../utils/newsletter', () => ({ subscribeToNewsletter: jest.fn() }));
 beforeEach(() => {
-    jest.useFakeTimers(); jest.clearAllMocks(); sessionStorage.clear(); localStorage.clear(); document.cookie="ventus_account_known=; Max-Age=0; Path=/";
+    jest.useFakeTimers(); jest.setSystemTime(new Date('2026-10-06T00:00:00Z')); jest.clearAllMocks(); sessionStorage.clear(); localStorage.clear(); document.cookie="ventus_account_known=; Max-Age=0; Path=/";
+    document.cookie="ventus_trial_welcome_dismissed_until=; Max-Age=0; Path=/";
     Object.assign(mockAuth, { isLoading: false, isAuthenticated: false, hasActiveMembership: false, user: null });
 });
 afterEach(() => { jest.useRealTimers(); });
 const open = () => { render(<TrialWelcomePopup />); act(() => jest.advanceTimersByTime(700)); };
 
-test('guest offer is accessible and returns on the next homepage visit', () => {
+test('guest offer is accessible and closing hides it for fourteen days', () => {
     const { unmount } = render(<TrialWelcomePopup />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     act(() => jest.advanceTimersByTime(700));
@@ -29,7 +30,19 @@ test('guest offer is accessible and returns on the next homepage visit', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(document.body.style.overflow).not.toBe('hidden');
-    unmount(); open(); expect(screen.getByRole('dialog')).toBeInTheDocument();
+    unmount();
+    expect(document.cookie).toContain(`ventus_trial_welcome_dismissed_until=${Date.parse('2026-10-20T00:00:00Z') + 700}`);
+    const hidden = render(<TrialWelcomePopup />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    hidden.unmount();
+    jest.setSystemTime(new Date('2026-10-19T23:59:00Z'));
+    const stillHidden = render(<TrialWelcomePopup />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    stillHidden.unmount();
+    jest.setSystemTime(new Date('2026-10-20T00:00:01Z'));
+    open(); expect(screen.getByRole('dialog')).toBeInTheDocument();
 });
 
 test('old dismissal cookies do not suppress the updated guest offer', () => {
@@ -48,6 +61,27 @@ test.each(['loading', 'member', 'trial-used'])('does not show the offer to %s vi
 test('signed-in clients are not shown the popup even before starting a trial', () => {
     mockAuth.isAuthenticated = true; mockAuth.user = { trial: { eligible: true } };
     open(); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+test('known account cookie also hides the offer in the marketing site embed', () => {
+    document.cookie = 'ventus_account_known=1; Path=/';
+    const onDismiss = jest.fn();
+    render(<TrialWelcomePopup embedded onDismiss={onDismiss} />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onDismiss).toHaveBeenCalled();
+    expect(document.cookie).not.toContain('ventus_trial_welcome_dismissed_until=');
+});
+
+test('a shared dismissal closes the embed without extending the two-week expiry', () => {
+    const until = Date.now() + 86400000;
+    document.cookie = `ventus_trial_welcome_dismissed_until=${until}; Path=/`;
+    const onDismiss = jest.fn();
+    render(<TrialWelcomePopup embedded onDismiss={onDismiss} />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onDismiss).toHaveBeenCalled();
+    expect(document.cookie).toContain(`ventus_trial_welcome_dismissed_until=${until}`);
 });
 
 test('email capture requires separate consent and only shows success after the server accepts it', async () => {

@@ -25,7 +25,9 @@
         const tags=item.querySelector('.destination-categories_wrapper');if(tags)tags.hidden=true;
       });
     }).catch(()=>{/* Existing cards remain usable if the destination feed is unavailable. */});
-    if(document.cookie.split(';').some(c=>c.trim()==='ventus_account_known=1'))return;
+    const cookies=document.cookie.split(';').map(c=>c.trim());
+    const dismissed=cookies.find(c=>c.startsWith('ventus_trial_welcome_dismissed_until='));
+    if(cookies.includes('ventus_account_known=1')||Number(dismissed?.split('=')[1])>Date.now())return;
     const iframe=document.createElement('iframe');iframe.src=portal+'/welcome-embed';iframe.title='Discover Ventus membership';
     iframe.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:transparent;visibility:hidden;';
     const previous=document.body.style.overflow,focus=document.activeElement;

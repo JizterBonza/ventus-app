@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeToNewsletter } from '../../utils/newsletter';
+import { isTrialWelcomeDismissed, rememberTrialWelcomeDismissal } from '../../utils/trialWelcome';
 import './TrialWelcomePopup.css';
 
 
 const TrialWelcomePopup: React.FC<{ embedded?: boolean; onDismiss?: () => void; onOpen?: () => void }> = ({ embedded = false, onDismiss, onOpen }) => {
     const { isLoading, isAuthenticated } = useAuth();
     const knownAccount = document.cookie.split(';').some(item => item.trim() === 'ventus_account_known=1');
-    const eligible = !isLoading && !isAuthenticated && !knownAccount;
+    const eligible = !isLoading && !isAuthenticated && !knownAccount && !isTrialWelcomeDismissed();
     const [open, setOpen] = useState(false);
     const [email, setEmail] = useState('');
     const [consent, setConsent] = useState(false);
@@ -20,6 +21,7 @@ const TrialWelcomePopup: React.FC<{ embedded?: boolean; onDismiss?: () => void; 
     const closeRef = useRef<HTMLButtonElement>(null);
     const sendingRef = useRef(false);
     const dismiss = useCallback(() => {
+        rememberTrialWelcomeDismissal();
         setOpen(false);
         onDismiss?.();
     }, [onDismiss]);
