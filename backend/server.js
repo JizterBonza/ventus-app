@@ -17,6 +17,8 @@ const { ensureRecurringSchema, createRecurringMembership } = require('./recurrin
 const { ensureReminderSchema, createMembershipReminderWorker } = require('./membershipReminders');
 const { registerLoyaltyRoutes } = require('./loyaltyRoutes');
 const { isPublicHotelProxyRequest } = require('./reservationSupplier');
+const { createAccountAuthenticator, validateAccountSession } = require('./accountAccess');
+const { registerUserAdmin } = require('./userAdmin');
 
 const app = express();
 
@@ -399,22 +401,7 @@ const passwordResetRequestIsLimited = (req, email) => {
 };
 
 // Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  if (!token) {
-    return res.status(401).json({ success: false, error: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ success: false, error: 'Invalid or expired token' });
-    }
-    req.user = user;
-    next();
-  });
-};
+const authenticateToken = createAccountAuthenticator(pool, JWT_SECRET);
 
 const homepageService = registerHomepageRoutes(app, pool, authenticateToken);
 const { ensureHomepageSchema } = homepageService;
@@ -423,6 +410,11 @@ const reservationService = registerReservationRoutes(app, pool, authenticateToke
 const favouritesService = registerFavouritesRoutes(app, pool, authenticateToken);
 const newsletterService = registerNewsletterRoutes(app, pool);
 const loyaltyService = registerLoyaltyRoutes(app, pool, authenticateToken);
+const userAdminService = registerUserAdmin(app, pool, authenticateToken, {
+  sendVerification: sendNewVerificationLink,
+  cancelRenewal: userId => recurringMembership.cancelForUser(userId),
+  publicAppUrl: PUBLIC_APP_URL,
+});
 
 // ============= AUTH ROUTES =============
 
@@ -578,6 +570,10 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
+    if (user.account_suspended_at) {
+      return res.status(403).json({ success: false, error: 'Sign-in is suspended for this account. Please contact Ventus.' });
+    }
+
     if (emailVerificationSchemaReady && !user.email_verified_at) {
       return res.status(403).json({
         success: false,
@@ -588,10 +584,12 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, authVersion: user.auth_version || 0 },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
+
+    await pool.query('UPDATE users SET last_login_at=NOW() WHERE id=$1', [user.id]);
 
     const serializedUser = await serializeUser(user);
 
@@ -830,7 +828,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     const resetToken = tokenResult.rows[0];
     await client.query(
-      'UPDATE users SET password_hash = $1, email_verified_at = COALESCE(email_verified_at, NOW()), updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1, email_verified_at = COALESCE(email_verified_at, NOW()), auth_version = auth_version + 1, updated_at = NOW() WHERE id = $2',
       [passwordHash, resetToken.user_id]
     );
     await client.query(
@@ -1559,12 +1557,12 @@ const storeHotelApiCacheEntry = (key, entry) => {
   hotelApiCache.set(key, entry);
 };
 
-const getAuthenticatedUserFromRequest = (req) => {
+const getAuthenticatedUserFromRequest = async (req) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   if (!token) throw Object.assign(new Error('Member login required'), { statusCode: 401 });
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return await validateAccountSession(pool, jwt.verify(token, JWT_SECRET));
   } catch {
     throw Object.assign(new Error('Invalid or expired member login'), { statusCode: 403 });
   }
@@ -1679,7 +1677,7 @@ app.use('/v2', express.json(), async (req, res) => {
   }
   if (hotelRequestRequiresMembership(req)) {
     try {
-      const user = getAuthenticatedUserFromRequest(req);
+      const user = await getAuthenticatedUserFromRequest(req);
       const subscription = await getActiveSubscription(user.id);
       if (!subscription) {
         return res.status(403).json({
@@ -1848,6 +1846,7 @@ const startServer = async () => {
   try {
     await ensureHomepageSchema();
     await ensureCategorySchema();
+    await userAdminService.ensureSchema();
     console.log('✓ Homepage CMS schema ready');
   } catch (error) {
     console.error('Homepage CMS schema initialization failed:', error);

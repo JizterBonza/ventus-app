@@ -79,6 +79,7 @@ test('recurring checkout, signed lifecycle events, one-click cancellation, remin
     });
     await check('one-click cancellation preserves remaining trial, cannot cancel another user, and late events cannot restore renewal',async()=>{
       assert.equal((await request('/cancel',{},2)).status,404);
+      sub.metadata.ventus_user_id='2';assert.equal((await request('/cancel')).status,409);assert.equal(cancelled,0);sub.metadata.ventus_user_id='1';
       assert.equal((await request('/cancel',{subscriptionId:'sub_another'})).status,200);assert.equal(cancelled,1);
       assert.equal((await request('/cancel')).status,200);assert.equal(cancelled,1);
       assert.equal((await hook('customer.subscription.updated',{...sub,cancel_at_period_end:false})).status,200);

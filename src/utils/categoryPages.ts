@@ -14,7 +14,7 @@ export interface CategoryContent {
   hotels: CategoryHotel[];
 }
 export interface CategoryPage extends CategoryContent { id: string; version: number }
-export interface AdminAccess { contentEditor: boolean; reservationManager: boolean }
+export interface AdminAccess { contentEditor: boolean; reservationManager: boolean; userManager?: boolean }
 
 const backendBase = process.env.REACT_APP_AUTH_API_URL
   ? process.env.REACT_APP_AUTH_API_URL.replace(/\/auth\/?$/, '')

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { allowedUrl } = require('./homepageContent');
+const { userManagerEmails } = require('./accountAccess');
 
 const normalizeCategory = (input) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid category page');
@@ -53,7 +54,7 @@ const registerCategoryRoutes = (app, pool, authenticate, { requireAllowlistedEdi
     const account = (await pool.query('SELECT email FROM users WHERE id = $1', [req.user.id])).rows[0];
     const email = account?.email?.trim().toLowerCase();
     const includes = (value) => Boolean(email && (value || '').split(',').map((item) => item.trim().toLowerCase()).includes(email));
-    res.json({ contentEditor: includes(process.env.HOMEPAGE_EDITOR_EMAILS), reservationManager: includes(process.env.RESERVATION_MANAGER_EMAILS) });
+    res.json({ contentEditor: includes(process.env.HOMEPAGE_EDITOR_EMAILS), reservationManager: includes(process.env.RESERVATION_MANAGER_EMAILS), userManager: Boolean(email && userManagerEmails().includes(email)) });
   }));
   app.get('/api/categories', route(async (req, res) => {
     const result = await pool.query("SELECT * FROM category_pages WHERE content->>'published' = 'true' ORDER BY updated_at DESC, id");

@@ -187,27 +187,27 @@ const sendPasswordResetEmail = async (details) => {
 const sendHomepageEditorCode = async ({ to, code }) => {
   const from = process.env.MAILGUN_FROM_EMAIL || process.env.PASSWORD_RESET_FROM_EMAIL;
   const text = [
-    'Your Ventus homepage editor verification code is:',
+    'Your Ventus staff verification code is:',
     '',
     code,
     '',
-    'Enter this code on the homepage editor page. It expires in 20 minutes and can only be used once.',
+    'Enter this code in the Ventus admin area. It expires in 20 minutes and can only be used once.',
     'If you did not request this, you can safely ignore this email.'
   ].join('\n');
   const html = brandedEmail({
-    eyebrow: 'Homepage editor', title: 'Confirm it’s you', greeting: 'Hello,',
-    body: 'Use this one-time code to access the Ventus homepage editor.', code,
+    eyebrow: 'Ventus team', title: 'Confirm it’s you', greeting: 'Hello,',
+    body: 'Use this one-time code to access the Ventus admin area.', code,
     footnote: 'The code is valid for 20 minutes and can be used once. If you did not request access, simply ignore this email.'
   });
   if (isMailgunConfigured() && from) {
-    return sendMailgunEmail({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text, html });
+    return sendMailgunEmail({ from, to: [to], subject: 'Verify your Ventus admin access', text, html });
   }
   if (process.env.RESEND_API_KEY && from) {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       signal: AbortSignal.timeout(10000),
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject: 'Verify your Ventus homepage editor access', text, html })
+      body: JSON.stringify({ from, to: [to], subject: 'Verify your Ventus admin access', text, html })
     });
     if (!response.ok) throw new Error(`Homepage editor email delivery failed (HTTP ${response.status})`);
     return;

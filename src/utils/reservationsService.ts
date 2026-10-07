@@ -16,6 +16,7 @@ export interface Reservation {
   cancellation_deadline: string;
   cancellation_state?: string | null;
   stale?: boolean;
+  synced_at?: string | null;
   can_cancel?: boolean;
   rooms: Array<{ guest_name: string; room_type: string; adults: number | null; cancellation_policy: string; deposit_policy: string; benefits: string[] }>;
 }

@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { defaults, normalizeHomepageContent, allowedImageType, migrateLegacyThemeLinks } = require('./homepageContent');
 const { sendHomepageEditorCode } = require('./email');
+const { staffEmails } = require('./accountAccess');
 
 const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode = sendHomepageEditorCode } = {}) => {
   const editorEmails = new Set((process.env.HOMEPAGE_EDITOR_EMAILS || '')
@@ -83,6 +84,15 @@ const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode =
     }
   };
 
+  const requireAllowlistedStaff = async (req, res, next) => {
+    try {
+      const account = (await pool.query('SELECT email FROM users WHERE id = $1', [req.user.id])).rows[0];
+      const email = account?.email?.trim().toLowerCase();
+      if (!email || !staffEmails().includes(email)) return res.status(403).json({ error: 'Ventus staff access required' });
+      req.editorEmail = email; next();
+    } catch { res.status(503).json({ error: 'Unable to check staff access' }); }
+  };
+
   const editorCodeHash = (userId, email, code) => crypto.createHmac('sha256', process.env.JWT_SECRET || '')
     .update(`${userId}:${email}:${code}`)
     .digest('hex');
@@ -104,7 +114,7 @@ const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode =
     }
   });
 
-  app.post('/api/homepage/admin/verification-code', authenticateToken, requireAllowlistedEditor, async (req, res) => {
+  app.post('/api/homepage/admin/verification-code', authenticateToken, requireAllowlistedStaff, async (req, res) => {
     const code = crypto.randomBytes(6).toString('hex').toUpperCase();
     try {
       const result = await pool.query(
@@ -135,7 +145,7 @@ const registerHomepageRoutes = (app, pool, authenticateToken, { sendEditorCode =
     }
   });
 
-  app.post('/api/homepage/admin/verify-email', authenticateToken, requireAllowlistedEditor, async (req, res) => {
+  app.post('/api/homepage/admin/verify-email', authenticateToken, requireAllowlistedStaff, async (req, res) => {
     const code = typeof req.body?.code === 'string' ? req.body.code.trim().toUpperCase() : '';
     if (!/^[A-F0-9]{12}$/.test(code)) return res.status(400).json({ success: false, error: 'Enter the 12-character code from your email' });
     try {

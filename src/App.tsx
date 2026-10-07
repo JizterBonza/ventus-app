@@ -32,6 +32,7 @@ import Subscription from "./pages/Subscription";
 import HomepageEditor from "./pages/HomepageEditor";
 import MyBookings from "./pages/MyBookings";
 import ReservationAdmin from "./pages/ReservationAdmin";
+import UserAdmin from "./pages/UserAdmin";
 import CategoryPage from './pages/CategoryPage';
 import CategoryEditor from './pages/CategoryEditor';
 import "./App.css";
@@ -107,6 +108,8 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                         <Route path="/my-bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />
                         <Route path="/admin/reservations" element={<ProtectedRoute><ReservationAdmin /></ProtectedRoute>} />
+                        <Route path="/admin/users" element={<ProtectedRoute><UserAdmin /></ProtectedRoute>} />
+                        <Route path="/admin/users/:id" element={<ProtectedRoute><UserAdmin /></ProtectedRoute>} />
                         
                         {/* Subscription */}
                         <Route path="/subscription" element={<Subscription />} />

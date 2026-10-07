@@ -17,11 +17,12 @@ const AdminNavigation: React.FC = () => {
     return () => { active = false; };
   }, [isAuthenticated, userId, user?.email]);
   if (!isAuthenticated || access?.userId !== user?.id || !access) return null;
-  const { contentEditor, reservationManager } = access.permissions;
-  if (!contentEditor && !reservationManager) return null;
+  const { contentEditor, reservationManager, userManager } = access.permissions;
+  if (!contentEditor && !reservationManager && !userManager) return null;
   return <nav className="admin-navigation" aria-label="Admin navigation">
     <div className="container">
       <span>Ventus admin</span>
+      {userManager && <NavLink to="/admin/users">Users</NavLink>}
       {contentEditor && <>
         <NavLink to="/admin/homepage">Homepage</NavLink>
         <NavLink to="/admin/categories" end>Category pages</NavLink>

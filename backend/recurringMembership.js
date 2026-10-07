@@ -162,15 +162,18 @@ function createRecurringMembership({ pool, getMembershipQuote, getActiveSubscrip
     if (sub && !['canceled','incomplete_expired'].includes(sub.stripe_status)) sub = await sync(sub.stripe_subscription_id);
     res.json({success:true,subscription:serializeSubscription(sub)});
   });
-  const cancel = route(async(req,res) => {
+  const cancelForUser = async userId => {
     const client = await pool.connect(); let id;
     try {
       await client.query('BEGIN');
-      await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);
-      const sub = (await client.query("SELECT * FROM subscriptions WHERE user_id=$1 AND payment_provider='stripe_subscription' ORDER BY starts_at DESC,id DESC LIMIT 1",[req.user.id])).rows[0];
+      await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[userId]);
+      const sub = (await client.query("SELECT * FROM subscriptions WHERE user_id=$1 AND payment_provider='stripe_subscription' ORDER BY starts_at DESC,id DESC LIMIT 1",[userId])).rows[0];
       if (!sub) throw fail('No recurring membership was found.',404);
       id = sub.stripe_subscription_id;
       const current = await stripe().subscriptions.retrieve(id);
+      if (current.metadata?.ventus_user_id !== String(userId) || objectId(current.customer) !== sub.stripe_customer_id) {
+        throw fail('This billing record does not match the client account.', 409);
+      }
       if (['trialing','active'].includes(current.status) && !current.cancel_at_period_end) {
         await stripe().subscriptions.update(id,{cancel_at_period_end:true,proration_behavior:'none'});
       } else if (!['trialing','active','canceled','incomplete_expired'].includes(current.status)) {
@@ -179,8 +182,9 @@ function createRecurringMembership({ pool, getMembershipQuote, getActiveSubscrip
       }
       await client.query('COMMIT');
     } catch(e) { await client.query('ROLLBACK').catch(()=>{}); throw e; } finally { client.release(); }
-    res.json({success:true,subscription:serializeSubscription(await sync(id))});
-  });
+    return serializeSubscription(await sync(id));
+  };
+  const cancel = route(async(req,res) => res.json({success:true,subscription:await cancelForUser(req.user.id)}));
   let portalConfiguration;
   const portal = route(async(req,res) => {
     const sub = (await pool.query("SELECT * FROM subscriptions WHERE user_id=$1 AND payment_provider='stripe_subscription' ORDER BY starts_at DESC,id DESC LIMIT 1",[req.user.id])).rows[0];
@@ -218,6 +222,6 @@ function createRecurringMembership({ pool, getMembershipQuote, getActiveSubscrip
     }
     if (event.type.startsWith('checkout.session.') && object.metadata?.ventus_recurring_order_id && objectId(object.subscription)) return sync(objectId(object.subscription));
   };
-  return {checkout,confirm,status,cancel,portal,sync,handleEvent};
+  return {checkout,confirm,status,cancel,cancelForUser,portal,sync,handleEvent};
 }
 module.exports = {ensureRecurringSchema,createRecurringMembership,periodEnd};

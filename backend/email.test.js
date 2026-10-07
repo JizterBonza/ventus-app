@@ -92,7 +92,7 @@ test('homepage editor verification is delivered only to the account email', asyn
   assert.equal(requests.length, 1);
   assert.deepEqual(requests[0].body.getAll('to'), ['editor@example.com']);
   assert.match(requests[0].body.get('text'), /A1B2C3D4E5F6/);
-  assert.match(requests[0].body.get('subject'), /Verify your Ventus homepage editor access/);
+  assert.match(requests[0].body.get('subject'), /Verify your Ventus admin access/);
   assert.equal(requests[0].body.get('o:tracking'), 'no');
 });
 
